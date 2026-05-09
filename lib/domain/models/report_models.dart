@@ -1,9 +1,11 @@
 enum ReportType {
   monthlySummary,
   villaWiseProfit,
+  roomWiseProfit,
   incomeReport,
   expenseReport,
   pendingRentReport,
+  vacancyReport,
   yearlySummary,
 }
 
@@ -14,12 +16,16 @@ extension ReportTypeLabel on ReportType {
         return 'Monthly Summary';
       case ReportType.villaWiseProfit:
         return 'Villa-wise Profit';
+      case ReportType.roomWiseProfit:
+        return 'Room-wise Profit';
       case ReportType.incomeReport:
         return 'Income Report';
       case ReportType.expenseReport:
         return 'Expense Report';
       case ReportType.pendingRentReport:
         return 'Pending Rent Report';
+      case ReportType.vacancyReport:
+        return 'Vacancy Report';
       case ReportType.yearlySummary:
         return 'Yearly Summary';
     }
@@ -80,6 +86,51 @@ class PendingRentReportItem {
     required this.pendingRent,
     required this.dueDay,
   });
+}
+
+class RoomWiseProfitReportItem {
+  final String villaId;
+  final String villaName;
+  final String roomId;
+  final String roomName;
+  final String roomNumber;
+  final String tenantName;
+  final String status;
+  final double expectedRent;
+  final double rentReceived;
+  final double otherIncome;
+  final double totalExpenses;
+  final double pendingRent;
+  final double vacancyLoss;
+  final double actualProfit;
+  final double expectedProfit;
+  final double rentCollectionPercentage;
+
+  const RoomWiseProfitReportItem({
+    required this.villaId,
+    required this.villaName,
+    required this.roomId,
+    required this.roomName,
+    required this.roomNumber,
+    required this.tenantName,
+    required this.status,
+    required this.expectedRent,
+    required this.rentReceived,
+    required this.otherIncome,
+    required this.totalExpenses,
+    required this.pendingRent,
+    required this.vacancyLoss,
+    required this.actualProfit,
+    required this.expectedProfit,
+    required this.rentCollectionPercentage,
+  });
+
+  bool get isOccupied => status.toLowerCase() == 'occupied';
+
+  bool get isVacant => status.toLowerCase() == 'vacant';
+
+  String get displayRoomName =>
+      roomName.trim().isEmpty ? 'Room $roomNumber' : roomName.trim();
 }
 
 class YearlySummaryReportItem {

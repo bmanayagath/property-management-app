@@ -1,5 +1,7 @@
 import '../../domain/models/expense.dart';
 import '../../domain/models/income.dart';
+import '../../domain/models/room.dart';
+import '../../domain/models/room_profit_summary.dart';
 import '../../domain/models/villa_model.dart';
 
 class ProfitCalculationService {
@@ -156,6 +158,101 @@ class ProfitCalculationService {
     });
   }
 
+  List<RoomProfitSummary> calculateRoomProfitSummaries({
+    required List<Room> rooms,
+    required List<Income> incomes,
+    required List<Expense> expenses,
+    required DateTime month,
+    String? villaId,
+    String? roomId,
+    String? status,
+  }) {
+    final normalizedStatus = status?.trim().toLowerCase();
+    final monthlyCashIncomes = incomes
+        .where((income) => _isSameMonth(income.paymentDate, month))
+        .toList();
+    final monthlyRentIncomes = incomes
+        .where((income) =>
+            _isRentIncome(income) && _isSameMonth(income.monthCovered, month))
+        .toList();
+    final monthlyExpenses = expenses
+        .where((expense) => _isSameMonth(expense.expenseDate, month))
+        .toList();
+
+    return rooms.where((room) {
+      if (villaId != null && villaId.isNotEmpty && room.villaId != villaId) {
+        return false;
+      }
+      if (roomId != null && roomId.isNotEmpty && room.id != roomId) {
+        return false;
+      }
+      if (normalizedStatus != null &&
+          normalizedStatus.isNotEmpty &&
+          normalizedStatus != 'all' &&
+          room.status.toLowerCase() != normalizedStatus) {
+        return false;
+      }
+      return true;
+    }).map((room) {
+      return _calculateRoomProfitSummary(
+        room: room,
+        monthlyCashIncomes: monthlyCashIncomes,
+        monthlyRentIncomes: monthlyRentIncomes,
+        monthlyExpenses: monthlyExpenses,
+      );
+    }).toList();
+  }
+
+  RoomProfitTotals calculateRoomProfitTotals(
+    Iterable<RoomProfitSummary> summaries,
+  ) {
+    final items = summaries.toList();
+    final actualIncome = items.fold<double>(
+      0,
+      (sum, item) => sum + item.totalIncome,
+    );
+    final expensesPaid = items.fold<double>(
+      0,
+      (sum, item) => sum + item.totalExpenses,
+    );
+    final rentReceived = items.fold<double>(
+      0,
+      (sum, item) => sum + item.rentReceived,
+    );
+    final expectedRent = items.fold<double>(
+      0,
+      (sum, item) => sum + item.expectedRent,
+    );
+    final pendingRent = items.fold<double>(
+      0,
+      (sum, item) => sum + item.pendingRent,
+    );
+    final vacancyLoss = items.fold<double>(
+      0,
+      (sum, item) => sum + item.vacancyLoss,
+    );
+    final occupiedRooms = items.where((item) => item.isOccupied).length;
+    final vacantRooms = items.where((item) => item.isVacant).length;
+
+    return RoomProfitTotals(
+      actualIncome: actualIncome,
+      expensesPaid: expensesPaid,
+      rentReceived: rentReceived,
+      expectedRent: expectedRent,
+      pendingRent: pendingRent,
+      vacancyLoss: vacancyLoss,
+      actualNetProfit: actualIncome - expensesPaid,
+      expectedNetProfit: expectedRent +
+          items.fold<double>(0, (sum, item) => sum + item.otherIncome) -
+          expensesPaid,
+      totalRooms: items.length,
+      occupiedRooms: occupiedRooms,
+      vacantRooms: vacantRooms,
+      rentCollectionPercentage:
+          expectedRent == 0 ? 0 : (rentReceived / expectedRent) * 100,
+    );
+  }
+
   List<PendingRentCalculation> calculatePendingRentItems({
     required List<VillaModel> villas,
     required List<Income> incomes,
@@ -209,6 +306,68 @@ class ProfitCalculationService {
 
   bool _isRentIncome(Income income) {
     return income.incomeType.toLowerCase() == IncomeTypes.rent.toLowerCase();
+  }
+
+  RoomProfitSummary _calculateRoomProfitSummary({
+    required Room room,
+    required List<Income> monthlyCashIncomes,
+    required List<Income> monthlyRentIncomes,
+    required List<Expense> monthlyExpenses,
+  }) {
+    final isOccupied = room.isOccupied;
+    final roomRentIncomes = monthlyRentIncomes.where(
+      (income) => income.roomId == room.id,
+    );
+    final roomOtherIncomes = monthlyCashIncomes.where(
+      (income) => income.roomId == room.id && !_isRentIncome(income),
+    );
+    final roomExpenses = monthlyExpenses.where(
+      (expense) => expense.roomId == room.id,
+    );
+
+    final expectedRent = isOccupied ? room.monthlyRent : 0.0;
+    final rentReceived = isOccupied ? _sumIncome(roomRentIncomes) : 0.0;
+    final otherIncome = _sumIncome(roomOtherIncomes);
+    final totalExpenses = _sumExpense(roomExpenses);
+    final pendingRent = isOccupied
+        ? calculatePendingRent(
+            expectedRent: expectedRent,
+            rentReceived: rentReceived,
+          )
+        : 0.0;
+    final overpaidAmount = isOccupied
+        ? _calculateOverpaidAmount(
+            expectedRent: expectedRent,
+            rentReceived: rentReceived,
+          )
+        : 0.0;
+    final vacancyLoss = room.isVacant ? room.monthlyRent : 0.0;
+    final actualProfit = rentReceived + otherIncome - totalExpenses;
+    final expectedProfit = expectedRent + otherIncome - totalExpenses;
+
+    return RoomProfitSummary(
+      roomId: room.id,
+      villaId: room.villaId,
+      villaName: room.villaName,
+      roomName: room.roomName,
+      roomNumber: room.roomNumber,
+      tenantName: isOccupied ? room.tenantName : 'Vacant',
+      status: room.status,
+      paymentDueDay: room.paymentDueDay,
+      monthlyRent: room.monthlyRent,
+      expectedRent: expectedRent,
+      rentReceived: rentReceived,
+      otherIncome: otherIncome,
+      totalIncome: rentReceived + otherIncome,
+      totalExpenses: totalExpenses,
+      pendingRent: pendingRent,
+      overpaidAmount: overpaidAmount,
+      vacancyLoss: vacancyLoss,
+      actualProfit: actualProfit,
+      expectedProfit: expectedProfit,
+      rentCollectionPercentage:
+          expectedRent == 0 ? 0 : (rentReceived / expectedRent) * 100,
+    );
   }
 
   bool _isSameMonth(DateTime date, DateTime month) {
@@ -321,6 +480,36 @@ class PendingRentCalculation {
     required this.pendingRent,
     required this.overpaidAmount,
     required this.dueDay,
+  });
+}
+
+class RoomProfitTotals {
+  final double actualIncome;
+  final double expensesPaid;
+  final double rentReceived;
+  final double expectedRent;
+  final double pendingRent;
+  final double vacancyLoss;
+  final double actualNetProfit;
+  final double expectedNetProfit;
+  final int totalRooms;
+  final int occupiedRooms;
+  final int vacantRooms;
+  final double rentCollectionPercentage;
+
+  const RoomProfitTotals({
+    required this.actualIncome,
+    required this.expensesPaid,
+    required this.rentReceived,
+    required this.expectedRent,
+    required this.pendingRent,
+    required this.vacancyLoss,
+    required this.actualNetProfit,
+    required this.expectedNetProfit,
+    required this.totalRooms,
+    required this.occupiedRooms,
+    required this.vacantRooms,
+    required this.rentCollectionPercentage,
   });
 }
 
