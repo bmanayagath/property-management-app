@@ -36,7 +36,7 @@ class DefaultFirebaseOptions {
     messagingSenderId: '938320861231',
     projectId: 'investment-calculator-811fd',
     storageBucket: 'investment-calculator-811fd.firebasestorage.app',
-    iosBundleId: 'villa.management.app',
+    iosBundleId: 'com.example.villabooks',
   );
 
   static const FirebaseOptions macos = ios;
