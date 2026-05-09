@@ -32,7 +32,7 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions ios = FirebaseOptions(
     apiKey: 'AIzaSyDXUrquS_Aw-N3T76AVxVreWGtuSUkOKg4',
-    appId: '1:938320861231:android:cae1f34a4ccf3566e88eda',
+    appId: '1:938320861231:ios:dea2181003d2b0dae88eda',
     messagingSenderId: '938320861231',
     projectId: 'investment-calculator-811fd',
     storageBucket: 'investment-calculator-811fd.firebasestorage.app',
