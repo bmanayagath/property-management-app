@@ -44,15 +44,29 @@ Future<StartupStatus> _initializeStartup() async {
   };
 
   try {
-  if (Firebase.apps.isEmpty) {
-    await Firebase.initializeApp(
-      options: DefaultFirebaseOptions.currentPlatform,
+    if (Firebase.apps.isEmpty) {
+      await Firebase.initializeApp(
+        options: DefaultFirebaseOptions.currentPlatform,
+      );
+    }
+    debugPrint('[Startup] Firebase initialized successfully.');
+    debugPrint('[Startup] Firebase apps: ${Firebase.apps.length}');
+    return const StartupStatus(firebaseInitialized: true);
+  } on FirebaseException catch (e) {
+    if (e.code == 'duplicate-app') {
+      debugPrint('[Startup] Firebase app already exists, continuing.');
+      return const StartupStatus(firebaseInitialized: true);
+    }
+    debugPrint('[Startup] Firebase initialization failed: $e');
+    debugPrintStack(stackTrace: e.stackTrace);
+    debugPrint(
+      '[Startup] Continuing in offline/local mode. Cloud sync and FCM will be disabled until Firebase initializes.',
     );
-  }
-  debugPrint('[Startup] Firebase initialized successfully.');
-  debugPrint('[Startup] Firebase apps: ${Firebase.apps.length}');
-  return const StartupStatus(firebaseInitialized: true);
-} catch (error, stackTrace) {
+    return StartupStatus(
+      firebaseInitialized: false,
+      firebaseError: e.toString(),
+    );
+  } catch (error, stackTrace) {
     debugPrint('[Startup] Firebase initialization failed: $error');
     debugPrintStack(stackTrace: stackTrace);
     debugPrint(
