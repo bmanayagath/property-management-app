@@ -4,6 +4,7 @@ import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_styles.dart';
 import '../../core/constants/app_permissions.dart';
 import '../../core/utils/currency_formatter.dart';
+import '../../domain/models/villa_model.dart';
 import '../providers/auth_provider.dart';
 import '../providers/villa_provider.dart';
 import '../widgets/villa_card.dart';

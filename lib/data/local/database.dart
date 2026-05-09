@@ -13,6 +13,7 @@ class Villas extends Table {
   TextColumn get villaName => text()();
   TextColumn get villaNumber => text()();
   TextColumn get location => text()();
+  TextColumn get notes => text().withDefault(const Constant(''))();
   TextColumn get tenantName => text()();
   TextColumn get tenantPhone => text()();
   RealColumn get monthlyRent => real()();
@@ -27,11 +28,37 @@ class Villas extends Table {
   Set<Column> get primaryKey => {id};
 }
 
+// Room Table
+class Rooms extends Table {
+  TextColumn get id => text()();
+  TextColumn get villaId => text().references(Villas, #id)();
+  TextColumn get villaName => text()();
+  TextColumn get roomName => text()();
+  TextColumn get roomNumber => text()();
+  TextColumn get tenantName => text().nullable()();
+  TextColumn get tenantPhone => text().nullable()();
+  RealColumn get monthlyRent => real()();
+  DateTimeColumn get contractStartDate => dateTime().nullable()();
+  DateTimeColumn get contractEndDate => dateTime().nullable()();
+  IntColumn get paymentDueDay => integer()();
+  TextColumn get status => text()();
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+  DateTimeColumn get updatedAt => dateTime().nullable()();
+  IntColumn get isDeleted => integer().withDefault(const Constant(0))();
+  TextColumn get syncStatus => text().withDefault(const Constant('pending'))();
+  DateTimeColumn get lastSyncedAt => dateTime().nullable()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
 // Income Table
 class Incomes extends Table {
   TextColumn get id => text()();
   TextColumn get villaId => text().references(Villas, #id)();
   TextColumn get villaName => text().withDefault(const Constant(''))();
+  TextColumn get roomId => text().withDefault(const Constant(''))();
+  TextColumn get roomName => text().withDefault(const Constant(''))();
   TextColumn get incomeType =>
       text()(); // rent, deposit, maintenanceCharge, penalty, other
   RealColumn get amount => real()();
@@ -51,6 +78,9 @@ class Incomes extends Table {
 class Expenses extends Table {
   TextColumn get id => text()();
   TextColumn get villaId => text().nullable().references(Villas, #id)();
+  TextColumn get villaName => text().withDefault(const Constant(''))();
+  TextColumn get roomId => text().nullable()();
+  TextColumn get roomName => text().nullable()();
   TextColumn get category =>
       text()(); // maintenance, repair, electricity, water, cleaning, commission, insurance, governmentFee, loan, other
   RealColumn get amount => real()();
@@ -65,12 +95,12 @@ class Expenses extends Table {
   Set<Column> get primaryKey => {id};
 }
 
-@DriftDatabase(tables: [Villas, Incomes, Expenses])
+@DriftDatabase(tables: [Villas, Rooms, Incomes, Expenses])
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -78,6 +108,53 @@ class AppDatabase extends _$AppDatabase {
           if (from < 2) {
             await migrator.addColumn(incomes, incomes.villaName);
             await migrator.addColumn(incomes, incomes.updatedAt);
+          }
+          if (from < 3) {
+            await migrator.addColumn(villas, villas.notes);
+            await migrator.createTable(rooms);
+            await migrator.addColumn(incomes, incomes.roomId);
+            await migrator.addColumn(incomes, incomes.roomName);
+            await migrator.addColumn(expenses, expenses.villaName);
+            await migrator.addColumn(expenses, expenses.roomId);
+            await migrator.addColumn(expenses, expenses.roomName);
+            await customStatement('''
+              INSERT INTO rooms (
+                id,
+                villa_id,
+                villa_name,
+                room_name,
+                room_number,
+                tenant_name,
+                tenant_phone,
+                monthly_rent,
+                contract_start_date,
+                contract_end_date,
+                payment_due_day,
+                status,
+                created_at,
+                updated_at
+              )
+              SELECT
+                id || '-main-room',
+                id,
+                villa_name,
+                'Main Room',
+                villa_number,
+                tenant_name,
+                tenant_phone,
+                monthly_rent,
+                contract_start_date,
+                contract_end_date,
+                payment_due_day,
+                CASE
+                  WHEN LOWER(status) = 'occupied' THEN 'Occupied'
+                  ELSE 'Vacant'
+                END,
+                created_at,
+                updated_at
+              FROM villas
+              WHERE monthly_rent > 0
+            ''');
           }
         },
       );
@@ -95,6 +172,27 @@ class AppDatabase extends _$AppDatabase {
 
   Future<int> deleteVilla(String id) =>
       (delete(villas)..where((tbl) => tbl.id.equals(id))).go();
+
+  // Room Queries
+  Future<List<Room>> getAllRooms() => select(rooms).get();
+
+  Stream<List<Room>> watchAllRooms() => select(rooms).watch();
+
+  Future<Room?> getRoomById(String id) =>
+      (select(rooms)..where((tbl) => tbl.id.equals(id))).getSingleOrNull();
+
+  Future<List<Room>> getRoomsByVillaId(String villaId) =>
+      (select(rooms)..where((tbl) => tbl.villaId.equals(villaId))).get();
+
+  Stream<List<Room>> watchRoomsByVillaId(String villaId) =>
+      (select(rooms)..where((tbl) => tbl.villaId.equals(villaId))).watch();
+
+  Future<int> insertRoom(RoomsCompanion room) => into(rooms).insert(room);
+
+  Future<bool> updateRoom(RoomsCompanion room) => update(rooms).replace(room);
+
+  Future<int> deleteRoom(String id) =>
+      (delete(rooms)..where((tbl) => tbl.id.equals(id))).go();
 
   // Income Queries
   Future<List<Income>> getAllIncomes() => select(incomes).get();

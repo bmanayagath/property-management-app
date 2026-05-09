@@ -88,13 +88,6 @@ class _AddEditVillaScreenState extends ConsumerState<AddEditVillaScreen> {
       villaName: _villaNameController.text.trim(),
       villaNumber: _villaNumberController.text.trim(),
       location: _locationController.text.trim(),
-      tenantName: _tenantNameController.text.trim(),
-      tenantPhone: _tenantPhoneController.text.trim(),
-      monthlyRent: double.parse(_monthlyRentController.text),
-      contractStartDate: _contractStartDate,
-      contractEndDate: _contractEndDate,
-      paymentDueDay: _paymentDueDay,
-      status: _status,
       createdAt: widget.villa?.createdAt ?? DateTime.now(),
       updatedAt: DateTime.now(),
     );

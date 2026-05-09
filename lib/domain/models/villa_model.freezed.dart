@@ -24,15 +24,9 @@ mixin _$VillaModel {
   String get villaName => throw _privateConstructorUsedError;
   String get villaNumber => throw _privateConstructorUsedError;
   String get location => throw _privateConstructorUsedError;
-  String get tenantName => throw _privateConstructorUsedError;
-  String get tenantPhone => throw _privateConstructorUsedError;
-  double get monthlyRent => throw _privateConstructorUsedError;
-  DateTime get contractStartDate => throw _privateConstructorUsedError;
-  DateTime get contractEndDate => throw _privateConstructorUsedError;
-  int get paymentDueDay => throw _privateConstructorUsedError;
-  VillaStatus get status => throw _privateConstructorUsedError;
+  String get notes => throw _privateConstructorUsedError;
   DateTime get createdAt => throw _privateConstructorUsedError;
-  DateTime get updatedAt => throw _privateConstructorUsedError;
+  DateTime? get updatedAt => throw _privateConstructorUsedError;
 
   /// Serializes this VillaModel to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
@@ -55,15 +49,9 @@ abstract class $VillaModelCopyWith<$Res> {
       String villaName,
       String villaNumber,
       String location,
-      String tenantName,
-      String tenantPhone,
-      double monthlyRent,
-      DateTime contractStartDate,
-      DateTime contractEndDate,
-      int paymentDueDay,
-      VillaStatus status,
+      String notes,
       DateTime createdAt,
-      DateTime updatedAt});
+      DateTime? updatedAt});
 }
 
 /// @nodoc
@@ -85,15 +73,9 @@ class _$VillaModelCopyWithImpl<$Res, $Val extends VillaModel>
     Object? villaName = null,
     Object? villaNumber = null,
     Object? location = null,
-    Object? tenantName = null,
-    Object? tenantPhone = null,
-    Object? monthlyRent = null,
-    Object? contractStartDate = null,
-    Object? contractEndDate = null,
-    Object? paymentDueDay = null,
-    Object? status = null,
+    Object? notes = null,
     Object? createdAt = null,
-    Object? updatedAt = null,
+    Object? updatedAt = freezed,
   }) {
     return _then(_value.copyWith(
       id: null == id
@@ -112,42 +94,18 @@ class _$VillaModelCopyWithImpl<$Res, $Val extends VillaModel>
           ? _value.location
           : location // ignore: cast_nullable_to_non_nullable
               as String,
-      tenantName: null == tenantName
-          ? _value.tenantName
-          : tenantName // ignore: cast_nullable_to_non_nullable
+      notes: null == notes
+          ? _value.notes
+          : notes // ignore: cast_nullable_to_non_nullable
               as String,
-      tenantPhone: null == tenantPhone
-          ? _value.tenantPhone
-          : tenantPhone // ignore: cast_nullable_to_non_nullable
-              as String,
-      monthlyRent: null == monthlyRent
-          ? _value.monthlyRent
-          : monthlyRent // ignore: cast_nullable_to_non_nullable
-              as double,
-      contractStartDate: null == contractStartDate
-          ? _value.contractStartDate
-          : contractStartDate // ignore: cast_nullable_to_non_nullable
-              as DateTime,
-      contractEndDate: null == contractEndDate
-          ? _value.contractEndDate
-          : contractEndDate // ignore: cast_nullable_to_non_nullable
-              as DateTime,
-      paymentDueDay: null == paymentDueDay
-          ? _value.paymentDueDay
-          : paymentDueDay // ignore: cast_nullable_to_non_nullable
-              as int,
-      status: null == status
-          ? _value.status
-          : status // ignore: cast_nullable_to_non_nullable
-              as VillaStatus,
       createdAt: null == createdAt
           ? _value.createdAt
           : createdAt // ignore: cast_nullable_to_non_nullable
               as DateTime,
-      updatedAt: null == updatedAt
+      updatedAt: freezed == updatedAt
           ? _value.updatedAt
           : updatedAt // ignore: cast_nullable_to_non_nullable
-              as DateTime,
+              as DateTime?,
     ) as $Val);
   }
 }
@@ -165,15 +123,9 @@ abstract class _$$VillaModelImplCopyWith<$Res>
       String villaName,
       String villaNumber,
       String location,
-      String tenantName,
-      String tenantPhone,
-      double monthlyRent,
-      DateTime contractStartDate,
-      DateTime contractEndDate,
-      int paymentDueDay,
-      VillaStatus status,
+      String notes,
       DateTime createdAt,
-      DateTime updatedAt});
+      DateTime? updatedAt});
 }
 
 /// @nodoc
@@ -193,15 +145,9 @@ class __$$VillaModelImplCopyWithImpl<$Res>
     Object? villaName = null,
     Object? villaNumber = null,
     Object? location = null,
-    Object? tenantName = null,
-    Object? tenantPhone = null,
-    Object? monthlyRent = null,
-    Object? contractStartDate = null,
-    Object? contractEndDate = null,
-    Object? paymentDueDay = null,
-    Object? status = null,
+    Object? notes = null,
     Object? createdAt = null,
-    Object? updatedAt = null,
+    Object? updatedAt = freezed,
   }) {
     return _then(_$VillaModelImpl(
       id: null == id
@@ -220,42 +166,18 @@ class __$$VillaModelImplCopyWithImpl<$Res>
           ? _value.location
           : location // ignore: cast_nullable_to_non_nullable
               as String,
-      tenantName: null == tenantName
-          ? _value.tenantName
-          : tenantName // ignore: cast_nullable_to_non_nullable
+      notes: null == notes
+          ? _value.notes
+          : notes // ignore: cast_nullable_to_non_nullable
               as String,
-      tenantPhone: null == tenantPhone
-          ? _value.tenantPhone
-          : tenantPhone // ignore: cast_nullable_to_non_nullable
-              as String,
-      monthlyRent: null == monthlyRent
-          ? _value.monthlyRent
-          : monthlyRent // ignore: cast_nullable_to_non_nullable
-              as double,
-      contractStartDate: null == contractStartDate
-          ? _value.contractStartDate
-          : contractStartDate // ignore: cast_nullable_to_non_nullable
-              as DateTime,
-      contractEndDate: null == contractEndDate
-          ? _value.contractEndDate
-          : contractEndDate // ignore: cast_nullable_to_non_nullable
-              as DateTime,
-      paymentDueDay: null == paymentDueDay
-          ? _value.paymentDueDay
-          : paymentDueDay // ignore: cast_nullable_to_non_nullable
-              as int,
-      status: null == status
-          ? _value.status
-          : status // ignore: cast_nullable_to_non_nullable
-              as VillaStatus,
       createdAt: null == createdAt
           ? _value.createdAt
           : createdAt // ignore: cast_nullable_to_non_nullable
               as DateTime,
-      updatedAt: null == updatedAt
+      updatedAt: freezed == updatedAt
           ? _value.updatedAt
           : updatedAt // ignore: cast_nullable_to_non_nullable
-              as DateTime,
+              as DateTime?,
     ));
   }
 }
@@ -268,15 +190,9 @@ class _$VillaModelImpl implements _VillaModel {
       required this.villaName,
       required this.villaNumber,
       required this.location,
-      required this.tenantName,
-      required this.tenantPhone,
-      required this.monthlyRent,
-      required this.contractStartDate,
-      required this.contractEndDate,
-      required this.paymentDueDay,
-      required this.status,
+      this.notes = '',
       required this.createdAt,
-      required this.updatedAt});
+      this.updatedAt});
 
   factory _$VillaModelImpl.fromJson(Map<String, dynamic> json) =>
       _$$VillaModelImplFromJson(json);
@@ -290,27 +206,16 @@ class _$VillaModelImpl implements _VillaModel {
   @override
   final String location;
   @override
-  final String tenantName;
-  @override
-  final String tenantPhone;
-  @override
-  final double monthlyRent;
-  @override
-  final DateTime contractStartDate;
-  @override
-  final DateTime contractEndDate;
-  @override
-  final int paymentDueDay;
-  @override
-  final VillaStatus status;
+  @JsonKey()
+  final String notes;
   @override
   final DateTime createdAt;
   @override
-  final DateTime updatedAt;
+  final DateTime? updatedAt;
 
   @override
   String toString() {
-    return 'VillaModel(id: $id, villaName: $villaName, villaNumber: $villaNumber, location: $location, tenantName: $tenantName, tenantPhone: $tenantPhone, monthlyRent: $monthlyRent, contractStartDate: $contractStartDate, contractEndDate: $contractEndDate, paymentDueDay: $paymentDueDay, status: $status, createdAt: $createdAt, updatedAt: $updatedAt)';
+    return 'VillaModel(id: $id, villaName: $villaName, villaNumber: $villaNumber, location: $location, notes: $notes, createdAt: $createdAt, updatedAt: $updatedAt)';
   }
 
   @override
@@ -325,19 +230,7 @@ class _$VillaModelImpl implements _VillaModel {
                 other.villaNumber == villaNumber) &&
             (identical(other.location, location) ||
                 other.location == location) &&
-            (identical(other.tenantName, tenantName) ||
-                other.tenantName == tenantName) &&
-            (identical(other.tenantPhone, tenantPhone) ||
-                other.tenantPhone == tenantPhone) &&
-            (identical(other.monthlyRent, monthlyRent) ||
-                other.monthlyRent == monthlyRent) &&
-            (identical(other.contractStartDate, contractStartDate) ||
-                other.contractStartDate == contractStartDate) &&
-            (identical(other.contractEndDate, contractEndDate) ||
-                other.contractEndDate == contractEndDate) &&
-            (identical(other.paymentDueDay, paymentDueDay) ||
-                other.paymentDueDay == paymentDueDay) &&
-            (identical(other.status, status) || other.status == status) &&
+            (identical(other.notes, notes) || other.notes == notes) &&
             (identical(other.createdAt, createdAt) ||
                 other.createdAt == createdAt) &&
             (identical(other.updatedAt, updatedAt) ||
@@ -346,21 +239,8 @@ class _$VillaModelImpl implements _VillaModel {
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
-  int get hashCode => Object.hash(
-      runtimeType,
-      id,
-      villaName,
-      villaNumber,
-      location,
-      tenantName,
-      tenantPhone,
-      monthlyRent,
-      contractStartDate,
-      contractEndDate,
-      paymentDueDay,
-      status,
-      createdAt,
-      updatedAt);
+  int get hashCode => Object.hash(runtimeType, id, villaName, villaNumber,
+      location, notes, createdAt, updatedAt);
 
   /// Create a copy of VillaModel
   /// with the given fields replaced by the non-null parameter values.
@@ -384,15 +264,9 @@ abstract class _VillaModel implements VillaModel {
       required final String villaName,
       required final String villaNumber,
       required final String location,
-      required final String tenantName,
-      required final String tenantPhone,
-      required final double monthlyRent,
-      required final DateTime contractStartDate,
-      required final DateTime contractEndDate,
-      required final int paymentDueDay,
-      required final VillaStatus status,
+      final String notes,
       required final DateTime createdAt,
-      required final DateTime updatedAt}) = _$VillaModelImpl;
+      final DateTime? updatedAt}) = _$VillaModelImpl;
 
   factory _VillaModel.fromJson(Map<String, dynamic> json) =
       _$VillaModelImpl.fromJson;
@@ -406,23 +280,11 @@ abstract class _VillaModel implements VillaModel {
   @override
   String get location;
   @override
-  String get tenantName;
-  @override
-  String get tenantPhone;
-  @override
-  double get monthlyRent;
-  @override
-  DateTime get contractStartDate;
-  @override
-  DateTime get contractEndDate;
-  @override
-  int get paymentDueDay;
-  @override
-  VillaStatus get status;
+  String get notes;
   @override
   DateTime get createdAt;
   @override
-  DateTime get updatedAt;
+  DateTime? get updatedAt;
 
   /// Create a copy of VillaModel
   /// with the given fields replaced by the non-null parameter values.

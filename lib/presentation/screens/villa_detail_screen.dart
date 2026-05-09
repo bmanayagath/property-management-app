@@ -6,6 +6,7 @@ import '../../core/constants/enums.dart';
 import '../../core/constants/app_permissions.dart';
 import '../../core/utils/currency_formatter.dart';
 import '../../core/utils/date_formatter.dart';
+import '../../domain/models/villa_model.dart';
 import '../providers/auth_provider.dart';
 import '../providers/villa_provider.dart';
 import 'add_edit_villa_screen.dart';

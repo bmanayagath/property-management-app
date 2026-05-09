@@ -3,7 +3,6 @@ import 'package:drift/drift.dart';
 import '../../domain/models/villa_model.dart';
 import '../../domain/repositories/villa_repository.dart';
 import '../local/database.dart';
-import '../../core/constants/enums.dart';
 
 class VillaRepositoryImpl implements VillaRepository {
   final AppDatabase database;
@@ -32,13 +31,14 @@ class VillaRepositoryImpl implements VillaRepository {
         villaName: Value(villa.villaName),
         villaNumber: Value(villa.villaNumber),
         location: Value(villa.location),
-        tenantName: Value(villa.tenantName),
-        tenantPhone: Value(villa.tenantPhone),
-        monthlyRent: Value(villa.monthlyRent),
-        contractStartDate: Value(villa.contractStartDate),
-        contractEndDate: Value(villa.contractEndDate),
-        paymentDueDay: Value(villa.paymentDueDay),
-        status: Value(villa.status.name),
+        notes: Value(villa.notes),
+        tenantName: const Value(''),
+        tenantPhone: const Value(''),
+        monthlyRent: const Value(0),
+        contractStartDate: Value(now),
+        contractEndDate: Value(now),
+        paymentDueDay: const Value(1),
+        status: const Value('vacant'),
         createdAt: Value(now),
         updatedAt: Value(now),
       ),
@@ -54,13 +54,7 @@ class VillaRepositoryImpl implements VillaRepository {
         villaName: Value(villa.villaName),
         villaNumber: Value(villa.villaNumber),
         location: Value(villa.location),
-        tenantName: Value(villa.tenantName),
-        tenantPhone: Value(villa.tenantPhone),
-        monthlyRent: Value(villa.monthlyRent),
-        contractStartDate: Value(villa.contractStartDate),
-        contractEndDate: Value(villa.contractEndDate),
-        paymentDueDay: Value(villa.paymentDueDay),
-        status: Value(villa.status.name),
+        notes: Value(villa.notes),
         updatedAt: Value(DateTime.now()),
       ),
     );
@@ -77,22 +71,9 @@ class VillaRepositoryImpl implements VillaRepository {
       villaName: villa.villaName,
       villaNumber: villa.villaNumber,
       location: villa.location,
-      tenantName: villa.tenantName,
-      tenantPhone: villa.tenantPhone,
-      monthlyRent: villa.monthlyRent,
-      contractStartDate: villa.contractStartDate,
-      contractEndDate: villa.contractEndDate,
-      paymentDueDay: villa.paymentDueDay,
-      status: _parseVillaStatus(villa.status),
+      notes: villa.notes,
       createdAt: villa.createdAt,
       updatedAt: villa.updatedAt,
-    );
-  }
-
-  VillaStatus _parseVillaStatus(String status) {
-    return VillaStatus.values.firstWhere(
-      (e) => e.name == status,
-      orElse: () => VillaStatus.vacant,
     );
   }
 }

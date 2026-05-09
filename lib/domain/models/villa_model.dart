@@ -11,17 +11,27 @@ class VillaModel with _$VillaModel {
     required String villaName,
     required String villaNumber,
     required String location,
-    required String tenantName,
-    required String tenantPhone,
-    required double monthlyRent,
-    required DateTime contractStartDate,
-    required DateTime contractEndDate,
-    required int paymentDueDay,
-    required VillaStatus status,
+    @Default('') String notes,
     required DateTime createdAt,
-    required DateTime updatedAt,
+    DateTime? updatedAt,
   }) = _VillaModel;
 
   factory VillaModel.fromJson(Map<String, dynamic> json) =>
       _$VillaModelFromJson(json);
+}
+
+extension VillaModelLegacyRoomFields on VillaModel {
+  String get tenantName => '';
+
+  String get tenantPhone => '';
+
+  double get monthlyRent => 0;
+
+  DateTime get contractStartDate => createdAt;
+
+  DateTime get contractEndDate => createdAt;
+
+  int get paymentDueDay => 1;
+
+  VillaStatus get status => VillaStatus.vacant;
 }

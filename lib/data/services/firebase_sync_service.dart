@@ -13,7 +13,6 @@ import 'package:flutter/foundation.dart'
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../../core/constants/enums.dart';
 import '../../domain/models/app_notification.dart';
 import '../../domain/models/app_user.dart';
 import '../../domain/models/expense.dart';
@@ -516,15 +515,9 @@ class FirebaseSyncService {
       'villaName': villa.villaName,
       'villaNumber': villa.villaNumber,
       'location': villa.location,
-      'tenantName': villa.tenantName,
-      'tenantPhone': villa.tenantPhone,
-      'monthlyRent': villa.monthlyRent,
-      'contractStartDate': villa.contractStartDate.toIso8601String(),
-      'contractEndDate': villa.contractEndDate.toIso8601String(),
-      'paymentDueDay': villa.paymentDueDay,
-      'status': villa.status.name,
+      'notes': villa.notes,
       'createdAt': villa.createdAt.toIso8601String(),
-      'updatedAt': villa.updatedAt.toIso8601String(),
+      'updatedAt': villa.updatedAt?.toIso8601String(),
     };
   }
 
@@ -573,16 +566,7 @@ class FirebaseSyncService {
       villaName: json['villaName'] as String? ?? '',
       villaNumber: json['villaNumber'] as String? ?? '',
       location: json['location'] as String? ?? '',
-      tenantName: json['tenantName'] as String? ?? '',
-      tenantPhone: json['tenantPhone'] as String? ?? '',
-      monthlyRent: (json['monthlyRent'] as num?)?.toDouble() ?? 0,
-      contractStartDate: _readDateTime(json['contractStartDate']),
-      contractEndDate: _readDateTime(json['contractEndDate']),
-      paymentDueDay: (json['paymentDueDay'] as num?)?.toInt() ?? 1,
-      status: VillaStatus.values.firstWhere(
-        (status) => status.name == json['status'],
-        orElse: () => VillaStatus.vacant,
-      ),
+      notes: json['notes'] as String? ?? '',
       createdAt: _readDateTime(json['createdAt']),
       updatedAt: _readDateTime(json['updatedAt']),
     );
