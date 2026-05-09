@@ -1,5 +1,4 @@
 import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -44,15 +43,27 @@ Future<StartupStatus> _initializeStartup() async {
   };
 
   try {
-  if (Firebase.apps.isEmpty) {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
-  }
-  debugPrint('[Startup] Firebase initialized successfully.');
-  debugPrint('[Startup] Firebase apps: ${Firebase.apps.length}');
-  return const StartupStatus(firebaseInitialized: true);
-} catch (error, stackTrace) {
+    debugPrint('[Startup] Firebase initialized successfully.');
+    debugPrint('[Startup] Firebase apps: ${Firebase.apps.length}');
+    return const StartupStatus(firebaseInitialized: true);
+  } on FirebaseException catch (e) {
+    if (e.code == 'duplicate-app') {
+      debugPrint('[Startup] Firebase app already exists, continuing.');
+      return const StartupStatus(firebaseInitialized: true);
+    }
+    debugPrint('[Startup] Firebase initialization failed: $e');
+    debugPrintStack(stackTrace: stackTrace);
+    debugPrint(
+      '[Startup] Continuing in offline/local mode. Cloud sync and FCM will be disabled until Firebase initializes.',
+    );
+    return StartupStatus(
+      firebaseInitialized: false,
+      firebaseError: e.toString(),
+    );
+  } catch (error, stackTrace) {
     debugPrint('[Startup] Firebase initialization failed: $error');
     debugPrintStack(stackTrace: stackTrace);
     debugPrint(
