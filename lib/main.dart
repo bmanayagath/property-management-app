@@ -44,12 +44,15 @@ Future<StartupStatus> _initializeStartup() async {
   };
 
   try {
+  if (Firebase.apps.isEmpty) {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
-    debugPrint('[Startup] Firebase initialized successfully.');
-    return const StartupStatus(firebaseInitialized: true);
-  } catch (error, stackTrace) {
+  }
+  debugPrint('[Startup] Firebase initialized successfully.');
+  debugPrint('[Startup] Firebase apps: ${Firebase.apps.length}');
+  return const StartupStatus(firebaseInitialized: true);
+} catch (error, stackTrace) {
     debugPrint('[Startup] Firebase initialization failed: $error');
     debugPrintStack(stackTrace: stackTrace);
     debugPrint(
