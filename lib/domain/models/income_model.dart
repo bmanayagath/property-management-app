@@ -9,6 +9,9 @@ class IncomeModel with _$IncomeModel {
   const factory IncomeModel({
     required String id,
     required String villaId,
+    @Default('') String villaName,
+    @Default('') String roomId,
+    @Default('') String roomName,
     required IncomeType incomeType,
     required double amount,
     required DateTime paymentDate,

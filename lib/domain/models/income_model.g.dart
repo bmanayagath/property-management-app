@@ -10,6 +10,9 @@ _$IncomeModelImpl _$$IncomeModelImplFromJson(Map<String, dynamic> json) =>
     _$IncomeModelImpl(
       id: json['id'] as String,
       villaId: json['villaId'] as String,
+      villaName: json['villaName'] as String? ?? '',
+      roomId: json['roomId'] as String? ?? '',
+      roomName: json['roomName'] as String? ?? '',
       incomeType: $enumDecode(_$IncomeTypeEnumMap, json['incomeType']),
       amount: (json['amount'] as num).toDouble(),
       paymentDate: DateTime.parse(json['paymentDate'] as String),
@@ -23,6 +26,9 @@ Map<String, dynamic> _$$IncomeModelImplToJson(_$IncomeModelImpl instance) =>
     <String, dynamic>{
       'id': instance.id,
       'villaId': instance.villaId,
+      'villaName': instance.villaName,
+      'roomId': instance.roomId,
+      'roomName': instance.roomName,
       'incomeType': _$IncomeTypeEnumMap[instance.incomeType]!,
       'amount': instance.amount,
       'paymentDate': instance.paymentDate.toIso8601String(),

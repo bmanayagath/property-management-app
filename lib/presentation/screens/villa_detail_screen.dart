@@ -5,11 +5,13 @@ import '../../core/constants/app_styles.dart';
 import '../../core/constants/enums.dart';
 import '../../core/constants/app_permissions.dart';
 import '../../core/utils/currency_formatter.dart';
-import '../../core/utils/date_formatter.dart';
 import '../../domain/models/villa_model.dart';
 import '../providers/auth_provider.dart';
 import '../providers/villa_provider.dart';
+import '../providers/room_provider.dart';
+import '../widgets/room_card.dart';
 import 'add_edit_villa_screen.dart';
+import 'add_edit_room_screen.dart';
 
 class VillaDetailScreen extends ConsumerWidget {
   final String villaId;
@@ -180,211 +182,13 @@ class VillaDetailScreen extends ConsumerWidget {
                   ),
                   const SizedBox(height: 24),
 
-                  // Monthly Rent Card
-                  Container(
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [
-                          AppColors.success.withValues(alpha: 0.1),
-                          AppColors.success.withValues(alpha: 0.05),
-                        ],
-                      ),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: AppColors.success.withValues(alpha: 0.3),
-                        width: 1,
-                      ),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Monthly Expected Rent',
-                          style: AppStyles.labelMedium,
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          CurrencyFormatter.format(villa.monthlyRent),
-                          style: AppStyles.headlineSmall.copyWith(
-                            color: AppColors.success,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        Row(
-                          children: [
-                            Icon(
-                              Icons.calendar_today_outlined,
-                              size: 16,
-                              color: AppColors.textSecondary,
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              'Due on Day ${villa.paymentDueDay}',
-                              style: AppStyles.bodySmall.copyWith(
-                                color: AppColors.textSecondary,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
+                  // Rooms Summary Card
+                  _buildRoomsSummary(context, ref, villa.id),
                   const SizedBox(height: 24),
 
-                  // Tenant Information
-                  if (villa.status == VillaStatus.occupied) ...[
-                    Text(
-                      'Tenant Information',
-                      style: AppStyles.titleMedium,
-                    ),
-                    const SizedBox(height: 12),
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: AppColors.surface,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: AppColors.border, width: 1),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Icon(
-                                Icons.person_outline,
-                                size: 20,
-                                color: AppColors.primary,
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      'Tenant Name',
-                                      style: AppStyles.labelSmall,
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      villa.tenantName,
-                                      style: AppStyles.bodyMedium,
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 16),
-                          Row(
-                            children: [
-                              Icon(
-                                Icons.phone_outlined,
-                                size: 20,
-                                color: AppColors.primary,
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      'Phone Number',
-                                      style: AppStyles.labelSmall,
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      villa.tenantPhone,
-                                      style: AppStyles.bodyMedium,
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-                  ],
-
-                  // Contract Information
-                  Text(
-                    'Contract Information',
-                    style: AppStyles.titleMedium,
-                  ),
-                  const SizedBox(height: 12),
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: AppColors.surface,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: AppColors.border, width: 1),
-                    ),
-                    child: Column(
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Start Date',
-                                  style: AppStyles.labelSmall,
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  DateFormatter.format(villa.contractStartDate),
-                                  style: AppStyles.bodyMedium,
-                                ),
-                              ],
-                            ),
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.end,
-                              children: [
-                                Text(
-                                  'End Date',
-                                  style: AppStyles.labelSmall,
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  DateFormatter.format(villa.contractEndDate),
-                                  style: AppStyles.bodyMedium,
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(4),
-                          child: LinearProgressIndicator(
-                            value: _getContractProgress(
-                                villa.contractStartDate, villa.contractEndDate),
-                            minHeight: 6,
-                            backgroundColor: AppColors.border,
-                            valueColor: AlwaysStoppedAnimation<Color>(
-                              _getContractProgress(villa.contractStartDate,
-                                          villa.contractEndDate) >
-                                      0.8
-                                  ? AppColors.error
-                                  : AppColors.primary,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          _getContractDaysRemaining(villa.contractEndDate),
-                          style: AppStyles.bodySmall.copyWith(
-                            color: AppColors.textSecondary,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 32),
+                  // Rooms List
+                  _buildRoomsList(context, ref, villa.id, canManageVillas),
+                  const SizedBox(height: 24),
 
                   if (canManageVillas) ...[
                     SizedBox(
@@ -462,25 +266,256 @@ class VillaDetailScreen extends ConsumerWidget {
     );
   }
 
-  double _getContractProgress(DateTime startDate, DateTime endDate) {
-    final now = DateTime.now();
-    final totalDays = endDate.difference(startDate).inDays;
-    final daysPassed = now.difference(startDate).inDays;
-    return (daysPassed / totalDays).clamp(0.0, 1.0);
+  Widget _buildRoomsSummary(
+      BuildContext context, WidgetRef ref, String villaId) {
+    final roomsAsync = ref.watch(roomsByVillaProvider(villaId));
+    
+    return roomsAsync.when(
+      data: (rooms) {
+        final occupiedCount = rooms.where((r) => r.isOccupied).length;
+        final vacantCount = rooms.where((r) => r.isVacant).length;
+        final expectedRent = rooms
+            .where((r) => r.isOccupied)
+            .fold<double>(0, (sum, r) => sum + r.monthlyRent);
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Room Summary',
+              style: AppStyles.titleMedium,
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppColors.border, width: 1),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Total Rooms',
+                          style: AppStyles.labelSmall,
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          rooms.length.toString(),
+                          style: AppStyles.headlineSmall.copyWith(
+                            color: AppColors.primary,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Occupied',
+                          style: AppStyles.labelSmall,
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          occupiedCount.toString(),
+                          style: AppStyles.headlineSmall.copyWith(
+                            color: AppColors.success,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Vacant',
+                          style: AppStyles.labelSmall,
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          vacantCount.toString(),
+                          style: AppStyles.headlineSmall.copyWith(
+                            color: AppColors.warning,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Expected Rent',
+                          style: AppStyles.labelSmall,
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          CurrencyFormatter.format(expectedRent),
+                          style: AppStyles.bodySmall.copyWith(
+                            color: AppColors.success,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        );
+      },
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (error, stack) => Text('Error loading rooms: $error'),
+    );
   }
 
-  String _getContractDaysRemaining(DateTime endDate) {
-    final now = DateTime.now();
-    final daysRemaining = endDate.difference(now).inDays;
+  Widget _buildRoomsList(
+      BuildContext context, WidgetRef ref, String villaId, bool canManageVillas) {
+    final roomsAsync = ref.watch(watchRoomsByVillaProvider(villaId));
 
-    if (daysRemaining < 0) {
-      return 'Contract expired ${daysRemaining.abs()} days ago';
-    } else if (daysRemaining == 0) {
-      return 'Contract expires today';
-    } else if (daysRemaining == 1) {
-      return '1 day remaining';
-    } else {
-      return '$daysRemaining days remaining';
-    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'Rooms',
+              style: AppStyles.titleMedium,
+            ),
+            if (canManageVillas)
+              TextButton.icon(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => AddEditRoomScreen(villaId: villaId),
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.add),
+                label: const Text('Add Room'),
+              ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        roomsAsync.when(
+          data: (rooms) {
+            if (rooms.isEmpty) {
+              return Container(
+                padding: const EdgeInsets.all(32),
+                decoration: BoxDecoration(
+                  color: AppColors.surface,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppColors.border, width: 1),
+                ),
+                child: Center(
+                  child: Column(
+                    children: [
+                      Icon(
+                        Icons.meeting_room_outlined,
+                        size: 48,
+                        color: AppColors.border,
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        'No rooms added yet',
+                        style: AppStyles.bodyMedium.copyWith(
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                      if (canManageVillas) ...[
+                        const SizedBox(height: 12),
+                        ElevatedButton.icon(
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) =>
+                                    AddEditRoomScreen(villaId: villaId),
+                              ),
+                            );
+                          },
+                          icon: const Icon(Icons.add),
+                          label: const Text('Add First Room'),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              );
+            }
+
+            return ListView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: rooms.length,
+              itemBuilder: (context, index) {
+                final room = rooms[index];
+                return RoomCard(
+                  room: room,
+                  onTap: () {
+                    // Can add room detail screen later
+                  },
+                  onEdit: canManageVillas
+                      ? () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) =>
+                                  AddEditRoomScreen(room: room, villaId: villaId),
+                            ),
+                          );
+                        }
+                      : null,
+                  onDelete: canManageVillas
+                      ? () {
+                          showDialog(
+                            context: context,
+                            builder: (context) => AlertDialog(
+                              title: const Text('Delete Room?'),
+                              content: const Text('This action cannot be undone.'),
+                              actions: [
+                                TextButton(
+                                  onPressed: () => Navigator.pop(context),
+                                  child: const Text('Cancel'),
+                                ),
+                                TextButton(
+                                  onPressed: () {
+                                    ref.read(deleteRoomProvider(room.id));
+                                    Navigator.pop(context);
+                                  },
+                                  child: const Text(
+                                    'Delete',
+                                    style: TextStyle(color: Colors.red),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        }
+                      : null,
+                );
+              },
+            );
+          },
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (error, stack) => Text('Error loading rooms: $error'),
+        ),
+      ],
+    );
   }
 }

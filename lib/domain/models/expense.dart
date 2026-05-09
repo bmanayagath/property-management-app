@@ -2,6 +2,8 @@ class Expense {
   final String id;
   final String? villaId;
   final String villaName;
+  final String? roomId;
+  final String? roomName;
   final String category;
   final double amount;
   final DateTime expenseDate;
@@ -13,6 +15,8 @@ class Expense {
     required this.id,
     required this.villaId,
     required this.villaName,
+    required this.roomId,
+    required this.roomName,
     required this.category,
     required this.amount,
     required this.expenseDate,
@@ -26,6 +30,10 @@ class Expense {
     String? villaId,
     bool clearVillaId = false,
     String? villaName,
+    String? roomId,
+    bool clearRoomId = false,
+    String? roomName,
+    bool clearRoomName = false,
     String? category,
     double? amount,
     DateTime? expenseDate,
@@ -37,6 +45,8 @@ class Expense {
       id: id ?? this.id,
       villaId: clearVillaId ? null : villaId ?? this.villaId,
       villaName: villaName ?? this.villaName,
+      roomId: clearRoomId ? null : roomId ?? this.roomId,
+      roomName: clearRoomName ? null : roomName ?? this.roomName,
       category: category ?? this.category,
       amount: amount ?? this.amount,
       expenseDate: expenseDate ?? this.expenseDate,

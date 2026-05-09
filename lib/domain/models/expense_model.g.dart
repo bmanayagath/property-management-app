@@ -10,6 +10,9 @@ _$ExpenseModelImpl _$$ExpenseModelImplFromJson(Map<String, dynamic> json) =>
     _$ExpenseModelImpl(
       id: json['id'] as String,
       villaId: json['villaId'] as String?,
+      villaName: json['villaName'] as String? ?? '',
+      roomId: json['roomId'] as String?,
+      roomName: json['roomName'] as String?,
       category: $enumDecode(_$ExpenseCategoryEnumMap, json['category']),
       amount: (json['amount'] as num).toDouble(),
       expenseDate: DateTime.parse(json['expenseDate'] as String),
@@ -23,6 +26,9 @@ Map<String, dynamic> _$$ExpenseModelImplToJson(_$ExpenseModelImpl instance) =>
     <String, dynamic>{
       'id': instance.id,
       'villaId': instance.villaId,
+      'villaName': instance.villaName,
+      'roomId': instance.roomId,
+      'roomName': instance.roomName,
       'category': _$ExpenseCategoryEnumMap[instance.category]!,
       'amount': instance.amount,
       'expenseDate': instance.expenseDate.toIso8601String(),

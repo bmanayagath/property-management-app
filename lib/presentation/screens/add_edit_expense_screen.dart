@@ -11,6 +11,7 @@ import '../providers/auth_provider.dart';
 import '../providers/expense_provider.dart';
 import '../providers/notification_provider.dart';
 import '../providers/villa_provider.dart';
+import '../providers/room_provider.dart';
 
 class AddEditExpenseScreen extends ConsumerStatefulWidget {
   final Expense? expense;
@@ -34,6 +35,7 @@ class _AddEditExpenseScreenState extends ConsumerState<AddEditExpenseScreen> {
   final _notesController = TextEditingController();
 
   late String _selectedVillaId;
+  String? _selectedRoomId;
   late String _selectedCategory;
   late String _selectedPaymentMethod;
   late DateTime _selectedDate;
@@ -45,6 +47,7 @@ class _AddEditExpenseScreenState extends ConsumerState<AddEditExpenseScreen> {
     super.initState();
     final expense = widget.expense;
     _selectedVillaId = expense?.villaId ?? _generalExpenseId;
+    _selectedRoomId = expense?.roomId;
     _selectedCategory = expense?.category ?? ExpenseCategories.maintenance;
     _selectedPaymentMethod =
         expense?.paymentMethod ?? ExpensePaymentMethods.cash;
@@ -66,6 +69,9 @@ class _AddEditExpenseScreenState extends ConsumerState<AddEditExpenseScreen> {
   @override
   Widget build(BuildContext context) {
     final villasAsync = ref.watch(villasProvider);
+    final roomsAsync = _selectedVillaId != _generalExpenseId && _selectedVillaId.isNotEmpty
+        ? ref.watch(roomsByVillaProvider(_selectedVillaId))
+        : null;
 
     return Scaffold(
       backgroundColor: const Color(0xFFFCFCFD),
@@ -88,7 +94,7 @@ class _AddEditExpenseScreenState extends ConsumerState<AddEditExpenseScreen> {
                   const SizedBox(height: 18),
                   DropdownButtonFormField<String>(
                     initialValue: _selectedVillaId,
-                    decoration: _decoration('Villa'),
+                    decoration: _decoration('Expense Scope'),
                     items: [
                       const DropdownMenuItem(
                         value: _generalExpenseId,
@@ -103,9 +109,48 @@ class _AddEditExpenseScreenState extends ConsumerState<AddEditExpenseScreen> {
                     ],
                     onChanged: (value) {
                       if (value == null) return;
-                      setState(() => _selectedVillaId = value);
+                      setState(() {
+                        _selectedVillaId = value;
+                        _selectedRoomId = null; // Reset room selection
+                      });
                     },
                   ),
+                  // Room Selection (if villa is selected, not general)
+                  if (_selectedVillaId != _generalExpenseId && roomsAsync != null) ...[
+                    const SizedBox(height: 14),
+                    roomsAsync.when(
+                      data: (rooms) {
+                        final selectedRoomIsValid =
+                            rooms.any((room) => room.id == _selectedRoomId);
+
+                        return DropdownButtonFormField<String?>(
+                          initialValue:
+                              selectedRoomIsValid ? _selectedRoomId : null,
+                          decoration: _decoration('Room (Optional)'),
+                          items: [
+                            const DropdownMenuItem(
+                              value: null,
+                              child: Text('Villa-level expense'),
+                            ),
+                            ...rooms.map(
+                              (room) => DropdownMenuItem(
+                                value: room.id,
+                                child: Text(
+                                    '${room.roomName} (#${room.roomNumber})'),
+                              ),
+                            ),
+                          ],
+                          onChanged: (value) {
+                            setState(() => _selectedRoomId = value);
+                          },
+                        );
+                      },
+                      loading: () =>
+                          const CircularProgressIndicator(),
+                      error: (error, _) =>
+                          Text('Error loading rooms: $error'),
+                    ),
+                  ],
                   const SizedBox(height: 14),
                   DropdownButtonFormField<String>(
                     initialValue: _selectedCategory,
@@ -253,11 +298,14 @@ class _AddEditExpenseScreenState extends ConsumerState<AddEditExpenseScreen> {
     final selectedVilla = _selectedVillaId == _generalExpenseId
         ? null
         : villas.where((villa) => villa.id == _selectedVillaId).firstOrNull;
+    
     final expense = Expense(
       id: widget.expense?.id ?? const Uuid().v4(),
       villaId: selectedVilla?.id,
       villaName:
           selectedVilla == null ? 'General Expense' : selectedVilla.villaName,
+      roomId: _selectedRoomId,
+      roomName: _selectedRoomId ?? '',
       category: _selectedCategory,
       amount: double.parse(_amountController.text.trim()),
       expenseDate: _selectedDate,

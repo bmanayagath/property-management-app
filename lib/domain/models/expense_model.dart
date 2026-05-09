@@ -9,6 +9,9 @@ class ExpenseModel with _$ExpenseModel {
   const factory ExpenseModel({
     required String id,
     String? villaId,
+    @Default('') String villaName,
+    String? roomId,
+    String? roomName,
     required ExpenseCategory category,
     required double amount,
     required DateTime expenseDate,

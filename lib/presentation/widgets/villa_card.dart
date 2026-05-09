@@ -1,28 +1,51 @@
 import 'package:flutter/material.dart';
+
 import '../../core/constants/app_colors.dart';
-import '../../core/constants/enums.dart';
 import '../../core/utils/currency_formatter.dart';
+import '../../domain/models/room.dart';
 import '../../domain/models/villa_model.dart';
 
 class VillaCard extends StatelessWidget {
   final VillaModel villa;
+  final List<Room> rooms;
   final VoidCallback onTap;
   final VoidCallback? onDelete;
 
   const VillaCard({
     Key? key,
     required this.villa,
+    this.rooms = const [],
     required this.onTap,
     this.onDelete,
   }) : super(key: key);
 
-  Color _getStatusColor(VillaStatus status) {
-    switch (status) {
-      case VillaStatus.occupied:
-        return AppColors.success;
-      case VillaStatus.vacant:
-        return AppColors.warning;
-    }
+  bool get _hasOccupiedRoom => rooms.any((room) => room.isOccupied);
+
+  double get _totalMonthlyRent =>
+      rooms.fold<double>(0, (sum, room) => sum + room.monthlyRent);
+
+  String get _statusLabel => _hasOccupiedRoom ? 'Occupied' : 'Vacant';
+
+  Color get _statusColor =>
+      _hasOccupiedRoom ? AppColors.success : AppColors.warning;
+
+  String get _tenantSummary {
+    final tenants = rooms
+        .where((room) => room.isOccupied && room.tenantName.trim().isNotEmpty)
+        .map((room) => room.tenantName.trim())
+        .toSet()
+        .toList();
+
+    if (tenants.isEmpty) return 'No tenant';
+    if (tenants.length == 1) return tenants.first;
+    return '${tenants.length} tenants';
+  }
+
+  String get _roomSummary {
+    if (rooms.isEmpty) return 'No rooms';
+    final occupiedCount = rooms.where((room) => room.isOccupied).length;
+    return '${rooms.length} room${rooms.length == 1 ? '' : 's'}'
+        ' / $occupiedCount occupied';
   }
 
   @override
@@ -73,38 +96,33 @@ class VillaCard extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 4),
-                  Row(
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 2,
                     children: [
-                      Expanded(
-                        child: Text(
-                          villa.location,
-                          style: const TextStyle(
-                            color: Color(0xFF646B7A),
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
                       Text(
-                        ' • ',
-                        style: const TextStyle(
-                          color: Color(0xFF646B7A),
-                          fontSize: 11,
-                        ),
-                      ),
-                      Text(
-                        villa.tenantName.isEmpty
-                            ? 'No tenant'
-                            : villa.tenantName,
+                        villa.location,
                         style: const TextStyle(
                           color: Color(0xFF646B7A),
                           fontSize: 11,
                           fontWeight: FontWeight.w600,
                         ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                      ),
+                      Text(
+                        _tenantSummary,
+                        style: const TextStyle(
+                          color: Color(0xFF646B7A),
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      Text(
+                        _roomSummary,
+                        style: const TextStyle(
+                          color: Color(0xFF646B7A),
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ],
                   ),
@@ -115,13 +133,13 @@ class VillaCard extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(
-                color: _getStatusColor(villa.status).withValues(alpha: 0.15),
+                color: _statusColor.withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(5),
               ),
               child: Text(
-                villa.status.displayName,
+                _statusLabel,
                 style: TextStyle(
-                  color: _getStatusColor(villa.status),
+                  color: _statusColor,
                   fontWeight: FontWeight.w700,
                   fontSize: 10,
                 ),
@@ -129,7 +147,7 @@ class VillaCard extends StatelessWidget {
             ),
             const SizedBox(width: 12),
             Text(
-              CurrencyFormatter.format(villa.monthlyRent),
+              CurrencyFormatter.format(_totalMonthlyRent),
               style: const TextStyle(
                 color: AppColors.success,
                 fontSize: 14,

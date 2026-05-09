@@ -11,6 +11,7 @@ import '../../providers/auth_provider.dart';
 import '../../providers/income_provider.dart';
 import '../../providers/notification_provider.dart';
 import '../../providers/villa_provider.dart';
+import '../../providers/room_provider.dart';
 
 class AddEditIncomeScreen extends ConsumerStatefulWidget {
   final Income? income;
@@ -31,6 +32,7 @@ class _AddEditIncomeScreenState extends ConsumerState<AddEditIncomeScreen> {
   final _notesController = TextEditingController();
 
   String? _selectedVillaId;
+  String? _selectedRoomId;
   late String _selectedIncomeType;
   late String _selectedPaymentMethod;
   late DateTime _paymentDate;
@@ -43,6 +45,7 @@ class _AddEditIncomeScreenState extends ConsumerState<AddEditIncomeScreen> {
     super.initState();
     final income = widget.income;
     _selectedVillaId = income?.villaId;
+    _selectedRoomId = income?.roomId;
     _selectedIncomeType = income?.incomeType ?? IncomeTypes.rent;
     _selectedPaymentMethod = income?.paymentMethod ?? IncomePaymentMethods.cash;
     _paymentDate = income?.paymentDate ?? DateTime.now();
@@ -64,6 +67,9 @@ class _AddEditIncomeScreenState extends ConsumerState<AddEditIncomeScreen> {
   Widget build(BuildContext context) {
     final villasAsync = ref.watch(villasProvider);
     final controllerState = ref.watch(incomeControllerProvider);
+    final roomsAsync = _selectedVillaId != null
+        ? ref.watch(roomsByVillaProvider(_selectedVillaId!))
+        : null;
 
     return Scaffold(
       backgroundColor: const Color(0xFFFCFCFD),
@@ -73,9 +79,8 @@ class _AddEditIncomeScreenState extends ConsumerState<AddEditIncomeScreen> {
       ),
       body: villasAsync.when(
         data: (villas) {
-          final occupiedVillas = villas.where(_isOccupiedVilla).toList();
-          final selectedVillaIsOccupied =
-              occupiedVillas.any((villa) => villa.id == _selectedVillaId);
+          final selectedVillaIsValid =
+              villas.any((villa) => villa.id == _selectedVillaId);
 
           return Form(
             key: _formKey,
@@ -91,9 +96,9 @@ class _AddEditIncomeScreenState extends ConsumerState<AddEditIncomeScreen> {
                     const SizedBox(height: 18),
                     DropdownButtonFormField<String>(
                       initialValue:
-                          selectedVillaIsOccupied ? _selectedVillaId : null,
+                          selectedVillaIsValid ? _selectedVillaId : null,
                       decoration: _decoration('Villa'),
-                      items: occupiedVillas
+                      items: villas
                           .map(
                             (villa) => DropdownMenuItem(
                               value: villa.id,
@@ -105,18 +110,62 @@ class _AddEditIncomeScreenState extends ConsumerState<AddEditIncomeScreen> {
                           ? 'Villa is required'
                           : null,
                       onChanged: (value) {
-                        setState(() => _selectedVillaId = value);
+                        setState(() {
+                          _selectedVillaId = value;
+                          _selectedRoomId = null; // Reset room selection
+                        });
                       },
                     ),
-                    if (occupiedVillas.isEmpty) ...[
+                    if (villas.isEmpty) ...[
                       const SizedBox(height: 8),
                       const Text(
-                        'Income can only be added for occupied villas.',
+                        'Income can only be added for villas with rooms.',
                         style: TextStyle(
                           color: Color(0xFFF04438),
                           fontSize: 12,
                           fontWeight: FontWeight.w700,
                         ),
+                      ),
+                    ],
+                    // Room Selection
+                    if (_selectedVillaId != null && roomsAsync != null) ...[
+                      const SizedBox(height: 14),
+                      roomsAsync.when(
+                        data: (rooms) {
+                          final occupiedRooms = rooms
+                              .where((room) =>
+                                  _selectedIncomeType == IncomeTypes.rent
+                                      ? room.isOccupied
+                                      : true)
+                              .toList();
+                          final selectedRoomIsValid =
+                              occupiedRooms.any((room) => room.id == _selectedRoomId);
+
+                          return DropdownButtonFormField<String>(
+                            initialValue:
+                                selectedRoomIsValid ? _selectedRoomId : null,
+                            decoration: _decoration('Room'),
+                            items: occupiedRooms
+                                .map(
+                                  (room) => DropdownMenuItem(
+                                    value: room.id,
+                                    child: Text(
+                                        '${room.roomName} (#${room.roomNumber})'),
+                                  ),
+                                )
+                                .toList(),
+                            validator: (value) => value == null || value.isEmpty
+                                ? 'Room is required'
+                                : null,
+                            onChanged: (value) {
+                              setState(() => _selectedRoomId = value);
+                            },
+                          );
+                        },
+                        loading: () =>
+                            const CircularProgressIndicator(),
+                        error: (error, _) =>
+                            Text('Error loading rooms: $error'),
                       ),
                     ],
                     const SizedBox(height: 14),
@@ -278,15 +327,34 @@ class _AddEditIncomeScreenState extends ConsumerState<AddEditIncomeScreen> {
     final selectedVilla =
         villas.where((villa) => villa.id == _selectedVillaId).firstOrNull;
     if (selectedVilla == null) return;
-    if (!_isOccupiedVilla(selectedVilla)) {
-      _showMessage('Income can only be added for occupied villas.');
+
+    // For rent income, room is required
+    if (_selectedIncomeType == IncomeTypes.rent && _selectedRoomId == null) {
+      _showMessage('Room is required for rent income.');
       return;
+    }
+
+    String roomName = '';
+    if (_selectedRoomId != null) {
+      final rooms = ref.read(roomsByVillaProvider(selectedVilla.id)).valueOrNull;
+      var selectedRoomName = _selectedRoomId!;
+      if (rooms != null) {
+        for (final room in rooms) {
+          if (room.id == _selectedRoomId) {
+            selectedRoomName = '${room.roomName} (#${room.roomNumber})';
+            break;
+          }
+        }
+      }
+      roomName = selectedRoomName;
     }
 
     final income = Income(
       id: widget.income?.id ?? const Uuid().v4(),
       villaId: selectedVilla.id,
       villaName: selectedVilla.villaName,
+      roomId: _selectedRoomId ?? '',
+      roomName: roomName,
       incomeType: _selectedIncomeType,
       amount: double.parse(_amountController.text.trim()),
       paymentDate: _paymentDate,
@@ -354,10 +422,6 @@ class _AddEditIncomeScreenState extends ConsumerState<AddEditIncomeScreen> {
     final number =
         villa.villaNumber.trim().isEmpty ? '' : ' #${villa.villaNumber}';
     return '${villa.villaName}$number';
-  }
-
-  static bool _isOccupiedVilla(VillaModel villa) {
-    return villa.status.name.toLowerCase() == 'occupied';
   }
 
   static final NumberFormat _moneyFormat = NumberFormat('#,##0.##');

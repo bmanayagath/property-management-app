@@ -31,9 +31,45 @@ class Room {
     required this.updatedAt,
   });
 
-  bool get isOccupied => status == RoomStatuses.occupied;
+  factory Room.empty({
+    String id = '',
+    String villaId = '',
+    String villaName = '',
+  }) {
+    return Room(
+      id: id,
+      villaId: villaId,
+      villaName: villaName,
+      roomName: '',
+      roomNumber: '',
+      tenantName: '',
+      tenantPhone: '',
+      monthlyRent: 0,
+      contractStartDate: null,
+      contractEndDate: null,
+      paymentDueDay: 1,
+      status: RoomStatuses.vacant,
+      createdAt: DateTime.now(),
+      updatedAt: null,
+    );
+  }
 
-  bool get isVacant => status == RoomStatuses.vacant;
+  bool get isOccupied => status.toLowerCase() == RoomStatuses.occupiedLower;
+
+  bool get isVacant => status.toLowerCase() == RoomStatuses.vacantLower;
+
+  String get displayName =>
+      roomName.trim().isEmpty ? 'Room $roomNumber' : roomName.trim();
+
+  Room assignVilla({
+    required String villaId,
+    required String villaName,
+  }) {
+    return copyWith(
+      villaId: villaId,
+      villaName: villaName,
+    );
+  }
 
   Room copyWith({
     String? id,
@@ -81,6 +117,8 @@ class RoomStatuses {
 
   static const occupied = 'Occupied';
   static const vacant = 'Vacant';
+  static const occupiedLower = 'occupied';
+  static const vacantLower = 'vacant';
 
   static const values = [
     occupied,

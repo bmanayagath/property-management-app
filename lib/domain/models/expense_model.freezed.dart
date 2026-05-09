@@ -22,6 +22,9 @@ ExpenseModel _$ExpenseModelFromJson(Map<String, dynamic> json) {
 mixin _$ExpenseModel {
   String get id => throw _privateConstructorUsedError;
   String? get villaId => throw _privateConstructorUsedError;
+  String get villaName => throw _privateConstructorUsedError;
+  String? get roomId => throw _privateConstructorUsedError;
+  String? get roomName => throw _privateConstructorUsedError;
   ExpenseCategory get category => throw _privateConstructorUsedError;
   double get amount => throw _privateConstructorUsedError;
   DateTime get expenseDate => throw _privateConstructorUsedError;
@@ -49,6 +52,9 @@ abstract class $ExpenseModelCopyWith<$Res> {
   $Res call(
       {String id,
       String? villaId,
+      String villaName,
+      String? roomId,
+      String? roomName,
       ExpenseCategory category,
       double amount,
       DateTime expenseDate,
@@ -75,6 +81,9 @@ class _$ExpenseModelCopyWithImpl<$Res, $Val extends ExpenseModel>
   $Res call({
     Object? id = null,
     Object? villaId = freezed,
+    Object? villaName = null,
+    Object? roomId = freezed,
+    Object? roomName = freezed,
     Object? category = null,
     Object? amount = null,
     Object? expenseDate = null,
@@ -91,6 +100,18 @@ class _$ExpenseModelCopyWithImpl<$Res, $Val extends ExpenseModel>
       villaId: freezed == villaId
           ? _value.villaId
           : villaId // ignore: cast_nullable_to_non_nullable
+              as String?,
+      villaName: null == villaName
+          ? _value.villaName
+          : villaName // ignore: cast_nullable_to_non_nullable
+              as String,
+      roomId: freezed == roomId
+          ? _value.roomId
+          : roomId // ignore: cast_nullable_to_non_nullable
+              as String?,
+      roomName: freezed == roomName
+          ? _value.roomName
+          : roomName // ignore: cast_nullable_to_non_nullable
               as String?,
       category: null == category
           ? _value.category
@@ -135,6 +156,9 @@ abstract class _$$ExpenseModelImplCopyWith<$Res>
   $Res call(
       {String id,
       String? villaId,
+      String villaName,
+      String? roomId,
+      String? roomName,
       ExpenseCategory category,
       double amount,
       DateTime expenseDate,
@@ -159,6 +183,9 @@ class __$$ExpenseModelImplCopyWithImpl<$Res>
   $Res call({
     Object? id = null,
     Object? villaId = freezed,
+    Object? villaName = null,
+    Object? roomId = freezed,
+    Object? roomName = freezed,
     Object? category = null,
     Object? amount = null,
     Object? expenseDate = null,
@@ -175,6 +202,18 @@ class __$$ExpenseModelImplCopyWithImpl<$Res>
       villaId: freezed == villaId
           ? _value.villaId
           : villaId // ignore: cast_nullable_to_non_nullable
+              as String?,
+      villaName: null == villaName
+          ? _value.villaName
+          : villaName // ignore: cast_nullable_to_non_nullable
+              as String,
+      roomId: freezed == roomId
+          ? _value.roomId
+          : roomId // ignore: cast_nullable_to_non_nullable
+              as String?,
+      roomName: freezed == roomName
+          ? _value.roomName
+          : roomName // ignore: cast_nullable_to_non_nullable
               as String?,
       category: null == category
           ? _value.category
@@ -214,6 +253,9 @@ class _$ExpenseModelImpl implements _ExpenseModel {
   const _$ExpenseModelImpl(
       {required this.id,
       this.villaId,
+      this.villaName = '',
+      this.roomId,
+      this.roomName,
       required this.category,
       required this.amount,
       required this.expenseDate,
@@ -229,6 +271,13 @@ class _$ExpenseModelImpl implements _ExpenseModel {
   final String id;
   @override
   final String? villaId;
+  @override
+  @JsonKey()
+  final String villaName;
+  @override
+  final String? roomId;
+  @override
+  final String? roomName;
   @override
   final ExpenseCategory category;
   @override
@@ -246,7 +295,7 @@ class _$ExpenseModelImpl implements _ExpenseModel {
 
   @override
   String toString() {
-    return 'ExpenseModel(id: $id, villaId: $villaId, category: $category, amount: $amount, expenseDate: $expenseDate, paidTo: $paidTo, paymentMethod: $paymentMethod, notes: $notes, createdAt: $createdAt)';
+    return 'ExpenseModel(id: $id, villaId: $villaId, villaName: $villaName, roomId: $roomId, roomName: $roomName, category: $category, amount: $amount, expenseDate: $expenseDate, paidTo: $paidTo, paymentMethod: $paymentMethod, notes: $notes, createdAt: $createdAt)';
   }
 
   @override
@@ -256,6 +305,11 @@ class _$ExpenseModelImpl implements _ExpenseModel {
             other is _$ExpenseModelImpl &&
             (identical(other.id, id) || other.id == id) &&
             (identical(other.villaId, villaId) || other.villaId == villaId) &&
+            (identical(other.villaName, villaName) ||
+                other.villaName == villaName) &&
+            (identical(other.roomId, roomId) || other.roomId == roomId) &&
+            (identical(other.roomName, roomName) ||
+                other.roomName == roomName) &&
             (identical(other.category, category) ||
                 other.category == category) &&
             (identical(other.amount, amount) || other.amount == amount) &&
@@ -271,8 +325,20 @@ class _$ExpenseModelImpl implements _ExpenseModel {
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
-  int get hashCode => Object.hash(runtimeType, id, villaId, category, amount,
-      expenseDate, paidTo, paymentMethod, notes, createdAt);
+  int get hashCode => Object.hash(
+      runtimeType,
+      id,
+      villaId,
+      villaName,
+      roomId,
+      roomName,
+      category,
+      amount,
+      expenseDate,
+      paidTo,
+      paymentMethod,
+      notes,
+      createdAt);
 
   /// Create a copy of ExpenseModel
   /// with the given fields replaced by the non-null parameter values.
@@ -294,6 +360,9 @@ abstract class _ExpenseModel implements ExpenseModel {
   const factory _ExpenseModel(
       {required final String id,
       final String? villaId,
+      final String villaName,
+      final String? roomId,
+      final String? roomName,
       required final ExpenseCategory category,
       required final double amount,
       required final DateTime expenseDate,
@@ -309,6 +378,12 @@ abstract class _ExpenseModel implements ExpenseModel {
   String get id;
   @override
   String? get villaId;
+  @override
+  String get villaName;
+  @override
+  String? get roomId;
+  @override
+  String? get roomName;
   @override
   ExpenseCategory get category;
   @override

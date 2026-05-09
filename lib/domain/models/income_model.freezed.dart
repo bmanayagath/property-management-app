@@ -22,6 +22,9 @@ IncomeModel _$IncomeModelFromJson(Map<String, dynamic> json) {
 mixin _$IncomeModel {
   String get id => throw _privateConstructorUsedError;
   String get villaId => throw _privateConstructorUsedError;
+  String get villaName => throw _privateConstructorUsedError;
+  String get roomId => throw _privateConstructorUsedError;
+  String get roomName => throw _privateConstructorUsedError;
   IncomeType get incomeType => throw _privateConstructorUsedError;
   double get amount => throw _privateConstructorUsedError;
   DateTime get paymentDate => throw _privateConstructorUsedError;
@@ -49,6 +52,9 @@ abstract class $IncomeModelCopyWith<$Res> {
   $Res call(
       {String id,
       String villaId,
+      String villaName,
+      String roomId,
+      String roomName,
       IncomeType incomeType,
       double amount,
       DateTime paymentDate,
@@ -75,6 +81,9 @@ class _$IncomeModelCopyWithImpl<$Res, $Val extends IncomeModel>
   $Res call({
     Object? id = null,
     Object? villaId = null,
+    Object? villaName = null,
+    Object? roomId = null,
+    Object? roomName = null,
     Object? incomeType = null,
     Object? amount = null,
     Object? paymentDate = null,
@@ -91,6 +100,18 @@ class _$IncomeModelCopyWithImpl<$Res, $Val extends IncomeModel>
       villaId: null == villaId
           ? _value.villaId
           : villaId // ignore: cast_nullable_to_non_nullable
+              as String,
+      villaName: null == villaName
+          ? _value.villaName
+          : villaName // ignore: cast_nullable_to_non_nullable
+              as String,
+      roomId: null == roomId
+          ? _value.roomId
+          : roomId // ignore: cast_nullable_to_non_nullable
+              as String,
+      roomName: null == roomName
+          ? _value.roomName
+          : roomName // ignore: cast_nullable_to_non_nullable
               as String,
       incomeType: null == incomeType
           ? _value.incomeType
@@ -135,6 +156,9 @@ abstract class _$$IncomeModelImplCopyWith<$Res>
   $Res call(
       {String id,
       String villaId,
+      String villaName,
+      String roomId,
+      String roomName,
       IncomeType incomeType,
       double amount,
       DateTime paymentDate,
@@ -159,6 +183,9 @@ class __$$IncomeModelImplCopyWithImpl<$Res>
   $Res call({
     Object? id = null,
     Object? villaId = null,
+    Object? villaName = null,
+    Object? roomId = null,
+    Object? roomName = null,
     Object? incomeType = null,
     Object? amount = null,
     Object? paymentDate = null,
@@ -175,6 +202,18 @@ class __$$IncomeModelImplCopyWithImpl<$Res>
       villaId: null == villaId
           ? _value.villaId
           : villaId // ignore: cast_nullable_to_non_nullable
+              as String,
+      villaName: null == villaName
+          ? _value.villaName
+          : villaName // ignore: cast_nullable_to_non_nullable
+              as String,
+      roomId: null == roomId
+          ? _value.roomId
+          : roomId // ignore: cast_nullable_to_non_nullable
+              as String,
+      roomName: null == roomName
+          ? _value.roomName
+          : roomName // ignore: cast_nullable_to_non_nullable
               as String,
       incomeType: null == incomeType
           ? _value.incomeType
@@ -214,6 +253,9 @@ class _$IncomeModelImpl implements _IncomeModel {
   const _$IncomeModelImpl(
       {required this.id,
       required this.villaId,
+      this.villaName = '',
+      this.roomId = '',
+      this.roomName = '',
       required this.incomeType,
       required this.amount,
       required this.paymentDate,
@@ -229,6 +271,15 @@ class _$IncomeModelImpl implements _IncomeModel {
   final String id;
   @override
   final String villaId;
+  @override
+  @JsonKey()
+  final String villaName;
+  @override
+  @JsonKey()
+  final String roomId;
+  @override
+  @JsonKey()
+  final String roomName;
   @override
   final IncomeType incomeType;
   @override
@@ -246,7 +297,7 @@ class _$IncomeModelImpl implements _IncomeModel {
 
   @override
   String toString() {
-    return 'IncomeModel(id: $id, villaId: $villaId, incomeType: $incomeType, amount: $amount, paymentDate: $paymentDate, paymentMethod: $paymentMethod, monthCovered: $monthCovered, notes: $notes, createdAt: $createdAt)';
+    return 'IncomeModel(id: $id, villaId: $villaId, villaName: $villaName, roomId: $roomId, roomName: $roomName, incomeType: $incomeType, amount: $amount, paymentDate: $paymentDate, paymentMethod: $paymentMethod, monthCovered: $monthCovered, notes: $notes, createdAt: $createdAt)';
   }
 
   @override
@@ -256,6 +307,11 @@ class _$IncomeModelImpl implements _IncomeModel {
             other is _$IncomeModelImpl &&
             (identical(other.id, id) || other.id == id) &&
             (identical(other.villaId, villaId) || other.villaId == villaId) &&
+            (identical(other.villaName, villaName) ||
+                other.villaName == villaName) &&
+            (identical(other.roomId, roomId) || other.roomId == roomId) &&
+            (identical(other.roomName, roomName) ||
+                other.roomName == roomName) &&
             (identical(other.incomeType, incomeType) ||
                 other.incomeType == incomeType) &&
             (identical(other.amount, amount) || other.amount == amount) &&
@@ -272,8 +328,20 @@ class _$IncomeModelImpl implements _IncomeModel {
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
-  int get hashCode => Object.hash(runtimeType, id, villaId, incomeType, amount,
-      paymentDate, paymentMethod, monthCovered, notes, createdAt);
+  int get hashCode => Object.hash(
+      runtimeType,
+      id,
+      villaId,
+      villaName,
+      roomId,
+      roomName,
+      incomeType,
+      amount,
+      paymentDate,
+      paymentMethod,
+      monthCovered,
+      notes,
+      createdAt);
 
   /// Create a copy of IncomeModel
   /// with the given fields replaced by the non-null parameter values.
@@ -295,6 +363,9 @@ abstract class _IncomeModel implements IncomeModel {
   const factory _IncomeModel(
       {required final String id,
       required final String villaId,
+      final String villaName,
+      final String roomId,
+      final String roomName,
       required final IncomeType incomeType,
       required final double amount,
       required final DateTime paymentDate,
@@ -310,6 +381,12 @@ abstract class _IncomeModel implements IncomeModel {
   String get id;
   @override
   String get villaId;
+  @override
+  String get villaName;
+  @override
+  String get roomId;
+  @override
+  String get roomName;
   @override
   IncomeType get incomeType;
   @override

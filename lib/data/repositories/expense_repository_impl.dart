@@ -36,6 +36,9 @@ class ExpenseRepositoryImpl implements ExpenseRepository {
       ExpensesCompanion(
         id: Value(id),
         villaId: Value(expense.villaId),
+        villaName: Value(expense.villaName),
+        roomId: Value(expense.roomId),
+        roomName: Value(expense.roomName),
         category: Value(expense.category.name),
         amount: Value(expense.amount),
         expenseDate: Value(expense.expenseDate),
@@ -54,6 +57,9 @@ class ExpenseRepositoryImpl implements ExpenseRepository {
       ExpensesCompanion(
         id: Value(expense.id),
         villaId: Value(expense.villaId),
+        villaName: Value(expense.villaName),
+        roomId: Value(expense.roomId),
+        roomName: Value(expense.roomName),
         category: Value(expense.category.name),
         amount: Value(expense.amount),
         expenseDate: Value(expense.expenseDate),
@@ -83,6 +89,9 @@ class ExpenseRepositoryImpl implements ExpenseRepository {
     return ExpenseModel(
       id: expense.id,
       villaId: expense.villaId,
+      villaName: expense.villaName,
+      roomId: expense.roomId,
+      roomName: expense.roomName,
       category: _parseExpenseCategory(expense.category),
       amount: expense.amount,
       expenseDate: expense.expenseDate,

@@ -112,7 +112,11 @@ class ExpenseNotifier extends StateNotifier<List<Expense>> {
     return Expense(
       id: model.id,
       villaId: model.villaId,
-      villaName: villa?.villaName ?? 'General Expense',
+      villaName: model.villaName.isNotEmpty
+          ? model.villaName
+          : villa?.villaName ?? 'General Expense',
+      roomId: model.roomId,
+      roomName: model.roomName,
       category: model.category.displayName,
       amount: model.amount,
       expenseDate: model.expenseDate,
@@ -126,6 +130,9 @@ class ExpenseNotifier extends StateNotifier<List<Expense>> {
     return ExpenseModel(
       id: expense.id,
       villaId: expense.villaId,
+      villaName: expense.villaName,
+      roomId: expense.roomId,
+      roomName: expense.roomName,
       category: _expenseCategoryFromLabel(expense.category),
       amount: expense.amount,
       expenseDate: expense.expenseDate,

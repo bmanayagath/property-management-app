@@ -36,6 +36,9 @@ class IncomeRepositoryImpl implements IncomeRepository {
       IncomesCompanion(
         id: Value(id),
         villaId: Value(income.villaId),
+        villaName: Value(income.villaName),
+        roomId: Value(income.roomId),
+        roomName: Value(income.roomName),
         incomeType: Value(income.incomeType.name),
         amount: Value(income.amount),
         paymentDate: Value(income.paymentDate),
@@ -54,6 +57,9 @@ class IncomeRepositoryImpl implements IncomeRepository {
       IncomesCompanion(
         id: Value(income.id),
         villaId: Value(income.villaId),
+        villaName: Value(income.villaName),
+        roomId: Value(income.roomId),
+        roomName: Value(income.roomName),
         incomeType: Value(income.incomeType.name),
         amount: Value(income.amount),
         paymentDate: Value(income.paymentDate),
@@ -83,6 +89,9 @@ class IncomeRepositoryImpl implements IncomeRepository {
     return IncomeModel(
       id: income.id,
       villaId: income.villaId,
+      villaName: income.villaName,
+      roomId: income.roomId,
+      roomName: income.roomName,
       incomeType: _parseIncomeType(income.incomeType),
       amount: income.amount,
       paymentDate: income.paymentDate,

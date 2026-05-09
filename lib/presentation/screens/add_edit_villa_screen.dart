@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_styles.dart';
-import '../../core/constants/enums.dart';
+import '../../domain/models/room.dart';
 import '../../domain/models/villa_model.dart';
+import '../providers/room_provider.dart';
 import '../providers/villa_provider.dart';
-import '../widgets/app_text_field.dart';
 import '../widgets/app_date_picker_field.dart';
 import '../widgets/app_dropdown.dart';
+import '../widgets/app_text_field.dart';
+import '../widgets/room_card.dart';
 
 class AddEditVillaScreen extends ConsumerStatefulWidget {
   final VillaModel? villa;
@@ -19,50 +22,30 @@ class AddEditVillaScreen extends ConsumerStatefulWidget {
 }
 
 class _AddEditVillaScreenState extends ConsumerState<AddEditVillaScreen> {
-  late TextEditingController _villaNameController;
-  late TextEditingController _villaNumberController;
-  late TextEditingController _locationController;
-  late TextEditingController _tenantNameController;
-  late TextEditingController _tenantPhoneController;
-  late TextEditingController _monthlyRentController;
-  late DateTime _contractStartDate;
-  late DateTime _contractEndDate;
-  late int _paymentDueDay;
-  late VillaStatus _status;
-
   final _formKey = GlobalKey<FormState>();
+  final _rooms = <Room>[];
+  final _existingRoomIds = <String>{};
+  final _deletedRoomIds = <String>{};
+
+  late final TextEditingController _villaNameController;
+  late final TextEditingController _villaNumberController;
+  late final TextEditingController _locationController;
+  late final TextEditingController _notesController;
+
+  bool _loadedExistingRooms = false;
+  bool _isSaving = false;
+
+  bool get _isEditing => widget.villa != null;
 
   @override
   void initState() {
     super.initState();
-    if (widget.villa != null) {
-      _villaNameController =
-          TextEditingController(text: widget.villa!.villaName);
-      _villaNumberController =
-          TextEditingController(text: widget.villa!.villaNumber);
-      _locationController = TextEditingController(text: widget.villa!.location);
-      _tenantNameController =
-          TextEditingController(text: widget.villa!.tenantName);
-      _tenantPhoneController =
-          TextEditingController(text: widget.villa!.tenantPhone);
-      _monthlyRentController =
-          TextEditingController(text: widget.villa!.monthlyRent.toString());
-      _contractStartDate = widget.villa!.contractStartDate;
-      _contractEndDate = widget.villa!.contractEndDate;
-      _paymentDueDay = widget.villa!.paymentDueDay;
-      _status = widget.villa!.status;
-    } else {
-      _villaNameController = TextEditingController();
-      _villaNumberController = TextEditingController();
-      _locationController = TextEditingController();
-      _tenantNameController = TextEditingController();
-      _tenantPhoneController = TextEditingController();
-      _monthlyRentController = TextEditingController();
-      _contractStartDate = DateTime.now();
-      _contractEndDate = DateTime.now().add(const Duration(days: 365));
-      _paymentDueDay = 1;
-      _status = VillaStatus.vacant;
-    }
+    final villa = widget.villa;
+    _villaNameController = TextEditingController(text: villa?.villaName ?? '');
+    _villaNumberController =
+        TextEditingController(text: villa?.villaNumber ?? '');
+    _locationController = TextEditingController(text: villa?.location ?? '');
+    _notesController = TextEditingController(text: villa?.notes ?? '');
   }
 
   @override
@@ -70,49 +53,145 @@ class _AddEditVillaScreenState extends ConsumerState<AddEditVillaScreen> {
     _villaNameController.dispose();
     _villaNumberController.dispose();
     _locationController.dispose();
-    _tenantNameController.dispose();
-    _tenantPhoneController.dispose();
-    _monthlyRentController.dispose();
+    _notesController.dispose();
     super.dispose();
   }
 
-  bool get _isTenantRequired => _status == VillaStatus.occupied;
+  Future<void> _saveVilla() async {
+    if (!_formKey.currentState!.validate()) return;
 
-  void _saveVilla() async {
-    if (!_formKey.currentState!.validate()) {
+    if (_rooms.isEmpty) {
+      _showMessage('Add at least one room before saving the villa.');
       return;
     }
 
+    final duplicateRoomNumber = _findDuplicateRoomNumber();
+    if (duplicateRoomNumber != null) {
+      _showMessage('Room number $duplicateRoomNumber is already added.');
+      return;
+    }
+
+    setState(() => _isSaving = true);
+
+    final now = DateTime.now();
     final villa = VillaModel(
-      id: widget.villa?.id ?? DateTime.now().millisecondsSinceEpoch.toString(),
+      id: widget.villa?.id ?? now.microsecondsSinceEpoch.toString(),
       villaName: _villaNameController.text.trim(),
       villaNumber: _villaNumberController.text.trim(),
       location: _locationController.text.trim(),
-      createdAt: widget.villa?.createdAt ?? DateTime.now(),
-      updatedAt: DateTime.now(),
+      notes: _notesController.text.trim(),
+      createdAt: widget.villa?.createdAt ?? now,
+      updatedAt: now,
     );
 
     try {
-      if (widget.villa == null) {
-        await ref.read(addVillaProvider(villa).future);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Villa added successfully!')),
-        );
-      } else {
+      final villaId = _isEditing
+          ? villa.id
+          : await ref.read(addVillaProvider(villa).future);
+
+      if (_isEditing) {
         await ref.read(updateVillaProvider(villa).future);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Villa updated successfully!')),
-        );
       }
+
+      for (final roomId in _deletedRoomIds) {
+        await ref.read(deleteRoomProvider(roomId).future);
+      }
+
+      for (final room in _rooms) {
+        final savedRoom = room.assignVilla(
+          villaId: villaId,
+          villaName: villa.villaName,
+        );
+
+        if (_existingRoomIds.contains(room.id)) {
+          await ref.read(updateRoomProvider(savedRoom).future);
+        } else {
+          await ref.read(addRoomProvider(savedRoom).future);
+        }
+      }
+
+      if (!mounted) return;
+      _showMessage(_isEditing
+          ? 'Villa updated successfully!'
+          : 'Villa added successfully!');
       Navigator.pop(context);
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e')),
-      );
+    } catch (error) {
+      if (!mounted) return;
+      _showMessage('Error: $error');
+    } finally {
+      if (mounted) {
+        setState(() => _isSaving = false);
+      }
     }
   }
 
-  Widget _buildSectionHeader(String title, IconData icon) {
+  Future<void> _addRoom() async {
+    final room = await _showRoomSheet();
+    if (room == null) return;
+
+    setState(() {
+      _rooms.add(room);
+    });
+  }
+
+  Future<void> _editRoom(int index) async {
+    final room = await _showRoomSheet(room: _rooms[index], editIndex: index);
+    if (room == null) return;
+
+    setState(() {
+      _rooms[index] = room;
+    });
+  }
+
+  void _deleteRoom(int index) {
+    final room = _rooms[index];
+    setState(() {
+      if (_existingRoomIds.contains(room.id)) {
+        _deletedRoomIds.add(room.id);
+      }
+      _rooms.removeAt(index);
+    });
+  }
+
+  Future<Room?> _showRoomSheet({Room? room, int? editIndex}) {
+    return showModalBottomSheet<Room>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (context) => _RoomFormSheet(
+        room: room,
+        isRoomNumberUnique: (roomNumber) {
+          final normalized = roomNumber.trim().toLowerCase();
+          return !_rooms.asMap().entries.any((entry) {
+            if (entry.key == editIndex) return false;
+            return entry.value.roomNumber.trim().toLowerCase() == normalized;
+          });
+        },
+      ),
+    );
+  }
+
+  String? _findDuplicateRoomNumber() {
+    final seen = <String>{};
+    for (final room in _rooms) {
+      final normalized = room.roomNumber.trim().toLowerCase();
+      if (seen.contains(normalized)) return room.roomNumber.trim();
+      seen.add(normalized);
+    }
+    return null;
+  }
+
+  void _showMessage(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
+  }
+
+  Widget _buildSectionHeader(
+    String title,
+    IconData icon, {
+    Widget? trailing,
+  }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Row(
@@ -123,19 +202,18 @@ class _AddEditVillaScreenState extends ConsumerState<AddEditVillaScreen> {
               color: AppColors.primary.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(8),
             ),
-            child: Icon(
-              icon,
-              size: 20,
-              color: AppColors.primary,
-            ),
+            child: Icon(icon, size: 20, color: AppColors.primary),
           ),
           const SizedBox(width: 12),
-          Text(
-            title,
-            style: AppStyles.titleMedium.copyWith(
-              fontWeight: FontWeight.w700,
+          Expanded(
+            child: Text(
+              title,
+              style: AppStyles.titleMedium.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
             ),
           ),
+          if (trailing != null) trailing,
         ],
       ),
     );
@@ -174,11 +252,30 @@ class _AddEditVillaScreenState extends ConsumerState<AddEditVillaScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isEditing = widget.villa != null;
+    final roomsAsync =
+        _isEditing ? ref.watch(roomsByVillaProvider(widget.villa!.id)) : null;
+
+    if (_isEditing) {
+      roomsAsync?.whenData((rooms) {
+        if (_loadedExistingRooms) return;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted || _loadedExistingRooms) return;
+          setState(() {
+            _rooms
+              ..clear()
+              ..addAll(rooms);
+            _existingRoomIds
+              ..clear()
+              ..addAll(rooms.map((room) => room.id));
+            _loadedExistingRooms = true;
+          });
+        });
+      });
+    }
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(isEditing ? 'Edit Villa' : 'Add New Villa'),
+        title: Text(_isEditing ? 'Edit Villa' : 'Add New Villa'),
         elevation: 0,
       ),
       body: SingleChildScrollView(
@@ -189,37 +286,6 @@ class _AddEditVillaScreenState extends ConsumerState<AddEditVillaScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Status Selection (prominent)
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [
-                        AppColors.primary.withValues(alpha: 0.08),
-                        AppColors.primary.withValues(alpha: 0.02),
-                      ],
-                    ),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: AppColors.primary.withValues(alpha: 0.2),
-                      width: 1,
-                    ),
-                  ),
-                  child: AppDropdown<VillaStatus>(
-                    label: 'Villa Status',
-                    value: _status,
-                    items: VillaStatus.values,
-                    itemLabel: (status) => status.displayName,
-                    onChanged: (value) {
-                      if (value != null) {
-                        setState(() => _status = value);
-                      }
-                    },
-                  ),
-                ),
-                const SizedBox(height: 24),
-
-                // Basic Information Section
                 _buildSectionHeader('Villa Details', Icons.home_outlined),
                 _buildFormCard(
                   children: [
@@ -229,7 +295,7 @@ class _AddEditVillaScreenState extends ConsumerState<AddEditVillaScreen> {
                       hint: 'e.g., Sunset Villa',
                       prefixIcon: Icons.label_outlined,
                       validator: (value) {
-                        if (value?.isEmpty ?? true) {
+                        if (value?.trim().isEmpty ?? true) {
                           return 'Villa name is required';
                         }
                         return null;
@@ -241,7 +307,7 @@ class _AddEditVillaScreenState extends ConsumerState<AddEditVillaScreen> {
                       hint: 'e.g., V001',
                       prefixIcon: Icons.numbers,
                       validator: (value) {
-                        if (value?.isEmpty ?? true) {
+                        if (value?.trim().isEmpty ?? true) {
                           return 'Villa number is required';
                         }
                         return null;
@@ -249,143 +315,58 @@ class _AddEditVillaScreenState extends ConsumerState<AddEditVillaScreen> {
                     ),
                     AppTextField(
                       controller: _locationController,
-                      label: 'Location *',
+                      label: 'Location',
                       hint: 'e.g., Downtown, District',
                       prefixIcon: Icons.location_on_outlined,
-                      validator: (value) {
-                        if (value?.isEmpty ?? true) {
-                          return 'Location is required';
-                        }
-                        return null;
-                      },
                     ),
-                  ],
-                ),
-                const SizedBox(height: 24),
-
-                // Financial Information Section
-                _buildSectionHeader(
-                    'Financial Details', Icons.attach_money_outlined),
-                _buildFormCard(
-                  children: [
                     AppTextField(
-                      controller: _monthlyRentController,
-                      label: 'Monthly Rent *',
-                      hint: 'Enter amount',
-                      prefixIcon: Icons.currency_rupee,
-                      keyboardType:
-                          const TextInputType.numberWithOptions(decimal: true),
-                      validator: (value) {
-                        if (value?.isEmpty ?? true) {
-                          return 'Monthly rent is required';
-                        }
-                        if (double.tryParse(value!) == null) {
-                          return 'Please enter a valid amount';
-                        }
-                        return null;
-                      },
-                    ),
-                    AppDropdown<int>(
-                      label: 'Payment Due Day *',
-                      value: _paymentDueDay,
-                      items: List.generate(31, (i) => i + 1),
-                      itemLabel: (day) => 'Day $day of each month',
-                      onChanged: (value) {
-                        if (value != null) {
-                          setState(() => _paymentDueDay = value);
-                        }
-                      },
+                      controller: _notesController,
+                      label: 'Notes',
+                      hint: 'Optional notes',
+                      prefixIcon: Icons.notes_outlined,
+                      maxLines: 3,
                     ),
                   ],
                 ),
                 const SizedBox(height: 24),
-
-                // Contract Information Section
                 _buildSectionHeader(
-                    'Contract Terms', Icons.description_outlined),
-                _buildFormCard(
-                  children: [
-                    AppDatePickerField(
-                      label: 'Contract Start Date *',
-                      value: _contractStartDate,
-                      onChanged: (date) {
-                        setState(() => _contractStartDate = date);
-                      },
-                    ),
-                    AppDatePickerField(
-                      label: 'Contract End Date *',
-                      value: _contractEndDate,
-                      onChanged: (date) {
-                        setState(() => _contractEndDate = date);
-                      },
-                    ),
-                  ],
+                  'Rooms',
+                  Icons.meeting_room_outlined,
+                  trailing: TextButton.icon(
+                    onPressed: _addRoom,
+                    icon: const Icon(Icons.add, size: 18),
+                    label: const Text('Add Room'),
+                  ),
                 ),
+                if (_isEditing && !_loadedExistingRooms)
+                  roomsAsync!.when(
+                    data: (_) => const SizedBox.shrink(),
+                    loading: () => const Center(
+                      child: Padding(
+                        padding: EdgeInsets.all(24),
+                        child: CircularProgressIndicator(),
+                      ),
+                    ),
+                    error: (error, stackTrace) => Text('Error: $error'),
+                  )
+                else if (_rooms.isEmpty)
+                  _buildEmptyRoomsCard()
+                else
+                  ..._rooms.asMap().entries.map(
+                        (entry) => RoomCard(
+                          room: entry.value,
+                          onTap: () => _editRoom(entry.key),
+                          onEdit: () => _editRoom(entry.key),
+                          onDelete: () => _deleteRoom(entry.key),
+                        ),
+                      ),
                 const SizedBox(height: 24),
-
-                // Tenant Information Section (conditional)
-                if (_isTenantRequired) ...[
-                  _buildSectionHeader(
-                      'Tenant Information', Icons.person_outlined),
-                  _buildFormCard(
-                    children: [
-                      AppTextField(
-                        controller: _tenantNameController,
-                        label: 'Tenant Name *',
-                        hint: 'Full name',
-                        prefixIcon: Icons.person_outline,
-                        validator: (value) {
-                          if (_isTenantRequired && (value?.isEmpty ?? true)) {
-                            return 'Tenant name is required for occupied villas';
-                          }
-                          return null;
-                        },
-                      ),
-                      AppTextField(
-                        controller: _tenantPhoneController,
-                        label: 'Tenant Phone *',
-                        hint: 'Phone number',
-                        prefixIcon: Icons.phone_outlined,
-                        keyboardType: TextInputType.phone,
-                        validator: (value) {
-                          if (_isTenantRequired && (value?.isEmpty ?? true)) {
-                            return 'Tenant phone is required for occupied villas';
-                          }
-                          return null;
-                        },
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 24),
-                ] else ...[
-                  _buildSectionHeader(
-                      'Tenant Information (Optional)', Icons.person_outlined),
-                  _buildFormCard(
-                    children: [
-                      AppTextField(
-                        controller: _tenantNameController,
-                        label: 'Tenant Name',
-                        hint: 'Can be added later',
-                        prefixIcon: Icons.person_outline,
-                      ),
-                      AppTextField(
-                        controller: _tenantPhoneController,
-                        label: 'Tenant Phone',
-                        hint: 'Can be added later',
-                        prefixIcon: Icons.phone_outlined,
-                        keyboardType: TextInputType.phone,
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 24),
-                ],
-
-                // Action Buttons
                 Row(
                   children: [
                     Expanded(
                       child: ElevatedButton(
-                        onPressed: () => Navigator.pop(context),
+                        onPressed:
+                            _isSaving ? null : () => Navigator.pop(context),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.surface,
                           foregroundColor: AppColors.primary,
@@ -401,17 +382,26 @@ class _AddEditVillaScreenState extends ConsumerState<AddEditVillaScreen> {
                     const SizedBox(width: 12),
                     Expanded(
                       child: ElevatedButton(
-                        onPressed: _saveVilla,
+                        onPressed: _isSaving ? null : _saveVilla,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.primary,
                           padding: const EdgeInsets.symmetric(vertical: 14),
                         ),
-                        child: Text(
-                          isEditing ? 'Update Villa' : 'Add Villa',
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
+                        child: _isSaving
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : Text(
+                                _isEditing ? 'Save Villa' : 'Add Villa',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
                       ),
                     ),
                   ],
@@ -419,6 +409,308 @@ class _AddEditVillaScreenState extends ConsumerState<AddEditVillaScreen> {
                 const SizedBox(height: 24),
               ],
             ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmptyRoomsCard() {
+    return InkWell(
+      onTap: _addRoom,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: Column(
+          children: [
+            Icon(
+              Icons.add_home_work_outlined,
+              color: AppColors.primary,
+              size: 32,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'No rooms added yet',
+              style: AppStyles.titleMedium.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Tap Add Room to create the first room.',
+              style: AppStyles.bodyMedium.copyWith(
+                color: AppColors.textSecondary,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _RoomFormSheet extends StatefulWidget {
+  final Room? room;
+  final bool Function(String roomNumber) isRoomNumberUnique;
+
+  const _RoomFormSheet({
+    this.room,
+    required this.isRoomNumberUnique,
+  });
+
+  @override
+  State<_RoomFormSheet> createState() => _RoomFormSheetState();
+}
+
+class _RoomFormSheetState extends State<_RoomFormSheet> {
+  final _formKey = GlobalKey<FormState>();
+
+  late final TextEditingController _roomNameController;
+  late final TextEditingController _roomNumberController;
+  late final TextEditingController _tenantNameController;
+  late final TextEditingController _tenantPhoneController;
+  late final TextEditingController _monthlyRentController;
+  late final TextEditingController _paymentDueDayController;
+
+  late DateTime _contractStartDate;
+  late DateTime _contractEndDate;
+  late String _status;
+
+  bool get _isEditing => widget.room != null;
+  bool get _isTenantRequired => _status == RoomStatuses.occupied;
+
+  @override
+  void initState() {
+    super.initState();
+    final room = widget.room;
+    _roomNameController = TextEditingController(text: room?.roomName ?? '');
+    _roomNumberController = TextEditingController(text: room?.roomNumber ?? '');
+    _tenantNameController = TextEditingController(text: room?.tenantName ?? '');
+    _tenantPhoneController =
+        TextEditingController(text: room?.tenantPhone ?? '');
+    _monthlyRentController = TextEditingController(
+      text: room == null || room.monthlyRent == 0
+          ? ''
+          : room.monthlyRent.toString(),
+    );
+    _paymentDueDayController = TextEditingController(
+      text: (room?.paymentDueDay ?? 1).toString(),
+    );
+    _contractStartDate = room?.contractStartDate ?? DateTime.now();
+    _contractEndDate =
+        room?.contractEndDate ?? DateTime.now().add(const Duration(days: 365));
+    _status = room?.status ?? RoomStatuses.vacant;
+  }
+
+  @override
+  void dispose() {
+    _roomNameController.dispose();
+    _roomNumberController.dispose();
+    _tenantNameController.dispose();
+    _tenantPhoneController.dispose();
+    _monthlyRentController.dispose();
+    _paymentDueDayController.dispose();
+    super.dispose();
+  }
+
+  void _saveRoom() {
+    if (!_formKey.currentState!.validate()) return;
+
+    final now = DateTime.now();
+    final room = Room(
+      id: widget.room?.id ?? now.microsecondsSinceEpoch.toString(),
+      villaId: widget.room?.villaId ?? '',
+      villaName: widget.room?.villaName ?? '',
+      roomName: _roomNameController.text.trim(),
+      roomNumber: _roomNumberController.text.trim(),
+      tenantName: _tenantNameController.text.trim(),
+      tenantPhone: _tenantPhoneController.text.trim(),
+      monthlyRent: double.parse(_monthlyRentController.text.trim()),
+      paymentDueDay: int.parse(_paymentDueDayController.text.trim()),
+      status: _status,
+      contractStartDate: _isTenantRequired ? _contractStartDate : null,
+      contractEndDate: _isTenantRequired ? _contractEndDate : null,
+      createdAt: widget.room?.createdAt ?? now,
+      updatedAt: _isEditing ? now : null,
+    );
+
+    Navigator.pop(context, room);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(
+        left: 16,
+        right: 16,
+        top: 16,
+        bottom: MediaQuery.of(context).viewInsets.bottom + 16,
+      ),
+      child: SingleChildScrollView(
+        child: Form(
+          key: _formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      _isEditing ? 'Edit Room' : 'Add Room',
+                      style: AppStyles.titleLarge.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    onPressed: () => Navigator.pop(context),
+                    icon: const Icon(Icons.close),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              AppDropdown<String>(
+                label: 'Status',
+                value: _status,
+                items: RoomStatuses.values,
+                itemLabel: (status) => status,
+                onChanged: (value) {
+                  if (value == null) return;
+                  setState(() => _status = value);
+                },
+              ),
+              const SizedBox(height: 16),
+              AppTextField(
+                controller: _roomNameController,
+                label: 'Room Name *',
+                hint: 'e.g., Room 101',
+                prefixIcon: Icons.label_outlined,
+                validator: (value) {
+                  if (value?.trim().isEmpty ?? true) {
+                    return 'Room name is required';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 16),
+              AppTextField(
+                controller: _roomNumberController,
+                label: 'Room Number *',
+                hint: 'e.g., 101',
+                prefixIcon: Icons.numbers,
+                validator: (value) {
+                  if (value?.trim().isEmpty ?? true) {
+                    return 'Room number is required';
+                  }
+                  if (!widget.isRoomNumberUnique(value!.trim())) {
+                    return 'Room number must be unique inside this villa';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 16),
+              AppTextField(
+                controller: _monthlyRentController,
+                label: 'Monthly Rent *',
+                hint: '0.00',
+                prefixIcon: Icons.attach_money_outlined,
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
+                validator: (value) {
+                  final rent = double.tryParse(value?.trim() ?? '');
+                  if (rent == null) return 'Enter a valid monthly rent';
+                  if (rent <= 0) {
+                    return 'Monthly rent must be greater than 0';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 16),
+              AppTextField(
+                controller: _paymentDueDayController,
+                label: 'Payment Due Day *',
+                hint: '1 to 31',
+                prefixIcon: Icons.calendar_today_outlined,
+                keyboardType: TextInputType.number,
+                validator: (value) {
+                  final day = int.tryParse(value?.trim() ?? '');
+                  if (day == null) return 'Enter a valid due day';
+                  if (day < 1 || day > 31) {
+                    return 'Payment due day must be 1 to 31';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 16),
+              AppTextField(
+                controller: _tenantNameController,
+                label: _isTenantRequired ? 'Tenant Name *' : 'Tenant Name',
+                hint: _isTenantRequired ? 'Full name' : 'Optional',
+                prefixIcon: Icons.person_outline,
+                validator: (value) {
+                  if (_isTenantRequired && (value?.trim().isEmpty ?? true)) {
+                    return 'Tenant name is required for occupied rooms';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 16),
+              AppTextField(
+                controller: _tenantPhoneController,
+                label: _isTenantRequired ? 'Tenant Phone *' : 'Tenant Phone',
+                hint: _isTenantRequired ? '+974 1234 5678' : 'Optional',
+                prefixIcon: Icons.phone_outlined,
+                keyboardType: TextInputType.phone,
+                validator: (value) {
+                  if (_isTenantRequired && (value?.trim().isEmpty ?? true)) {
+                    return 'Tenant phone is required for occupied rooms';
+                  }
+                  return null;
+                },
+              ),
+              if (_isTenantRequired) ...[
+                const SizedBox(height: 16),
+                AppDatePickerField(
+                  label: 'Contract Start Date',
+                  value: _contractStartDate,
+                  onChanged: (date) {
+                    setState(() => _contractStartDate = date);
+                  },
+                ),
+                const SizedBox(height: 16),
+                AppDatePickerField(
+                  label: 'Contract End Date',
+                  value: _contractEndDate,
+                  onChanged: (date) {
+                    setState(() => _contractEndDate = date);
+                  },
+                ),
+              ],
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                height: 48,
+                child: ElevatedButton.icon(
+                  onPressed: _saveRoom,
+                  icon: Icon(_isEditing ? Icons.save : Icons.add),
+                  label: Text(_isEditing ? 'Update Room' : 'Add Room'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ),

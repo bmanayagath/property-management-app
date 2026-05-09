@@ -17,6 +17,7 @@ import '../../domain/models/app_notification.dart';
 import '../../domain/models/app_user.dart';
 import '../../domain/models/expense.dart';
 import '../../domain/models/income.dart';
+import '../../domain/models/room.dart';
 import '../../domain/models/villa_model.dart';
 import 'connectivity_service.dart';
 
@@ -77,6 +78,20 @@ class FirebaseSyncService {
       collection: 'villas',
       id: villa.id,
       data: _villaToJson(villa),
+      userId: userId,
+      isDeleted: isDeleted,
+    );
+  }
+
+  Future<void> queueRoom({
+    required Room room,
+    required String userId,
+    bool isDeleted = false,
+  }) {
+    return _queueRecord(
+      collection: 'rooms',
+      id: room.id,
+      data: _roomToJson(room),
       userId: userId,
       isDeleted: isDeleted,
     );
@@ -153,6 +168,7 @@ class FirebaseSyncService {
   }
 
   Future<void> syncPendingVillas() => _syncCollection('villas');
+  Future<void> syncPendingRooms() => _syncCollection('rooms');
   Future<void> syncPendingIncomes() => _syncCollection('incomes');
   Future<void> syncPendingExpenses() => _syncCollection('expenses');
   Future<void> syncPendingUsers() => _syncCollection('users');
@@ -172,6 +188,7 @@ class FirebaseSyncService {
     debugPrint('[FirebaseSync] syncAllPendingData pending=$pendingCount');
 
     await syncPendingVillas();
+    await syncPendingRooms();
     await syncPendingIncomes();
     await syncPendingExpenses();
     await syncPendingUsers();
@@ -521,11 +538,32 @@ class FirebaseSyncService {
     };
   }
 
+  Map<String, dynamic> _roomToJson(Room room) {
+    return {
+      'id': room.id,
+      'villaId': room.villaId,
+      'villaName': room.villaName,
+      'roomName': room.roomName,
+      'roomNumber': room.roomNumber,
+      'tenantName': room.tenantName,
+      'tenantPhone': room.tenantPhone,
+      'monthlyRent': room.monthlyRent,
+      'contractStartDate': room.contractStartDate?.toIso8601String(),
+      'contractEndDate': room.contractEndDate?.toIso8601String(),
+      'paymentDueDay': room.paymentDueDay,
+      'status': room.status,
+      'createdAt': room.createdAt.toIso8601String(),
+      'updatedAt': room.updatedAt?.toIso8601String(),
+    };
+  }
+
   Map<String, dynamic> _incomeToJson(Income income) {
     return {
       'id': income.id,
       'villaId': income.villaId,
       'villaName': income.villaName,
+      'roomId': income.roomId,
+      'roomName': income.roomName,
       'incomeType': income.incomeType,
       'amount': income.amount,
       'paymentDate': income.paymentDate.toIso8601String(),
@@ -540,6 +578,8 @@ class FirebaseSyncService {
       'id': expense.id,
       'villaId': expense.villaId,
       'villaName': expense.villaName,
+      'roomId': expense.roomId,
+      'roomName': expense.roomName,
       'category': expense.category,
       'amount': expense.amount,
       'expenseDate': expense.expenseDate.toIso8601String(),
@@ -577,6 +617,8 @@ class FirebaseSyncService {
       id: json['id'] as String,
       villaId: json['villaId'] as String? ?? '',
       villaName: json['villaName'] as String? ?? '',
+      roomId: json['roomId'] as String? ?? '',
+      roomName: json['roomName'] as String? ?? '',
       incomeType: json['incomeType'] as String? ?? IncomeTypes.other,
       amount: (json['amount'] as num?)?.toDouble() ?? 0,
       paymentDate: _readDateTime(json['paymentDate']),
@@ -592,6 +634,8 @@ class FirebaseSyncService {
       id: json['id'] as String,
       villaId: json['villaId'] as String?,
       villaName: json['villaName'] as String? ?? 'General Expense',
+      roomId: json['roomId'] as String?,
+      roomName: json['roomName'] as String?,
       category: json['category'] as String? ?? ExpenseCategories.other,
       amount: (json['amount'] as num?)?.toDouble() ?? 0,
       expenseDate: _readDateTime(json['expenseDate']),
