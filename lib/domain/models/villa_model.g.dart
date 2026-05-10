@@ -10,8 +10,8 @@ _$VillaModelImpl _$$VillaModelImplFromJson(Map<String, dynamic> json) =>
     _$VillaModelImpl(
       id: json['id'] as String,
       villaName: json['villaName'] as String,
-      villaNumber: json['villaNumber'] as String,
       location: json['location'] as String,
+      villaNumber: json['villaNumber'] as String? ?? '',
       notes: json['notes'] as String? ?? '',
       createdAt: DateTime.parse(json['createdAt'] as String),
       updatedAt: json['updatedAt'] == null

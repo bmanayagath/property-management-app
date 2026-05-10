@@ -3,6 +3,7 @@ import '../../data/repositories/villa_repository_impl.dart';
 import '../../data/repositories/room_repository_impl.dart';
 import '../../data/repositories/income_repository_impl.dart';
 import '../../data/repositories/expense_repository_impl.dart';
+import '../../data/repositories/local_database_repository.dart';
 import '../../domain/repositories/villa_repository.dart';
 import '../../domain/repositories/room_repository.dart';
 import '../../domain/repositories/income_repository.dart';
@@ -27,4 +28,10 @@ final incomeRepositoryProvider = Provider<IncomeRepository>((ref) {
 final expenseRepositoryProvider = Provider<ExpenseRepository>((ref) {
   final database = ref.watch(databaseProvider);
   return ExpenseRepositoryImpl(database);
+});
+
+final localDatabaseRepositoryProvider =
+    Provider<LocalDatabaseRepository>((ref) {
+  final database = ref.watch(databaseProvider);
+  return LocalDatabaseRepository(database);
 });

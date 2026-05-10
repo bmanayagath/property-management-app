@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../providers/auth_provider.dart';
+import '../../providers/sync_provider.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({Key? key}) : super(key: key);
@@ -203,10 +204,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isSubmitting = true);
-    await ref.read(authProvider.notifier).login(
+    final didLogin = await ref.read(authProvider.notifier).login(
           _usernameController.text,
           _passwordController.text,
         );
+    if (didLogin) {
+      await ref.read(firebaseSyncServiceProvider).initialPullFromFirestore();
+      ref.read(syncRefreshProvider.notifier).state++;
+    }
 
     if (mounted) {
       setState(() => _isSubmitting = false);

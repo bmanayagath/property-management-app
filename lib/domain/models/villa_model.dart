@@ -9,8 +9,8 @@ class VillaModel with _$VillaModel {
   const factory VillaModel({
     required String id,
     required String villaName,
-    required String villaNumber,
     required String location,
+    @Default('') String villaNumber,
     @Default('') String notes,
     required DateTime createdAt,
     DateTime? updatedAt,

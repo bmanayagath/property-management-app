@@ -19,7 +19,7 @@ class Room {
     required this.villaId,
     required this.villaName,
     required this.roomName,
-    required this.roomNumber,
+    this.roomNumber = '',
     required this.tenantName,
     required this.tenantPhone,
     required this.monthlyRent,
@@ -58,8 +58,7 @@ class Room {
 
   bool get isVacant => status.toLowerCase() == RoomStatuses.vacantLower;
 
-  String get displayName =>
-      roomName.trim().isEmpty ? 'Room $roomNumber' : roomName.trim();
+  String get displayName => roomName.trim().isEmpty ? 'Room' : roomName.trim();
 
   Room assignVilla({
     required String villaId,

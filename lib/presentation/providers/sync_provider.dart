@@ -8,6 +8,7 @@ import '../../data/services/firebase_sync_service.dart';
 import 'expense_provider.dart';
 import 'auth_provider.dart';
 import 'income_provider.dart';
+import 'repository_provider.dart';
 import 'villa_provider.dart';
 
 final connectivityServiceProvider = Provider<ConnectivityService>((ref) {
@@ -23,6 +24,7 @@ final firebaseSyncServiceProvider = Provider<FirebaseSyncService>((ref) {
   final startupStatus = ref.watch(startupStatusProvider);
   final service = FirebaseSyncService(
     connectivityService: ref.watch(connectivityServiceProvider),
+    localRepository: ref.watch(localDatabaseRepositoryProvider),
     firebaseEnabled: startupStatus.firebaseInitialized,
   );
   service.startAutoSync();

@@ -188,8 +188,8 @@ class _$VillaModelImpl implements _VillaModel {
   const _$VillaModelImpl(
       {required this.id,
       required this.villaName,
-      required this.villaNumber,
       required this.location,
+      this.villaNumber = '',
       this.notes = '',
       required this.createdAt,
       this.updatedAt});
@@ -202,6 +202,7 @@ class _$VillaModelImpl implements _VillaModel {
   @override
   final String villaName;
   @override
+  @JsonKey()
   final String villaNumber;
   @override
   final String location;
@@ -262,8 +263,8 @@ abstract class _VillaModel implements VillaModel {
   const factory _VillaModel(
       {required final String id,
       required final String villaName,
-      required final String villaNumber,
       required final String location,
+      final String villaNumber,
       final String notes,
       required final DateTime createdAt,
       final DateTime? updatedAt}) = _$VillaModelImpl;

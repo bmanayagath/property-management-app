@@ -19,6 +19,7 @@ import '../../domain/models/expense.dart';
 import '../../domain/models/income.dart';
 import '../../domain/models/room.dart';
 import '../../domain/models/villa_model.dart';
+import '../repositories/local_database_repository.dart';
 import 'connectivity_service.dart';
 
 class FirebaseSyncService {
@@ -27,14 +28,17 @@ class FirebaseSyncService {
 
   FirebaseFirestore? _firestore;
   final ConnectivityService _connectivityService;
+  final LocalDatabaseRepository? _localRepository;
   final bool firebaseEnabled;
   StreamSubscription<bool>? _connectivitySubscription;
 
   FirebaseSyncService({
     FirebaseFirestore? firestore,
     ConnectivityService? connectivityService,
+    LocalDatabaseRepository? localRepository,
     this.firebaseEnabled = true,
   })  : _firestore = firestore,
+        _localRepository = localRepository,
         _connectivityService = connectivityService ?? ConnectivityService();
 
   void startAutoSync() {
@@ -282,11 +286,118 @@ class FirebaseSyncService {
     });
   }
 
-  Future<void> pullCloudDataToLocal() async {
-    // Local upsert wiring belongs in repository-specific code so Drift remains
-    // the offline source of truth. This method is intentionally a sync boundary
-    // for the next step, where cloud rows are compared with local rows.
-    debugPrint('[FirebaseSync] pullCloudDataToLocal is not wired yet.');
+  Future<void> initialPullFromFirestore() async {
+    final localRepository = _localRepository;
+    if (localRepository == null) {
+      debugPrint(
+        '[FirebaseSync] initial pull skipped: local repository is not wired.',
+      );
+      return;
+    }
+    if (!_isFirestoreEnabled) {
+      debugPrint('[FirebaseSync] initial pull skipped: Firestore disabled.');
+      return;
+    }
+    if (!await _connectivityService.isOnline) {
+      debugPrint('[FirebaseSync] initial pull skipped: device is offline.');
+      return;
+    }
+
+    final firestore = _safeFirestore;
+    if (firestore == null) {
+      debugPrint('[FirebaseSync] initial pull skipped: no Firestore.');
+      return;
+    }
+
+    debugPrint('[FirebaseSync] initial pull started.');
+
+    final snapshots = await Future.wait([
+      firestore.collection('villas').get(),
+      firestore.collection('rooms').get(),
+      firestore.collection('incomes').get(),
+      firestore.collection('expenses').get(),
+      firestore.collection('notifications').get(),
+      firestore.collection('users').get(),
+    ]);
+
+    final villaDocs = snapshots[0].docs;
+    final roomDocs = snapshots[1].docs;
+    final incomeDocs = snapshots[2].docs;
+    final expenseDocs = snapshots[3].docs;
+    final notificationDocs = snapshots[4].docs;
+    final userDocs = snapshots[5].docs;
+
+    for (final doc in villaDocs) {
+      final data = _withDocumentId(doc);
+      if (_isDeleted(data)) {
+        await localRepository.deleteVilla(doc.id);
+        continue;
+      }
+      await localRepository.upsertVilla(_villaFromJson(data));
+    }
+
+    for (final doc in roomDocs) {
+      final data = _withDocumentId(doc);
+      if (_isDeleted(data)) {
+        await localRepository.markRoomDeleted(doc.id);
+        continue;
+      }
+      await localRepository.upsertRoom(_roomFromJson(data));
+    }
+
+    for (final doc in incomeDocs) {
+      final data = _withDocumentId(doc);
+      if (_isDeleted(data)) {
+        await localRepository.deleteIncome(doc.id);
+        continue;
+      }
+      await localRepository.upsertIncome(_incomeFromJson(data));
+    }
+
+    for (final doc in expenseDocs) {
+      final data = _withDocumentId(doc);
+      if (_isDeleted(data)) {
+        await localRepository.deleteExpense(doc.id);
+        continue;
+      }
+      await localRepository.upsertExpense(_expenseFromJson(data));
+    }
+
+    for (final doc in notificationDocs) {
+      final data = _withDocumentId(doc);
+      if (_isDeleted(data)) continue;
+      await localRepository.upsertNotification(AppNotification.fromJson(data));
+    }
+
+    for (final doc in userDocs) {
+      final data = _withDocumentId(doc);
+      if (_isDeleted(data)) continue;
+      await localRepository.upsertUser(_appUserFromJson(data));
+    }
+
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.setString(
+      _lastSyncedAtKey,
+      DateTime.now().toIso8601String(),
+    );
+
+    debugPrint(
+      '[FirebaseSync] initial pull completed: '
+      'villas=${villaDocs.length}, rooms=${roomDocs.length}, '
+      'incomes=${incomeDocs.length}, expenses=${expenseDocs.length}, '
+      'notifications=${notificationDocs.length}, users=${userDocs.length}',
+    );
+  }
+
+  Future<void> pullCloudDataToLocal() => initialPullFromFirestore();
+
+  Map<String, dynamic> _withDocumentId(
+    QueryDocumentSnapshot<Map<String, dynamic>> doc,
+  ) {
+    return {
+      ...doc.data(),
+      'id': doc.data()['id'] as String? ?? doc.id,
+    };
   }
 
   Map<String, dynamic> resolveConflict({
@@ -612,6 +723,25 @@ class FirebaseSyncService {
     );
   }
 
+  Room _roomFromJson(Map<String, dynamic> json) {
+    return Room(
+      id: json['id'] as String,
+      villaId: json['villaId'] as String? ?? '',
+      villaName: json['villaName'] as String? ?? '',
+      roomName: json['roomName'] as String? ?? '',
+      roomNumber: json['roomNumber'] as String? ?? '',
+      tenantName: json['tenantName'] as String? ?? '',
+      tenantPhone: json['tenantPhone'] as String? ?? '',
+      monthlyRent: (json['monthlyRent'] as num?)?.toDouble() ?? 0,
+      contractStartDate: _readNullableDateTime(json['contractStartDate']),
+      contractEndDate: _readNullableDateTime(json['contractEndDate']),
+      paymentDueDay: (json['paymentDueDay'] as num?)?.toInt() ?? 1,
+      status: json['status'] as String? ?? RoomStatuses.vacant,
+      createdAt: _readDateTime(json['createdAt']),
+      updatedAt: _readNullableDateTime(json['updatedAt']),
+    );
+  }
+
   Income _incomeFromJson(Map<String, dynamic> json) {
     return Income(
       id: json['id'] as String,
@@ -646,11 +776,30 @@ class FirebaseSyncService {
     );
   }
 
+  AppUser _appUserFromJson(Map<String, dynamic> json) {
+    final createdAt = _readDateTime(json['createdAt']);
+    return AppUser(
+      id: json['id'] as String,
+      username: json['username'] as String? ?? '',
+      password: json['password'] as String? ?? '',
+      role: json['role'] as String? ?? 'viewer',
+      createdAt: createdAt,
+      updatedAt: _readNullableDateTime(json['updatedAt']),
+    );
+  }
+
+  bool _isDeleted(Map<String, dynamic> json) => json['isDeleted'] == true;
+
   DateTime _readDateTime(Object? value) {
     if (value is DateTime) return value;
     if (value is Timestamp) return value.toDate();
     if (value is String) return DateTime.tryParse(value) ?? DateTime.now();
     return DateTime.now();
+  }
+
+  DateTime? _readNullableDateTime(Object? value) {
+    if (value == null) return null;
+    return _readDateTime(value);
   }
 
   FirebaseFirestore? get _safeFirestore {
