@@ -247,24 +247,27 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
         0,
         (sum, item) => sum + item.pendingRent,
       );
-      final tenantNames = villaRoomSummaries
-          .where((item) => item.isOccupied && item.tenantName != 'Vacant')
-          .map((item) => item.tenantName)
-          .toSet();
+      final villaVacancyLoss = villaRoomSummaries.fold<double>(
+        0,
+        (sum, item) => sum + item.vacancyLoss,
+      );
+      final occupiedRooms =
+          villaRoomSummaries.where((item) => item.isOccupied).length;
+      final vacantRooms =
+          villaRoomSummaries.where((item) => item.isVacant).length;
 
       return VillaProfitReportItem(
         villaId: villa.id,
         villaName: villa.villaName,
-        tenantName: tenantNames.isEmpty
-            ? 'Vacant'
-            : tenantNames.length == 1
-                ? tenantNames.first
-                : '${tenantNames.length} tenants',
+        totalRooms: villaRoomSummaries.length,
+        occupiedRooms: occupiedRooms,
+        vacantRooms: vacantRooms,
         expectedRent: villaExpectedRent,
         receivedIncome: villaIncome,
         totalExpense: villaExpense,
         netProfit: villaIncome - villaExpense,
         pendingAmount: villaPendingRent,
+        vacancyLoss: villaVacancyLoss,
       );
     }).toList();
 
@@ -404,6 +407,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
             'Total Expense',
             'Net Profit',
             'Pending',
+            'Vacancy Loss',
           ],
           rows: data.villaProfitItems
               .map(
@@ -414,6 +418,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                   _money(item.totalExpense),
                   _money(item.netProfit),
                   _money(item.pendingAmount),
+                  _money(item.vacancyLoss),
                 ],
               )
               .toList(),
@@ -462,7 +467,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
       case ReportType.pendingRentReport:
         return _ExportData(
           headers: const [
-            'Villa',
+            'Villa / Room',
             'Tenant',
             'Expected Rent',
             'Received Rent',

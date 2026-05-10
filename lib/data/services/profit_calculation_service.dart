@@ -9,6 +9,7 @@ class ProfitCalculationService {
 
   MonthlyProfitSummary calculateMonthlySummary({
     required List<VillaModel> villas,
+    List<Room> rooms = const [],
     required List<Income> incomes,
     required List<Expense> expenses,
     required DateTime month,
@@ -24,25 +25,22 @@ class ProfitCalculationService {
         .where((expense) => _isSameMonth(expense.expenseDate, month))
         .toList();
 
-    final occupiedVillas = villas.where(_isOccupiedVilla).toList();
-    final occupiedVillaIds = occupiedVillas.map((villa) => villa.id).toSet();
-
     final actualIncome = _sumIncome(monthlyCashIncomes);
     final rentReceived = _sumIncome(
       monthlyRentIncomes.where(
-        (income) => occupiedVillaIds.contains(income.villaId),
+        (income) => rooms.any((room) => room.id == income.roomId),
       ),
     );
     final otherIncome = _sumIncome(
       monthlyCashIncomes.where((income) => !_isRentIncome(income)),
     );
     final expensesPaid = _sumExpense(monthlyExpenses);
-    final expectedRent = calculateExpectedRent(villas);
+    final expectedRent = calculateExpectedRent(rooms);
     final pendingRent = calculatePendingRent(
       expectedRent: expectedRent,
       rentReceived: rentReceived,
     );
-    final vacancyLoss = calculateVacancyLoss(villas);
+    final vacancyLoss = calculateVacancyLoss(rooms);
 
     return MonthlyProfitSummary(
       month: DateTime(month.year, month.month, 1),
@@ -66,6 +64,7 @@ class ProfitCalculationService {
 
   List<VillaProfitCalculation> calculateVillaProfit({
     required List<VillaModel> villas,
+    List<Room> rooms = const [],
     required List<Income> incomes,
     required List<Expense> expenses,
     required DateTime month,
@@ -82,13 +81,15 @@ class ProfitCalculationService {
         .toList();
 
     return villas.map((villa) {
-      final isOccupied = _isOccupiedVilla(villa);
-      final isVacant = _isVacantVilla(villa);
-      final rentReceived = isOccupied
-          ? _sumIncome(
-              monthlyRentIncomes.where((income) => income.villaId == villa.id),
-            )
-          : 0.0;
+      final villaRooms =
+          rooms.where((room) => room.villaId == villa.id).toList();
+      final occupiedRooms =
+          villaRooms.where((room) => room.isOccupied).toList();
+      final vacantRooms = villaRooms.where((room) => room.isVacant).toList();
+      final roomIds = villaRooms.map((room) => room.id).toSet();
+      final rentReceived = _sumIncome(
+        monthlyRentIncomes.where((income) => roomIds.contains(income.roomId)),
+      );
       final otherVillaIncome = _sumIncome(
         monthlyCashIncomes.where(
           (income) => income.villaId == villa.id && !_isRentIncome(income),
@@ -97,7 +98,7 @@ class ProfitCalculationService {
       final villaExpenses = _sumExpense(
         monthlyExpenses.where((expense) => expense.villaId == villa.id),
       );
-      final expectedRent = isOccupied ? villa.monthlyRent : 0.0;
+      final expectedRent = calculateExpectedRent(villaRooms);
       final pendingRent = calculatePendingRent(
         expectedRent: expectedRent,
         rentReceived: rentReceived,
@@ -107,32 +108,40 @@ class ProfitCalculationService {
         rentReceived: rentReceived,
       );
       final actualProfit = rentReceived + otherVillaIncome - villaExpenses;
-      final expectedProfit = isOccupied
-          ? expectedRent + otherVillaIncome - villaExpenses
-          : actualProfit;
+      final expectedProfit = expectedRent + otherVillaIncome - villaExpenses;
+      final vacancyLoss = calculateVacancyLoss(villaRooms);
+      final tenantNames = occupiedRooms
+          .where((room) => room.tenantName.trim().isNotEmpty)
+          .map((room) => room.tenantName.trim())
+          .toSet();
 
       return VillaProfitCalculation(
         villaId: villa.id,
         villaName: villa.villaName,
-        tenantName: isOccupied ? villa.tenantName : 'Vacant',
-        isOccupied: isOccupied,
-        isVacant: isVacant,
+        tenantName: tenantNames.isEmpty
+            ? 'No occupied rooms'
+            : tenantNames.length == 1
+                ? tenantNames.first
+                : '${tenantNames.length} tenants',
+        isOccupied: occupiedRooms.isNotEmpty,
+        isVacant: occupiedRooms.isEmpty && vacantRooms.isNotEmpty,
         expectedRent: expectedRent,
         rentReceived: rentReceived,
         otherIncome: otherVillaIncome,
         expensesPaid: villaExpenses,
         pendingRent: pendingRent,
         overpaidAmount: overpaidAmount,
-        vacancyLoss: isVacant ? villa.monthlyRent : 0.0,
+        vacancyLoss: vacancyLoss,
         actualProfit: actualProfit,
         expectedProfit: expectedProfit,
-        dueDay: villa.paymentDueDay,
+        dueDay: occupiedRooms.isEmpty ? 1 : occupiedRooms.first.paymentDueDay,
       );
     }).toList();
   }
 
   List<YearlyProfitSummaryItem> calculateYearlySummary({
     required List<VillaModel> villas,
+    List<Room> rooms = const [],
     required List<Income> incomes,
     required List<Expense> expenses,
     required int year,
@@ -141,6 +150,7 @@ class ProfitCalculationService {
       final month = DateTime(year, index + 1, 1);
       final summary = calculateMonthlySummary(
         villas: villas,
+        rooms: rooms,
         incomes: incomes,
         expenses: expenses,
         month: month,
@@ -255,11 +265,13 @@ class ProfitCalculationService {
 
   List<PendingRentCalculation> calculatePendingRentItems({
     required List<VillaModel> villas,
+    List<Room> rooms = const [],
     required List<Income> incomes,
     required DateTime month,
   }) {
     return calculateVillaProfit(
       villas: villas,
+      rooms: rooms,
       incomes: incomes,
       expenses: const [],
       month: month,
@@ -280,12 +292,12 @@ class ProfitCalculationService {
         .toList();
   }
 
-  double calculateExpectedRent(List<VillaModel> villas) {
-    return _sumMonthlyRent(villas.where(_isOccupiedVilla));
+  double calculateExpectedRent(List<Room> rooms) {
+    return _sumMonthlyRent(rooms.where((room) => room.isOccupied));
   }
 
-  double calculateVacancyLoss(List<VillaModel> villas) {
-    return _sumMonthlyRent(villas.where(_isVacantVilla));
+  double calculateVacancyLoss(List<Room> rooms) {
+    return _sumMonthlyRent(rooms.where((room) => room.isVacant));
   }
 
   double calculatePendingRent({
@@ -294,14 +306,6 @@ class ProfitCalculationService {
   }) {
     final pendingRent = expectedRent - rentReceived;
     return pendingRent < 0 ? 0 : pendingRent;
-  }
-
-  bool _isOccupiedVilla(VillaModel villa) {
-    return villa.status.name.toLowerCase() == 'occupied';
-  }
-
-  bool _isVacantVilla(VillaModel villa) {
-    return villa.status.name.toLowerCase() == 'vacant';
   }
 
   bool _isRentIncome(Income income) {
@@ -390,8 +394,8 @@ class ProfitCalculationService {
     return expenses.fold<double>(0, (sum, expense) => sum + expense.amount);
   }
 
-  double _sumMonthlyRent(Iterable<VillaModel> villas) {
-    return villas.fold<double>(0, (sum, villa) => sum + villa.monthlyRent);
+  double _sumMonthlyRent(Iterable<Room> rooms) {
+    return rooms.fold<double>(0, (sum, room) => sum + room.monthlyRent);
   }
 }
 

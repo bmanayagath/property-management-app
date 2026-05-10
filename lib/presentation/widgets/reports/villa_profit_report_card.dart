@@ -62,15 +62,20 @@ class VillaProfitReportCard extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 3),
-                    Text(
-                      item.tenantName.isEmpty ? 'Vacant' : item.tenantName,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: Color(0xFF646B7A),
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                      ),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 4,
+                      children: [
+                        _CountChip(label: '${item.totalRooms} rooms'),
+                        _CountChip(
+                          label: '${item.occupiedRooms} occupied',
+                          color: const Color(0xFF12B76A),
+                        ),
+                        _CountChip(
+                          label: '${item.vacantRooms} vacant',
+                          color: const Color(0xFFF59E0B),
+                        ),
+                      ],
                     ),
                   ],
                 ),
@@ -106,6 +111,11 @@ class VillaProfitReportCard extends StatelessWidget {
                 value: item.pendingAmount,
                 color: const Color(0xFFF59E0B),
               ),
+              _Metric(
+                label: 'Vacancy Loss',
+                value: item.vacancyLoss,
+                color: const Color(0xFFEA580C),
+              ),
             ],
           ),
         ],
@@ -114,6 +124,35 @@ class VillaProfitReportCard extends StatelessWidget {
   }
 
   static String _money(double value) => 'QAR ${_moneyFormat.format(value)}';
+}
+
+class _CountChip extends StatelessWidget {
+  final String label;
+  final Color color;
+
+  const _CountChip({
+    required this.label,
+    this.color = const Color(0xFF2563EB),
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: color,
+          fontSize: 10,
+          fontWeight: FontWeight.w900,
+        ),
+      ),
+    );
+  }
 }
 
 class _Metric extends StatelessWidget {

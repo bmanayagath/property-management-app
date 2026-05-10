@@ -9,6 +9,7 @@ class RoomCard extends StatelessWidget {
   final VoidCallback? onEdit;
   final VoidCallback? onDelete;
   final String? pendingRent;
+  final String pendingRentLabel;
 
   const RoomCard({
     Key? key,
@@ -17,6 +18,7 @@ class RoomCard extends StatelessWidget {
     this.onEdit,
     this.onDelete,
     this.pendingRent,
+    this.pendingRentLabel = 'Pending',
   }) : super(key: key);
 
   Color _getStatusColor(bool isOccupied) {
@@ -49,8 +51,8 @@ class RoomCard extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: _getStatusColor(room.isOccupied)
-                        .withValues(alpha: 0.1),
+                    color:
+                        _getStatusColor(room.isOccupied).withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Icon(
@@ -227,7 +229,7 @@ class RoomCard extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Pending',
+                          pendingRentLabel,
                           style: const TextStyle(
                             color: Color(0xFF9CA3AF),
                             fontSize: 10,

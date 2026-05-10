@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_styles.dart';
-import '../../core/constants/enums.dart';
 import '../../core/constants/app_permissions.dart';
 import '../../core/utils/currency_formatter.dart';
-import '../../domain/models/villa_model.dart';
+import '../../domain/models/income.dart';
 import '../providers/auth_provider.dart';
+import '../providers/income_provider.dart';
 import '../providers/villa_provider.dart';
 import '../providers/room_provider.dart';
 import '../widgets/room_card.dart';
@@ -20,15 +20,6 @@ class VillaDetailScreen extends ConsumerWidget {
     Key? key,
     required this.villaId,
   }) : super(key: key);
-
-  Color _getStatusColor(VillaStatus status) {
-    switch (status) {
-      case VillaStatus.occupied:
-        return AppColors.success;
-      case VillaStatus.vacant:
-        return AppColors.warning;
-    }
-  }
 
   void _showDeleteConfirmation(BuildContext context, WidgetRef ref) {
     showDialog(
@@ -101,7 +92,7 @@ class VillaDetailScreen extends ConsumerWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Header Card with Villa Name and Status
+                  // Header Card with Villa Name
                   Container(
                     padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
@@ -119,43 +110,18 @@ class VillaDetailScreen extends ConsumerWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    villa.villaName,
-                                    style: AppStyles.titleLarge,
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    'Villa # ${villa.villaNumber}',
-                                    style: AppStyles.bodyMedium.copyWith(
-                                      color: AppColors.textSecondary,
-                                    ),
-                                  ),
-                                ],
-                              ),
+                            Text(
+                              villa.villaName,
+                              style: AppStyles.titleLarge,
                             ),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 8,
-                              ),
-                              decoration: BoxDecoration(
-                                color: _getStatusColor(villa.status)
-                                    .withValues(alpha: 0.1),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Text(
-                                villa.status.displayName,
-                                style: AppStyles.labelMedium.copyWith(
-                                  color: _getStatusColor(villa.status),
-                                  fontWeight: FontWeight.w700,
-                                ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Villa # ${villa.villaNumber}',
+                              style: AppStyles.bodyMedium.copyWith(
+                                color: AppColors.textSecondary,
                               ),
                             ),
                           ],
@@ -269,11 +235,13 @@ class VillaDetailScreen extends ConsumerWidget {
   Widget _buildRoomsSummary(
       BuildContext context, WidgetRef ref, String villaId) {
     final roomsAsync = ref.watch(roomsByVillaProvider(villaId));
-    
+
     return roomsAsync.when(
       data: (rooms) {
         final occupiedCount = rooms.where((r) => r.isOccupied).length;
         final vacantCount = rooms.where((r) => r.isVacant).length;
+        final occupancyRate =
+            rooms.isEmpty ? 0.0 : (occupiedCount / rooms.length) * 100;
         final expectedRent = rooms
             .where((r) => r.isOccupied)
             .fold<double>(0, (sum, r) => sum + r.monthlyRent);
@@ -293,83 +261,112 @@ class VillaDetailScreen extends ConsumerWidget {
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: AppColors.border, width: 1),
               ),
-              child: Row(
+              child: Column(
                 children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Total Rooms',
-                          style: AppStyles.labelSmall,
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Total Rooms',
+                              style: AppStyles.labelSmall,
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              rooms.length.toString(),
+                              style: AppStyles.headlineSmall.copyWith(
+                                color: AppColors.primary,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ],
                         ),
-                        const SizedBox(height: 4),
-                        Text(
-                          rooms.length.toString(),
-                          style: AppStyles.headlineSmall.copyWith(
-                            color: AppColors.primary,
-                            fontWeight: FontWeight.w700,
-                          ),
+                      ),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Occupied',
+                              style: AppStyles.labelSmall,
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              occupiedCount.toString(),
+                              style: AppStyles.headlineSmall.copyWith(
+                                color: AppColors.success,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
+                      ),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Vacant',
+                              style: AppStyles.labelSmall,
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              vacantCount.toString(),
+                              style: AppStyles.headlineSmall.copyWith(
+                                color: AppColors.warning,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Expected Rent',
+                              style: AppStyles.labelSmall,
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              CurrencyFormatter.format(expectedRent),
+                              style: AppStyles.bodySmall.copyWith(
+                                color: AppColors.success,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Occupied',
-                          style: AppStyles.labelSmall,
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          occupiedCount.toString(),
-                          style: AppStyles.headlineSmall.copyWith(
-                            color: AppColors.success,
-                            fontWeight: FontWeight.w700,
+                  const SizedBox(height: 14),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(20),
+                          child: LinearProgressIndicator(
+                            value: occupancyRate / 100,
+                            minHeight: 9,
+                            backgroundColor: const Color(0xFFE4E4E6),
+                            valueColor:
+                                AlwaysStoppedAnimation(AppColors.success),
                           ),
                         ),
-                      ],
-                    ),
-                  ),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Vacant',
-                          style: AppStyles.labelSmall,
+                      ),
+                      const SizedBox(width: 12),
+                      Text(
+                        '${occupancyRate.toStringAsFixed(1)}%',
+                        style: AppStyles.labelMedium.copyWith(
+                          color: AppColors.textPrimary,
+                          fontWeight: FontWeight.w800,
                         ),
-                        const SizedBox(height: 4),
-                        Text(
-                          vacantCount.toString(),
-                          style: AppStyles.headlineSmall.copyWith(
-                            color: AppColors.warning,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Expected Rent',
-                          style: AppStyles.labelSmall,
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          CurrencyFormatter.format(expectedRent),
-                          style: AppStyles.bodySmall.copyWith(
-                            color: AppColors.success,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -382,9 +379,13 @@ class VillaDetailScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildRoomsList(
-      BuildContext context, WidgetRef ref, String villaId, bool canManageVillas) {
+  Widget _buildRoomsList(BuildContext context, WidgetRef ref, String villaId,
+      bool canManageVillas) {
     final roomsAsync = ref.watch(watchRoomsByVillaProvider(villaId));
+    final incomes =
+        ref.watch(incomeListProvider).valueOrNull ?? const <Income>[];
+    final currentMonth = DateTime(DateTime.now().year, DateTime.now().month, 1);
+    final rentReceivedByRoom = _rentReceivedByRoom(incomes, currentMonth);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -465,8 +466,17 @@ class VillaDetailScreen extends ConsumerWidget {
               itemCount: rooms.length,
               itemBuilder: (context, index) {
                 final room = rooms[index];
+                final received = rentReceivedByRoom[room.id] ?? 0;
+                final pending = room.isOccupied
+                    ? (room.monthlyRent - received)
+                        .clamp(0.0, double.infinity)
+                        .toDouble()
+                    : room.monthlyRent;
                 return RoomCard(
                   room: room,
+                  pendingRent: CurrencyFormatter.format(pending),
+                  pendingRentLabel:
+                      room.isOccupied ? 'Pending' : 'Potential Loss',
                   onTap: () {
                     // Can add room detail screen later
                   },
@@ -475,8 +485,8 @@ class VillaDetailScreen extends ConsumerWidget {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (context) =>
-                                  AddEditRoomScreen(room: room, villaId: villaId),
+                              builder: (context) => AddEditRoomScreen(
+                                  room: room, villaId: villaId),
                             ),
                           );
                         }
@@ -487,7 +497,8 @@ class VillaDetailScreen extends ConsumerWidget {
                             context: context,
                             builder: (context) => AlertDialog(
                               title: const Text('Delete Room?'),
-                              content: const Text('This action cannot be undone.'),
+                              content:
+                                  const Text('This action cannot be undone.'),
                               actions: [
                                 TextButton(
                                   onPressed: () => Navigator.pop(context),
@@ -517,5 +528,24 @@ class VillaDetailScreen extends ConsumerWidget {
         ),
       ],
     );
+  }
+
+  Map<String, double> _rentReceivedByRoom(
+      List<Income> incomes, DateTime month) {
+    final totals = <String, double>{};
+    for (final income in incomes.where(
+      (income) =>
+          income.incomeType.toLowerCase() == IncomeTypes.rent.toLowerCase() &&
+          income.roomId.trim().isNotEmpty &&
+          income.monthCovered.year == month.year &&
+          income.monthCovered.month == month.month,
+    )) {
+      totals.update(
+        income.roomId,
+        (value) => value + income.amount,
+        ifAbsent: () => income.amount,
+      );
+    }
+    return totals;
   }
 }

@@ -6,7 +6,8 @@ import 'package:intl/intl.dart';
 
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_permissions.dart';
-import '../../core/constants/enums.dart';
+import '../../domain/models/income.dart';
+import '../../domain/models/room.dart';
 import '../../domain/models/villa_model.dart';
 import '../providers/auth_provider.dart';
 import '../providers/dashboard_provider.dart';
@@ -14,6 +15,7 @@ import '../providers/expense_provider.dart';
 import '../providers/income_provider.dart';
 import '../providers/navigation_provider.dart';
 import '../providers/notification_provider.dart';
+import '../providers/room_provider.dart';
 import '../providers/villa_provider.dart';
 import 'notifications/notifications_screen.dart';
 import 'villa_detail_screen.dart';
@@ -27,10 +29,10 @@ class DashboardScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final selectedMonth = ref.watch(selectedMonthProvider);
     final villasAsync = ref.watch(villasProvider);
+    final roomsAsync = ref.watch(allRoomsProvider);
+    final incomesAsync = ref.watch(incomeListProvider);
     final totalIncomeAsync =
         ref.watch(totalIncomeForMonthProvider(selectedMonth));
-    final incomeSummaryAsync =
-        ref.watch(incomeVillaSummaryProvider(selectedMonth));
     final expenses = ref.watch(expenseProvider);
     final authState = ref.watch(authProvider);
     final canManageIncome =
@@ -47,13 +49,15 @@ class DashboardScreen extends ConsumerWidget {
         child: RefreshIndicator(
           onRefresh: () async {
             ref.invalidate(villasProvider);
+            ref.invalidate(allRoomsProvider);
+            ref.invalidate(incomeListProvider);
             ref.invalidate(totalIncomeForMonthProvider(selectedMonth));
-            ref.invalidate(incomeVillaSummaryProvider(selectedMonth));
           },
           child: villasAsync.when(
             data: (villas) {
+              final rooms = roomsAsync.valueOrNull ?? const <Room>[];
+              final incomes = incomesAsync.valueOrNull ?? const <Income>[];
               final totalIncome = totalIncomeAsync.valueOrNull ?? 0;
-              final incomeByVilla = incomeSummaryAsync.valueOrNull ?? {};
               final expensesForMonth = expenses.where(
                 (expense) =>
                     expense.expenseDate.year == selectedMonth.year &&
@@ -71,37 +75,15 @@ class DashboardScreen extends ConsumerWidget {
                 0,
                 (sum, value) => sum + value,
               );
-              final occupiedVillas = villas.where(_isOccupiedVilla).toList();
-              final vacantVillas = villas.where(_isVacantVilla).toList();
-              final occupiedVillaIds =
-                  occupiedVillas.map((villa) => villa.id).toSet();
-              final rentReceivedByVilla = Map<String, double>.fromEntries(
-                occupiedVillaIds.map((villaId) => MapEntry(villaId, 0)),
+              final rentReceivedByRoom = _rentReceivedByRoom(
+                incomes: incomes,
+                month: selectedMonth,
               );
-              incomeByVilla.forEach((villaId, amount) {
-                if (occupiedVillaIds.contains(villaId)) {
-                  rentReceivedByVilla[villaId] = amount;
-                }
-              });
-              final expectedRent = _calculateMonthlyRentTotal(occupiedVillas);
-              final vacancyLoss = _calculateMonthlyRentTotal(vacantVillas);
-              final rentReceived = rentReceivedByVilla.values.fold<double>(
-                0,
-                (sum, amount) => sum + amount,
+              final dashboard = _DashboardRoomMetrics.fromRooms(
+                totalVillas: villas.length,
+                rooms: rooms,
+                rentReceivedByRoom: rentReceivedByRoom,
               );
-              final pendingRent = _calculatePendingRent(
-                expectedRent: expectedRent,
-                rentReceived: rentReceived,
-              );
-              final paidVillas = occupiedVillas
-                  .where((villa) =>
-                      (rentReceivedByVilla[villa.id] ?? 0) >=
-                          villa.monthlyRent &&
-                      villa.monthlyRent > 0)
-                  .length;
-              final progress = expectedRent == 0
-                  ? 0.0
-                  : (rentReceived / expectedRent).clamp(0.0, 1.0);
 
               return ListView(
                 padding: const EdgeInsets.fromLTRB(18, 8, 18, 112),
@@ -116,13 +98,16 @@ class DashboardScreen extends ConsumerWidget {
                   ),
                   const SizedBox(height: 18),
                   _MetricGrid(
+                    totalVillas: dashboard.totalVillas,
+                    totalRooms: dashboard.totalRooms,
+                    occupiedRooms: dashboard.occupiedRooms,
+                    vacantRooms: dashboard.vacantRooms,
+                    occupancyRate: dashboard.occupancyRate,
                     totalIncome: totalIncome,
                     totalExpense: totalExpense,
-                    pendingRent: pendingRent,
-                    pendingVillas:
-                        math.max(occupiedVillas.length - paidVillas, 0),
-                    vacancyLoss: vacancyLoss,
-                    vacantVillas: vacantVillas.length,
+                    pendingRent: dashboard.pendingRent,
+                    pendingRooms: dashboard.pendingRooms,
+                    vacancyLoss: dashboard.vacancyLoss,
                   ),
                   const SizedBox(height: 14),
                   _QuickActions(
@@ -138,16 +123,17 @@ class DashboardScreen extends ConsumerWidget {
                   ),
                   const SizedBox(height: 16),
                   _RentCollectionCard(
-                    collected: rentReceived,
-                    pending: pendingRent,
-                    paidVillas: paidVillas,
-                    totalVillas: occupiedVillas.length,
-                    progress: progress,
+                    collected: dashboard.rentReceived,
+                    pending: dashboard.pendingRent,
+                    paidRooms: dashboard.paidRooms,
+                    totalOccupiedRooms: dashboard.occupiedRooms,
+                    progress: dashboard.rentCollectionProgress,
                   ),
                   const SizedBox(height: 22),
                   _VillaSummary(
                     villas: villas,
-                    incomeByVilla: rentReceivedByVilla,
+                    rooms: rooms,
+                    rentReceivedByRoom: rentReceivedByRoom,
                     onViewAll: () =>
                         ref.read(selectedTabProvider.notifier).state = 1,
                   ),
@@ -236,27 +222,115 @@ class DashboardScreen extends ConsumerWidget {
       'QAR ${_moneyFormat.format(value.round())}';
 }
 
-bool _isOccupiedVilla(VillaModel villa) {
-  return _hasVillaStatus(villa, 'occupied');
-}
-
-bool _isVacantVilla(VillaModel villa) {
-  return _hasVillaStatus(villa, 'vacant');
-}
-
-bool _hasVillaStatus(VillaModel villa, String status) {
-  return villa.status.name.toLowerCase() == status.toLowerCase();
-}
-
-double _calculateMonthlyRentTotal(Iterable<VillaModel> villas) {
-  return villas.fold<double>(0, (sum, villa) => sum + villa.monthlyRent);
-}
-
 double _calculatePendingRent({
   required double expectedRent,
   required double rentReceived,
 }) {
   return math.max(expectedRent - rentReceived, 0).toDouble();
+}
+
+Map<String, double> _rentReceivedByRoom({
+  required List<Income> incomes,
+  required DateTime month,
+}) {
+  final totals = <String, double>{};
+  for (final income in incomes.where(
+    (income) =>
+        income.incomeType.toLowerCase() == IncomeTypes.rent.toLowerCase() &&
+        income.roomId.trim().isNotEmpty &&
+        income.monthCovered.year == month.year &&
+        income.monthCovered.month == month.month,
+  )) {
+    totals.update(
+      income.roomId,
+      (value) => value + income.amount,
+      ifAbsent: () => income.amount,
+    );
+  }
+  return totals;
+}
+
+class _DashboardRoomMetrics {
+  final int totalVillas;
+  final int totalRooms;
+  final int occupiedRooms;
+  final int vacantRooms;
+  final int paidRooms;
+  final int pendingRooms;
+  final double rentReceived;
+  final double expectedRent;
+  final double pendingRent;
+  final double vacancyLoss;
+
+  const _DashboardRoomMetrics({
+    required this.totalVillas,
+    required this.totalRooms,
+    required this.occupiedRooms,
+    required this.vacantRooms,
+    required this.paidRooms,
+    required this.pendingRooms,
+    required this.rentReceived,
+    required this.expectedRent,
+    required this.pendingRent,
+    required this.vacancyLoss,
+  });
+
+  double get occupancyRate =>
+      totalRooms == 0 ? 0 : (occupiedRooms / totalRooms) * 100;
+
+  double get rentCollectionProgress =>
+      expectedRent == 0 ? 0 : (rentReceived / expectedRent).clamp(0.0, 1.0);
+
+  static _DashboardRoomMetrics fromRooms({
+    required int totalVillas,
+    required List<Room> rooms,
+    required Map<String, double> rentReceivedByRoom,
+  }) {
+    var occupiedRooms = 0;
+    var vacantRooms = 0;
+    var paidRooms = 0;
+    var pendingRooms = 0;
+    var rentReceived = 0.0;
+    var expectedRent = 0.0;
+    var pendingRent = 0.0;
+    var vacancyLoss = 0.0;
+
+    for (final room in rooms) {
+      final received = rentReceivedByRoom[room.id] ?? 0;
+      rentReceived += received;
+
+      if (room.isOccupied) {
+        occupiedRooms++;
+        expectedRent += room.monthlyRent;
+        final pending = _calculatePendingRent(
+          expectedRent: room.monthlyRent,
+          rentReceived: received,
+        );
+        pendingRent += pending;
+        if (pending <= 0 && room.monthlyRent > 0) {
+          paidRooms++;
+        } else if (pending > 0) {
+          pendingRooms++;
+        }
+      } else if (room.isVacant) {
+        vacantRooms++;
+        vacancyLoss += room.monthlyRent;
+      }
+    }
+
+    return _DashboardRoomMetrics(
+      totalVillas: totalVillas,
+      totalRooms: rooms.length,
+      occupiedRooms: occupiedRooms,
+      vacantRooms: vacantRooms,
+      paidRooms: paidRooms,
+      pendingRooms: pendingRooms,
+      rentReceived: rentReceived,
+      expectedRent: expectedRent,
+      pendingRent: pendingRent,
+      vacancyLoss: vacancyLoss,
+    );
+  }
 }
 
 class _DashboardHeader extends ConsumerWidget {
@@ -451,26 +525,96 @@ class _MonthFilter extends StatelessWidget {
 }
 
 class _MetricGrid extends StatelessWidget {
+  final int totalVillas;
+  final int totalRooms;
+  final int occupiedRooms;
+  final int vacantRooms;
+  final double occupancyRate;
   final double totalIncome;
   final double totalExpense;
   final double pendingRent;
-  final int pendingVillas;
+  final int pendingRooms;
   final double vacancyLoss;
-  final int vacantVillas;
 
   const _MetricGrid({
+    required this.totalVillas,
+    required this.totalRooms,
+    required this.occupiedRooms,
+    required this.vacantRooms,
+    required this.occupancyRate,
     required this.totalIncome,
     required this.totalExpense,
     required this.pendingRent,
-    required this.pendingVillas,
+    required this.pendingRooms,
     required this.vacancyLoss,
-    required this.vacantVillas,
   });
 
   @override
   Widget build(BuildContext context) {
     return Column(
       children: [
+        Row(
+          children: [
+            Expanded(
+              child: _MetricCard(
+                title: 'Total Villas',
+                value: totalVillas.toString(),
+                color: const Color(0xFF5549DE),
+                background: const Color(0xFFF4F0FF),
+                border: const Color(0xFFE1D6FF),
+                icon: Icons.home_work_outlined,
+                iconBackground: const Color(0xFFEDE9FF),
+                showTrendArrow: false,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _MetricCard(
+                title: 'Total Rooms',
+                value: totalRooms.toString(),
+                color: const Color(0xFF2563EB),
+                background: const Color(0xFFF4F8FF),
+                border: const Color(0xFFD2E2FF),
+                icon: Icons.meeting_room_outlined,
+                iconBackground: const Color(0xFFE2EAFF),
+                showTrendArrow: false,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: _MetricCard(
+                title: 'Occupied Rooms',
+                value: occupiedRooms.toString(),
+                color: const Color(0xFF2EA043),
+                background: const Color(0xFFF1FCF3),
+                border: const Color(0xFFC8EFD0),
+                icon: Icons.check_circle_outline_rounded,
+                iconBackground: const Color(0xFFDDF6E2),
+                showTrendArrow: false,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _MetricCard(
+                title: 'Vacant Rooms',
+                value: vacantRooms.toString(),
+                color: const Color(0xFFEA580C),
+                background: const Color(0xFFFFF7ED),
+                border: const Color(0xFFFED7AA),
+                icon: Icons.sensor_door_outlined,
+                iconBackground: const Color(0xFFFFEDD5),
+                showTrendArrow: false,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        _OccupancyRateCard(rate: occupancyRate),
+        const SizedBox(height: 12),
         Row(
           children: [
             Expanded(
@@ -517,7 +661,7 @@ class _MetricGrid extends StatelessWidget {
               child: _MetricCard(
                 title: 'Pending Rent',
                 value: DashboardScreen.money(pendingRent),
-                trend: '$pendingVillas Villas',
+                trend: '$pendingRooms Rooms',
                 color: const Color(0xFFF59E0B),
                 background: const Color(0xFFFFFAF0),
                 border: const Color(0xFFF8E4BC),
@@ -532,7 +676,7 @@ class _MetricGrid extends StatelessWidget {
         _MetricCard(
           title: 'Vacancy Loss',
           value: DashboardScreen.money(vacancyLoss),
-          trend: 'Vacant Villas: $vacantVillas',
+          trend: 'Vacant Rooms: $vacantRooms',
           color: const Color(0xFFEA580C),
           background: const Color(0xFFFFF7ED),
           border: const Color(0xFFFED7AA),
@@ -541,6 +685,79 @@ class _MetricGrid extends StatelessWidget {
           showTrendArrow: false,
         ),
       ],
+    );
+  }
+}
+
+class _OccupancyRateCard extends StatelessWidget {
+  final double rate;
+
+  const _OccupancyRateCard({required this.rate});
+
+  @override
+  Widget build(BuildContext context) {
+    final progress = (rate / 100).clamp(0.0, 1.0);
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE8EAF0)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            height: 44,
+            width: 44,
+            decoration: const BoxDecoration(
+              color: Color(0xFFEAF0FF),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.percent_rounded,
+              color: Color(0xFF2563EB),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Occupancy Rate',
+                  style: TextStyle(
+                    color: Color(0xFF060B26),
+                    fontSize: 14,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 9),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(20),
+                  child: LinearProgressIndicator(
+                    value: progress,
+                    minHeight: 9,
+                    backgroundColor: const Color(0xFFE4E4E6),
+                    valueColor: const AlwaysStoppedAnimation(
+                      Color(0xFF2563EB),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 12),
+          Text(
+            '${rate.toStringAsFixed(1)}%',
+            style: const TextStyle(
+              color: Color(0xFF060B26),
+              fontSize: 20,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -802,15 +1019,15 @@ class _ActionPill extends StatelessWidget {
 class _RentCollectionCard extends StatelessWidget {
   final double collected;
   final double pending;
-  final int paidVillas;
-  final int totalVillas;
+  final int paidRooms;
+  final int totalOccupiedRooms;
   final double progress;
 
   const _RentCollectionCard({
     required this.collected,
     required this.pending,
-    required this.paidVillas,
-    required this.totalVillas,
+    required this.paidRooms,
+    required this.totalOccupiedRooms,
     required this.progress,
   });
 
@@ -895,7 +1112,7 @@ class _RentCollectionCard extends StatelessWidget {
                     Align(
                       alignment: Alignment.centerLeft,
                       child: Text(
-                        '$paidVillas of $totalVillas villas paid',
+                        '$paidRooms of $totalOccupiedRooms occupied rooms paid',
                         style: const TextStyle(
                           color: Color(0xFF656B7B),
                           fontSize: 15,
@@ -964,12 +1181,14 @@ class _CollectionAmount extends StatelessWidget {
 
 class _VillaSummary extends StatelessWidget {
   final List<VillaModel> villas;
-  final Map<String, double> incomeByVilla;
+  final List<Room> rooms;
+  final Map<String, double> rentReceivedByRoom;
   final VoidCallback onViewAll;
 
   const _VillaSummary({
     required this.villas,
-    required this.incomeByVilla,
+    required this.rooms,
+    required this.rentReceivedByRoom,
     required this.onViewAll,
   });
 
@@ -1024,17 +1243,16 @@ class _VillaSummary extends StatelessWidget {
               : Column(
                   children: List.generate(visibleVillas.length, (index) {
                     final villa = visibleVillas[index];
-                    final received = incomeByVilla[villa.id] ?? 0;
-                    final pending = _isOccupiedVilla(villa)
-                        ? math.max(villa.monthlyRent - received, 0).toDouble()
-                        : 0.0;
+                    final summary = _VillaRoomSummary.fromRooms(
+                      rooms.where((room) => room.villaId == villa.id),
+                      rentReceivedByRoom,
+                    );
 
                     return Column(
                       children: [
                         _VillaRow(
                           villa: villa,
-                          received: received,
-                          pending: pending,
+                          summary: summary,
                         ),
                         if (index != visibleVillas.length - 1)
                           const Divider(height: 1, color: Color(0xFFE5E7EF)),
@@ -1050,21 +1268,15 @@ class _VillaSummary extends StatelessWidget {
 
 class _VillaRow extends StatelessWidget {
   final VillaModel villa;
-  final double received;
-  final double pending;
+  final _VillaRoomSummary summary;
 
   const _VillaRow({
     required this.villa,
-    required this.received,
-    required this.pending,
+    required this.summary,
   });
 
   @override
   Widget build(BuildContext context) {
-    final isOccupied = _isOccupiedVilla(villa);
-    final isPaid = isOccupied && pending <= 0 && villa.monthlyRent > 0;
-    final isPartial = isOccupied && received > 0 && pending > 0;
-
     return InkWell(
       onTap: () {
         Navigator.of(context).push(
@@ -1116,18 +1328,33 @@ class _VillaRow extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: 3),
-                      FittedBox(
-                        fit: BoxFit.scaleDown,
-                        alignment: Alignment.centerLeft,
-                        child: Text(
-                          isOccupied
-                              ? 'Tenant: ${villa.tenantName}'
-                              : 'Tenant: ${villa.status.displayName}',
-                          maxLines: 1,
-                          style: const TextStyle(
-                            color: Color(0xFF596070),
-                            fontSize: 13,
-                            fontWeight: FontWeight.w700,
+                      Wrap(
+                        spacing: 6,
+                        runSpacing: 5,
+                        children: [
+                          _RoomCountChip(
+                            label: '${summary.totalRooms} rooms',
+                            color: const Color(0xFF5549DE),
+                          ),
+                          _RoomCountChip(
+                            label: '${summary.occupiedRooms} occupied',
+                            color: const Color(0xFF2EA043),
+                          ),
+                          _RoomCountChip(
+                            label: '${summary.vacantRooms} vacant',
+                            color: const Color(0xFFEA580C),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(20),
+                        child: LinearProgressIndicator(
+                          value: summary.occupancyProgress,
+                          minHeight: 7,
+                          backgroundColor: const Color(0xFFE4E4E6),
+                          valueColor: const AlwaysStoppedAnimation(
+                            Color(0xFF2EA043),
                           ),
                         ),
                       ),
@@ -1136,45 +1363,48 @@ class _VillaRow extends StatelessWidget {
                         children: [
                           Expanded(
                             child: _VillaAmount(
-                              label: 'Rent',
-                              value: DashboardScreen.money(villa.monthlyRent),
-                              color: isPaid
-                                  ? const Color(0xFF2EA043)
-                                  : const Color(0xFF060B26),
+                              label: 'Expected',
+                              value:
+                                  DashboardScreen.money(summary.expectedRent),
+                              color: const Color(0xFF060B26),
                             ),
                           ),
                           _SmallDivider(),
                           Expanded(
                             child: _VillaAmount(
-                              label: 'Received',
-                              value: DashboardScreen.money(received),
-                              color: received > 0
+                              label: 'Collected',
+                              value:
+                                  DashboardScreen.money(summary.rentReceived),
+                              color: summary.rentReceived > 0
                                   ? const Color(0xFF2EA043)
                                   : const Color(0xFF596070),
                             ),
                           ),
-                          if (!isPaid) ...[
-                            _SmallDivider(),
-                            Expanded(
-                              child: _VillaAmount(
-                                label: 'Pending',
-                                value: DashboardScreen.money(pending),
-                                color: isPartial
-                                    ? const Color(0xFFF59E0B)
-                                    : const Color(0xFFF04438),
-                              ),
+                          _SmallDivider(),
+                          Expanded(
+                            child: _VillaAmount(
+                              label: 'Pending',
+                              value: DashboardScreen.money(summary.pendingRent),
+                              color: summary.pendingRent > 0
+                                  ? const Color(0xFFF59E0B)
+                                  : const Color(0xFF596070),
                             ),
-                          ],
+                          ),
                         ],
                       ),
                     ],
                   ),
                 ),
                 const SizedBox(width: 8),
-                _StatusBadge(
-                  isPaid: isPaid,
-                  isPartial: isPartial,
-                  isVacant: !isOccupied,
+                _ViewRoomsButton(
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) =>
+                            VillaDetailScreen(villaId: villa.id),
+                      ),
+                    );
+                  },
                 ),
                 const SizedBox(width: 8),
                 const Icon(
@@ -1236,6 +1466,120 @@ class _VillaAmount extends StatelessWidget {
   }
 }
 
+class _VillaRoomSummary {
+  final int totalRooms;
+  final int occupiedRooms;
+  final int vacantRooms;
+  final double expectedRent;
+  final double rentReceived;
+  final double pendingRent;
+  final double vacancyLoss;
+
+  const _VillaRoomSummary({
+    required this.totalRooms,
+    required this.occupiedRooms,
+    required this.vacantRooms,
+    required this.expectedRent,
+    required this.rentReceived,
+    required this.pendingRent,
+    required this.vacancyLoss,
+  });
+
+  double get occupancyProgress =>
+      totalRooms == 0 ? 0 : occupiedRooms / totalRooms;
+
+  static _VillaRoomSummary fromRooms(
+    Iterable<Room> rooms,
+    Map<String, double> rentReceivedByRoom,
+  ) {
+    var totalRooms = 0;
+    var occupiedRooms = 0;
+    var vacantRooms = 0;
+    var expectedRent = 0.0;
+    var rentReceived = 0.0;
+    var pendingRent = 0.0;
+    var vacancyLoss = 0.0;
+
+    for (final room in rooms) {
+      totalRooms++;
+      final received = rentReceivedByRoom[room.id] ?? 0;
+      rentReceived += received;
+      if (room.isOccupied) {
+        occupiedRooms++;
+        expectedRent += room.monthlyRent;
+        pendingRent += _calculatePendingRent(
+          expectedRent: room.monthlyRent,
+          rentReceived: received,
+        );
+      } else if (room.isVacant) {
+        vacantRooms++;
+        vacancyLoss += room.monthlyRent;
+      }
+    }
+
+    return _VillaRoomSummary(
+      totalRooms: totalRooms,
+      occupiedRooms: occupiedRooms,
+      vacantRooms: vacantRooms,
+      expectedRent: expectedRent,
+      rentReceived: rentReceived,
+      pendingRent: pendingRent,
+      vacancyLoss: vacancyLoss,
+    );
+  }
+}
+
+class _RoomCountChip extends StatelessWidget {
+  final String label;
+  final Color color;
+
+  const _RoomCountChip({
+    required this.label,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: color,
+          fontSize: 11,
+          fontWeight: FontWeight.w900,
+        ),
+      ),
+    );
+  }
+}
+
+class _ViewRoomsButton extends StatelessWidget {
+  final VoidCallback onTap;
+
+  const _ViewRoomsButton({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return TextButton.icon(
+      onPressed: onTap,
+      icon: const Icon(Icons.meeting_room_outlined, size: 17),
+      label: const Text('View Rooms'),
+      style: TextButton.styleFrom(
+        foregroundColor: const Color(0xFF5549DE),
+        textStyle: const TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w900,
+        ),
+      ),
+    );
+  }
+}
+
 class _SmallDivider extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -1244,69 +1588,6 @@ class _SmallDivider extends StatelessWidget {
       height: 34,
       margin: const EdgeInsets.symmetric(horizontal: 9),
       color: const Color(0xFFD8DCE5),
-    );
-  }
-}
-
-class _StatusBadge extends StatelessWidget {
-  final bool isPaid;
-  final bool isPartial;
-  final bool isVacant;
-
-  const _StatusBadge({
-    required this.isPaid,
-    required this.isPartial,
-    required this.isVacant,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final color = isPaid
-        ? const Color(0xFF2EA043)
-        : isPartial
-            ? const Color(0xFFF59E0B)
-            : const Color(0xFF6C7180);
-    final background = isPaid
-        ? const Color(0xFFE5F8E9)
-        : isPartial
-            ? const Color(0xFFFFF0D6)
-            : const Color(0xFFF0F1F4);
-    final label = isPaid
-        ? 'Paid'
-        : isPartial
-            ? 'Partial'
-            : isVacant
-                ? 'Vacant'
-                : 'Pending';
-
-    return Container(
-      height: 34,
-      padding: const EdgeInsets.symmetric(horizontal: 10),
-      decoration: BoxDecoration(
-        color: background,
-        borderRadius: BorderRadius.circular(18),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            label,
-            style: TextStyle(
-              color: color,
-              fontSize: 13,
-              fontWeight: FontWeight.w900,
-            ),
-          ),
-          if (isPaid || isPartial) ...[
-            const SizedBox(width: 5),
-            Icon(
-              isPaid ? Icons.check_rounded : Icons.error_outline_rounded,
-              color: color,
-              size: 18,
-            ),
-          ],
-        ],
-      ),
     );
   }
 }

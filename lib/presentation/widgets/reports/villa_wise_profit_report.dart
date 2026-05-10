@@ -33,7 +33,7 @@ class VillaWiseProfitReport extends StatelessWidget {
             crossAxisCount: crossAxisCount,
             crossAxisSpacing: 12,
             mainAxisSpacing: 12,
-            mainAxisExtent: 184,
+            mainAxisExtent: 214,
           ),
           itemBuilder: (context, index) {
             return VillaProfitReportCard(item: items[index]);

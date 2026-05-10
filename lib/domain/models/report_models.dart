@@ -51,22 +51,28 @@ class MonthlySummaryReportData {
 class VillaProfitReportItem {
   final String villaId;
   final String villaName;
-  final String tenantName;
+  final int totalRooms;
+  final int occupiedRooms;
+  final int vacantRooms;
   final double expectedRent;
   final double receivedIncome;
   final double totalExpense;
   final double netProfit;
   final double pendingAmount;
+  final double vacancyLoss;
 
   const VillaProfitReportItem({
     required this.villaId,
     required this.villaName,
-    required this.tenantName,
+    required this.totalRooms,
+    required this.occupiedRooms,
+    required this.vacantRooms,
     required this.expectedRent,
     required this.receivedIncome,
     required this.totalExpense,
     required this.netProfit,
     required this.pendingAmount,
+    required this.vacancyLoss,
   });
 }
 

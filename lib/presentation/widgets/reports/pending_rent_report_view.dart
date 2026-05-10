@@ -73,7 +73,10 @@ class _PendingRentCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Icon(Icons.schedule_rounded, color: Color(0xFFF59E0B)),
+              const Icon(
+                Icons.meeting_room_outlined,
+                color: Color(0xFFF59E0B),
+              ),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
@@ -98,7 +101,7 @@ class _PendingRentCard extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            item.tenantName,
+            'Tenant: ${item.tenantName}',
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: const TextStyle(

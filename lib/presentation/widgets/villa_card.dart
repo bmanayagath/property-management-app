@@ -8,6 +8,7 @@ import '../../domain/models/villa_model.dart';
 class VillaCard extends StatelessWidget {
   final VillaModel villa;
   final List<Room> rooms;
+  final Map<String, double> rentReceivedByRoom;
   final VoidCallback onTap;
   final VoidCallback? onDelete;
 
@@ -15,45 +16,37 @@ class VillaCard extends StatelessWidget {
     Key? key,
     required this.villa,
     this.rooms = const [],
+    this.rentReceivedByRoom = const {},
     required this.onTap,
     this.onDelete,
   }) : super(key: key);
 
-  bool get _hasOccupiedRoom => rooms.any((room) => room.isOccupied);
+  int get _occupiedRooms => rooms.where((room) => room.isOccupied).length;
 
-  double get _totalMonthlyRent =>
-      rooms.fold<double>(0, (sum, room) => sum + room.monthlyRent);
+  int get _vacantRooms => rooms.where((room) => room.isVacant).length;
 
-  String get _statusLabel => _hasOccupiedRoom ? 'Occupied' : 'Vacant';
+  double get _expectedRent => rooms
+      .where((room) => room.isOccupied)
+      .fold<double>(0, (sum, room) => sum + room.monthlyRent);
 
-  Color get _statusColor =>
-      _hasOccupiedRoom ? AppColors.success : AppColors.warning;
+  double get _collectedRent => rooms.fold<double>(
+        0,
+        (sum, room) => sum + (rentReceivedByRoom[room.id] ?? 0),
+      );
 
-  String get _tenantSummary {
-    final tenants = rooms
-        .where((room) => room.isOccupied && room.tenantName.trim().isNotEmpty)
-        .map((room) => room.tenantName.trim())
-        .toSet()
-        .toList();
+  double get _pendingRent =>
+      (_expectedRent - _collectedRent).clamp(0.0, double.infinity).toDouble();
 
-    if (tenants.isEmpty) return 'No tenant';
-    if (tenants.length == 1) return tenants.first;
-    return '${tenants.length} tenants';
-  }
-
-  String get _roomSummary {
-    if (rooms.isEmpty) return 'No rooms';
-    final occupiedCount = rooms.where((room) => room.isOccupied).length;
-    return '${rooms.length} room${rooms.length == 1 ? '' : 's'}'
-        ' / $occupiedCount occupied';
-  }
+  double get _vacancyLoss => rooms
+      .where((room) => room.isVacant)
+      .fold<double>(0, (sum, room) => sum + room.monthlyRent);
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
           color: AppColors.surface,
           borderRadius: BorderRadius.circular(12),
@@ -66,114 +59,236 @@ class VillaCard extends StatelessWidget {
             ),
           ],
         ),
-        child: Row(
+        child: Column(
           children: [
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: AppColors.primary.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const Icon(
-                Icons.home_outlined,
-                color: AppColors.primary,
-                size: 20,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    villa.villaName,
-                    style: const TextStyle(
-                      color: Color(0xFF060B26),
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
                   ),
-                  const SizedBox(height: 4),
-                  Wrap(
-                    spacing: 6,
-                    runSpacing: 2,
+                  child: const Icon(
+                    Icons.home_outlined,
+                    color: AppColors.primary,
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      Text(
+                        villa.villaName,
+                        style: const TextStyle(
+                          color: Color(0xFF060B26),
+                          fontSize: 15,
+                          fontWeight: FontWeight.w800,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 4),
                       Text(
                         villa.location,
                         style: const TextStyle(
                           color: Color(0xFF646B7A),
-                          fontSize: 11,
+                          fontSize: 12,
                           fontWeight: FontWeight.w600,
                         ),
-                      ),
-                      Text(
-                        _tenantSummary,
-                        style: const TextStyle(
-                          color: Color(0xFF646B7A),
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      Text(
-                        _roomSummary,
-                        style: const TextStyle(
-                          color: Color(0xFF646B7A),
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ],
                   ),
-                ],
-              ),
+                ),
+                if (onDelete != null)
+                  IconButton(
+                    tooltip: 'Delete villa',
+                    onPressed: onDelete,
+                    icon: const Icon(
+                      Icons.delete_outline_rounded,
+                      color: AppColors.error,
+                      size: 20,
+                    ),
+                    visualDensity: VisualDensity.compact,
+                    padding: EdgeInsets.zero,
+                    constraints:
+                        const BoxConstraints.tightFor(width: 30, height: 30),
+                  )
+                else
+                  const Icon(
+                    Icons.chevron_right_rounded,
+                    color: Color(0xFF89909E),
+                  ),
+              ],
             ),
-            const SizedBox(width: 12),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: _statusColor.withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(5),
-              ),
-              child: Text(
-                _statusLabel,
-                style: TextStyle(
-                  color: _statusColor,
-                  fontWeight: FontWeight.w700,
-                  fontSize: 10,
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                _RoomChip(label: 'Total', value: rooms.length),
+                const SizedBox(width: 8),
+                _RoomChip(
+                  label: 'Occupied',
+                  value: _occupiedRooms,
+                  color: AppColors.success,
+                ),
+                const SizedBox(width: 8),
+                _RoomChip(
+                  label: 'Vacant',
+                  value: _vacantRooms,
+                  color: AppColors.warning,
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: _FinancialValue(
+                    label: 'Expected',
+                    value: CurrencyFormatter.format(_expectedRent),
+                  ),
+                ),
+                Expanded(
+                  child: _FinancialValue(
+                    label: 'Collected',
+                    value: CurrencyFormatter.format(_collectedRent),
+                    color: AppColors.success,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: _FinancialValue(
+                    label: 'Pending',
+                    value: CurrencyFormatter.format(_pendingRent),
+                    color: AppColors.warning,
+                  ),
+                ),
+                Expanded(
+                  child: _FinancialValue(
+                    label: 'Vacancy Loss',
+                    value: CurrencyFormatter.format(_vacancyLoss),
+                    color: AppColors.error,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Align(
+              alignment: Alignment.centerRight,
+              child: FilledButton.icon(
+                onPressed: onTap,
+                icon: const Icon(Icons.meeting_room_outlined, size: 18),
+                label: const Text('View Rooms'),
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  visualDensity: VisualDensity.compact,
                 ),
               ),
             ),
-            const SizedBox(width: 12),
-            Text(
-              CurrencyFormatter.format(_totalMonthlyRent),
-              style: const TextStyle(
-                color: AppColors.success,
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
-              ),
-              maxLines: 1,
-            ),
-            if (onDelete != null) ...[
-              const SizedBox(width: 8),
-              IconButton(
-                tooltip: 'Delete villa',
-                onPressed: onDelete,
-                icon: const Icon(
-                  Icons.delete_outline_rounded,
-                  color: AppColors.error,
-                  size: 20,
-                ),
-                visualDensity: VisualDensity.compact,
-                padding: EdgeInsets.zero,
-                constraints:
-                    const BoxConstraints.tightFor(width: 30, height: 30),
-              ),
-            ],
           ],
         ),
       ),
+    );
+  }
+}
+
+class _RoomChip extends StatelessWidget {
+  final String label;
+  final int value;
+  final Color color;
+
+  const _RoomChip({
+    required this.label,
+    required this.value,
+    this.color = AppColors.primary,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              '$value',
+              style: TextStyle(
+                color: color,
+                fontSize: 13,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+            const SizedBox(width: 5),
+            Flexible(
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: color,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _FinancialValue extends StatelessWidget {
+  final String label;
+  final String value;
+  final Color color;
+
+  const _FinancialValue({
+    required this.label,
+    required this.value,
+    this.color = const Color(0xFF060B26),
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            color: Color(0xFF9CA3AF),
+            fontSize: 10,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        const SizedBox(height: 3),
+        Text(
+          value,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+            color: color,
+            fontSize: 13,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+      ],
     );
   }
 }
