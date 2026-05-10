@@ -46,7 +46,7 @@ class VillaCard extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.all(14),
+        padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           color: AppColors.surface,
           borderRadius: BorderRadius.circular(12),
@@ -104,28 +104,42 @@ class VillaCard extends StatelessWidget {
                     ],
                   ),
                 ),
-                if (onDelete != null)
-                  IconButton(
-                    tooltip: 'Delete villa',
-                    onPressed: onDelete,
-                    icon: const Icon(
-                      Icons.delete_outline_rounded,
-                      color: AppColors.error,
-                      size: 20,
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.meeting_room_outlined,
+                      color: AppColors.primary,
+                      size: 18,
                     ),
-                    visualDensity: VisualDensity.compact,
-                    padding: EdgeInsets.zero,
-                    constraints:
-                        const BoxConstraints.tightFor(width: 30, height: 30),
-                  )
-                else
-                  const Icon(
-                    Icons.chevron_right_rounded,
-                    color: Color(0xFF89909E),
-                  ),
+                    const Icon(
+                      Icons.chevron_right_rounded,
+                      color: Color(0xFF89909E),
+                      size: 24,
+                    ),
+                    if (onDelete != null) ...[
+                      const SizedBox(width: 4),
+                      IconButton(
+                        tooltip: 'Delete villa',
+                        onPressed: onDelete,
+                        icon: const Icon(
+                          Icons.delete_outline_rounded,
+                          color: AppColors.error,
+                          size: 20,
+                        ),
+                        visualDensity: VisualDensity.compact,
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints.tightFor(
+                          width: 30,
+                          height: 30,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
               ],
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 10),
             Row(
               children: [
                 _RoomChip(label: 'Total', value: rooms.length),
@@ -143,7 +157,7 @@ class VillaCard extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 10),
             Row(
               children: [
                 Expanded(
@@ -179,21 +193,6 @@ class VillaCard extends StatelessWidget {
                   ),
                 ),
               ],
-            ),
-            const SizedBox(height: 12),
-            Align(
-              alignment: Alignment.centerRight,
-              child: FilledButton.icon(
-                onPressed: onTap,
-                icon: const Icon(Icons.meeting_room_outlined, size: 18),
-                label: const Text('View Rooms'),
-                style: FilledButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                  visualDensity: VisualDensity.compact,
-                ),
-              ),
             ),
           ],
         ),

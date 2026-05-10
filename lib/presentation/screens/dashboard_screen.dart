@@ -1286,7 +1286,7 @@ class _VillaRow extends StatelessWidget {
         );
       },
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(14, 10, 12, 10),
+        padding: const EdgeInsets.fromLTRB(14, 9, 10, 9),
         child: LayoutBuilder(
           builder: (context, constraints) {
             final showThumbnail = constraints.maxWidth >= 430;
@@ -1297,8 +1297,8 @@ class _VillaRow extends StatelessWidget {
                   ClipRRect(
                     borderRadius: BorderRadius.circular(12),
                     child: SizedBox(
-                      height: 74,
-                      width: 74,
+                      height: 68,
+                      width: 68,
                       child: CustomPaint(
                         painter: _VillaThumbnailPainter(
                           seed: villa.villaNumber.hashCode,
@@ -1346,22 +1346,23 @@ class _VillaRow extends StatelessWidget {
                           ),
                         ],
                       ),
-                      const SizedBox(height: 10),
+                      const SizedBox(height: 8),
                       ClipRRect(
                         borderRadius: BorderRadius.circular(20),
                         child: LinearProgressIndicator(
                           value: summary.occupancyProgress,
-                          minHeight: 7,
+                          minHeight: 6,
                           backgroundColor: const Color(0xFFE4E4E6),
                           valueColor: const AlwaysStoppedAnimation(
                             Color(0xFF2EA043),
                           ),
                         ),
                       ),
-                      const SizedBox(height: 12),
+                      const SizedBox(height: 10),
                       Row(
                         children: [
                           Expanded(
+                            flex: 4,
                             child: _VillaAmount(
                               label: 'Expected',
                               value:
@@ -1371,6 +1372,7 @@ class _VillaRow extends StatelessWidget {
                           ),
                           _SmallDivider(),
                           Expanded(
+                            flex: 4,
                             child: _VillaAmount(
                               label: 'Collected',
                               value:
@@ -1382,6 +1384,7 @@ class _VillaRow extends StatelessWidget {
                           ),
                           _SmallDivider(),
                           Expanded(
+                            flex: 4,
                             child: _VillaAmount(
                               label: 'Pending',
                               value: DashboardScreen.money(summary.pendingRent),
@@ -1395,22 +1398,22 @@ class _VillaRow extends StatelessWidget {
                     ],
                   ),
                 ),
-                const SizedBox(width: 8),
-                _ViewRoomsButton(
-                  onTap: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (context) =>
-                            VillaDetailScreen(villaId: villa.id),
-                      ),
-                    );
-                  },
-                ),
-                const SizedBox(width: 8),
-                const Icon(
-                  Icons.chevron_right_rounded,
-                  color: Color(0xFF89909E),
-                  size: 27,
+                const SizedBox(width: 6),
+                const Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.meeting_room_outlined,
+                      color: Color(0xFF5549DE),
+                      size: 18,
+                    ),
+                    SizedBox(height: 8),
+                    Icon(
+                      Icons.chevron_right_rounded,
+                      color: Color(0xFF89909E),
+                      size: 26,
+                    ),
+                  ],
                 ),
               ],
             );
@@ -1558,35 +1561,13 @@ class _RoomCountChip extends StatelessWidget {
   }
 }
 
-class _ViewRoomsButton extends StatelessWidget {
-  final VoidCallback onTap;
-
-  const _ViewRoomsButton({required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return TextButton.icon(
-      onPressed: onTap,
-      icon: const Icon(Icons.meeting_room_outlined, size: 17),
-      label: const Text('View Rooms'),
-      style: TextButton.styleFrom(
-        foregroundColor: const Color(0xFF5549DE),
-        textStyle: const TextStyle(
-          fontSize: 12,
-          fontWeight: FontWeight.w900,
-        ),
-      ),
-    );
-  }
-}
-
 class _SmallDivider extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
       width: 1,
       height: 34,
-      margin: const EdgeInsets.symmetric(horizontal: 9),
+      margin: const EdgeInsets.symmetric(horizontal: 6),
       color: const Color(0xFFD8DCE5),
     );
   }
