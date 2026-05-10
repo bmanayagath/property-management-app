@@ -167,8 +167,14 @@ class AppDatabase extends _$AppDatabase {
 
   Future<int> insertVilla(VillasCompanion villa) => into(villas).insert(villa);
 
-  Future<bool> updateVilla(VillasCompanion villa) =>
-      update(villas).replace(villa);
+  Future<int> updateVilla(VillasCompanion villa) {
+    if (!villa.id.present) {
+      throw ArgumentError('Villa id is required to update a villa.');
+    }
+
+    return (update(villas)..where((tbl) => tbl.id.equals(villa.id.value)))
+        .write(villa.copyWith(id: const Value.absent()));
+  }
 
   Future<int> deleteVilla(String id) =>
       (delete(villas)..where((tbl) => tbl.id.equals(id))).go();
@@ -323,7 +329,8 @@ LazyDatabase _openConnection() {
         debugPrint('[Database] Opening fallback database at ${file.path}');
         return NativeDatabase(file);
       } catch (fallbackError, fallbackStackTrace) {
-        debugPrint('[Database] Failed to open fallback database: $fallbackError');
+        debugPrint(
+            '[Database] Failed to open fallback database: $fallbackError');
         debugPrintStack(stackTrace: fallbackStackTrace);
         rethrow;
       }
