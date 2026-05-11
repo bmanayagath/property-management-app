@@ -4,27 +4,25 @@ class CurrencyFormatter {
   CurrencyFormatter._();
 
   static const String qatariRiyal = 'QAR';
-  static const String symbol = 'ر.ق';
+  static const String symbol = qatariRiyal;
+  static final NumberFormat _wholeFormatter = NumberFormat('#,##0');
+  static final NumberFormat _decimalFormatter = NumberFormat('#,##0.00');
 
-  static String format(double amount) {
-    final formatter = NumberFormat.currency(
-      locale: 'ar_QA',
-      symbol: symbol,
-      decimalDigits: 2,
-    );
-    return formatter.format(amount);
+  static String formatQAR(num amount, {bool showDecimals = false}) {
+    final formatter = showDecimals ? _decimalFormatter : _wholeFormatter;
+    return '$qatariRiyal ${formatter.format(amount)}';
   }
+
+  static String format(double amount) => formatQAR(amount);
 
   static String formatCompact(double amount) {
     if (amount >= 1000000) {
-      return '${(amount / 1000000).toStringAsFixed(1)}M $symbol';
+      return '$qatariRiyal ${(amount / 1000000).toStringAsFixed(1)}M';
     } else if (amount >= 1000) {
-      return '${(amount / 1000).toStringAsFixed(1)}K $symbol';
+      return '$qatariRiyal ${(amount / 1000).toStringAsFixed(1)}K';
     }
-    return '$symbol${amount.toStringAsFixed(0)}';
+    return formatQAR(amount);
   }
 
-  static String simpleFormat(double amount) {
-    return '$symbol ${amount.toStringAsFixed(0)}';
-  }
+  static String simpleFormat(double amount) => formatQAR(amount);
 }

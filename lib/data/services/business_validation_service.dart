@@ -1,3 +1,4 @@
+import '../../core/utils/currency_formatter.dart';
 import '../../domain/models/expense.dart';
 import '../../domain/models/income.dart';
 import '../../domain/models/villa_model.dart';
@@ -332,14 +333,7 @@ class BusinessValidationService {
     return value.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '');
   }
 
-  static String _money(double value) {
-    final rounded = value.round();
-    final text = rounded.toString().replaceAllMapped(
-          RegExp(r'\B(?=(\d{3})+(?!\d))'),
-          (match) => ',',
-        );
-    return 'QAR $text';
-  }
+  static String _money(double value) => CurrencyFormatter.formatQAR(value);
 }
 
 extension _FirstOrNull<T> on Iterable<T> {

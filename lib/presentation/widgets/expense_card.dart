@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+import '../../core/utils/currency_formatter.dart';
 import '../../domain/models/expense.dart';
 
 class ExpenseCard extends StatelessWidget {
@@ -17,7 +18,6 @@ class ExpenseCard extends StatelessWidget {
     required this.onDelete,
   }) : super(key: key);
 
-  static final NumberFormat _moneyFormat = NumberFormat('#,##0.00');
   static final DateFormat _dateFormat = DateFormat('dd MMM yyyy');
 
   @override
@@ -114,7 +114,7 @@ class ExpenseCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 Text(
-                  'QAR ${_moneyFormat.format(expense.amount)}',
+                  CurrencyFormatter.formatQAR(expense.amount),
                   style: const TextStyle(
                     color: Color(0xFFF04438),
                     fontSize: 14,
@@ -133,8 +133,7 @@ class ExpenseCard extends StatelessWidget {
                   color: const Color(0xFFF79009),
                   onPressed: onEdit!,
                 ),
-              if (onEdit != null && onDelete != null)
-                const SizedBox(width: 4),
+              if (onEdit != null && onDelete != null) const SizedBox(width: 4),
               if (onDelete != null)
                 _TinyIconButton(
                   tooltip: 'Delete expense',

@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_permissions.dart';
+import '../../core/utils/currency_formatter.dart';
 import '../../domain/models/room.dart';
 import '../../domain/models/villa_model.dart';
 import '../providers/auth_provider.dart';
@@ -21,8 +22,6 @@ import 'villa_detail_screen.dart';
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({Key? key}) : super(key: key);
-
-  static final NumberFormat _moneyFormat = NumberFormat('#,##0');
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -60,9 +59,8 @@ class DashboardScreen extends ConsumerWidget {
                     selectedMonth: selectedMonth,
                     onSelectMonth: () =>
                         _selectMonth(context, ref, selectedMonth),
-                    onResetToCurrentMonth: () => _resetToCurrentMonth(ref),
                   ),
-                  const SizedBox(height: 18),
+                  const SizedBox(height: 14),
                   _MetricGrid(
                     totalRooms: dashboard.totalRooms,
                     occupiedRooms: dashboard.occupiedRooms,
@@ -73,7 +71,7 @@ class DashboardScreen extends ConsumerWidget {
                     pendingRooms: dashboard.pendingRooms,
                     vacancyLoss: dashboard.vacancyLoss,
                   ),
-                  const SizedBox(height: 14),
+                  const SizedBox(height: 12),
                   _QuickActions(
                     onAddIncome: canManageIncome
                         ? () => ref.read(selectedTabProvider.notifier).state = 2
@@ -171,17 +169,7 @@ class DashboardScreen extends ConsumerWidget {
     );
   }
 
-  void _resetToCurrentMonth(WidgetRef ref) {
-    final now = DateTime.now();
-    ref.read(selectedMonthProvider.notifier).state = DateTime(
-      now.year,
-      now.month,
-      1,
-    );
-  }
-
-  static String money(double value) =>
-      'QAR ${_moneyFormat.format(value.round())}';
+  static String money(double value) => CurrencyFormatter.formatQAR(value);
 }
 
 double _calculatePendingRent({
@@ -284,92 +272,51 @@ class _DashboardHeader extends ConsumerWidget {
 class _MonthFilter extends StatelessWidget {
   final DateTime selectedMonth;
   final VoidCallback onSelectMonth;
-  final VoidCallback onResetToCurrentMonth;
 
   const _MonthFilter({
     required this.selectedMonth,
     required this.onSelectMonth,
-    required this.onResetToCurrentMonth,
   });
 
   @override
   Widget build(BuildContext context) {
     final month = DateFormat('MMMM yyyy').format(selectedMonth);
 
-    return Row(
-      children: [
-        Expanded(
-          child: GestureDetector(
-            onTap: onSelectMonth,
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Flexible(
-                  child: FittedBox(
-                    fit: BoxFit.scaleDown,
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      month,
-                      maxLines: 1,
-                      style: const TextStyle(
-                        color: Color(0xFF060B26),
-                        fontSize: 29,
-                        fontWeight: FontWeight.w900,
-                      ),
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: InkWell(
+        onTap: onSelectMonth,
+        borderRadius: BorderRadius.circular(10),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 4),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Flexible(
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    month,
+                    maxLines: 1,
+                    style: const TextStyle(
+                      color: Color(0xFF060B26),
+                      fontSize: 28,
+                      fontWeight: FontWeight.w900,
                     ),
                   ),
                 ),
-                const SizedBox(width: 8),
-                const Icon(
-                  Icons.keyboard_arrow_down_rounded,
-                  color: Color(0xFF060B26),
-                  size: 24,
-                ),
-              ],
-            ),
-          ),
-        ),
-        GestureDetector(
-          onTap: onResetToCurrentMonth,
-          child: Container(
-            height: 48,
-            padding: const EdgeInsets.symmetric(horizontal: 14),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(22),
-              border: Border.all(
-                color: const Color(0xFF6658E8),
-                width: 1.1,
               ),
-            ),
-            child: const Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  Icons.calendar_month_rounded,
-                  color: Color(0xFF5549DE),
-                  size: 21,
-                ),
-                SizedBox(width: 8),
-                Text(
-                  'This Month',
-                  style: TextStyle(
-                    color: Color(0xFF5549DE),
-                    fontSize: 16,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                SizedBox(width: 4),
-                Icon(
-                  Icons.keyboard_arrow_down_rounded,
-                  color: Color(0xFF5549DE),
-                  size: 20,
-                ),
-              ],
-            ),
+              const SizedBox(width: 5),
+              const Icon(
+                Icons.keyboard_arrow_down_rounded,
+                color: Color(0xFF060B26),
+                size: 22,
+              ),
+            ],
           ),
         ),
-      ],
+      ),
     );
   }
 }
@@ -531,93 +478,90 @@ class _MetricCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final showIcon = constraints.maxWidth >= 300;
-
         return Container(
-          height: 118,
+          height: 104,
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
             color: background,
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(14),
             border: Border.all(color: border),
           ),
-          child: Row(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              if (showIcon) ...[
-                Container(
-                  height: 52,
-                  width: 52,
-                  decoration: BoxDecoration(
-                    color: iconBackground,
-                    shape: BoxShape.circle,
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Container(
+                    height: 34,
+                    width: 34,
+                    decoration: BoxDecoration(
+                      color: iconBackground,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Icon(
+                      icon,
+                      color: color,
+                      size: 19,
+                    ),
                   ),
-                  child: Icon(
-                    icon,
-                    color: color,
-                    size: 28,
-                  ),
-                ),
-                const SizedBox(width: 11),
-              ],
-              Expanded(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
+                  const SizedBox(width: 9),
+                  Expanded(
+                    child: Text(
                       title,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: color,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w900,
+                      style: const TextStyle(
+                        color: Color(0xFF596070),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
-                    const SizedBox(height: 7),
-                    FittedBox(
-                      fit: BoxFit.scaleDown,
-                      alignment: Alignment.centerLeft,
+                  ),
+                ],
+              ),
+              const Spacer(),
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  value,
+                  maxLines: 1,
+                  style: const TextStyle(
+                    color: Color(0xFF060B26),
+                    fontSize: 22,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+              if (trend != null) ...[
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    if (showTrendArrow)
+                      Icon(
+                        Icons.arrow_upward_rounded,
+                        color: color,
+                        size: 13,
+                      ),
+                    Flexible(
                       child: Text(
-                        value,
+                        trend!,
                         maxLines: 1,
-                        style: const TextStyle(
-                          color: Color(0xFF060B26),
-                          fontSize: 21,
-                          fontWeight: FontWeight.w900,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: showTrendArrow
+                              ? const Color(0xFF6C7180)
+                              : const Color(0xFF6C7180),
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
                         ),
                       ),
                     ),
-                    if (trend != null) ...[
-                      const SizedBox(height: 7),
-                      Row(
-                        children: [
-                          if (showTrendArrow)
-                            Icon(
-                              Icons.arrow_upward_rounded,
-                              color: color,
-                              size: 15,
-                            ),
-                          Flexible(
-                            child: Text(
-                              trend!,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                color: showTrendArrow
-                                    ? const Color(0xFF596070)
-                                    : color,
-                                fontSize: 12,
-                                fontWeight: FontWeight.w800,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
                   ],
                 ),
-              ),
+              ] else
+                const SizedBox(height: 15),
             ],
           ),
         );

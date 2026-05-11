@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/constants/app_permissions.dart';
+import '../../../core/utils/currency_formatter.dart';
 import '../../../data/services/profit_calculation_service.dart';
 import '../../../data/services/report_export_service.dart';
 import '../../../domain/models/expense.dart';
@@ -36,7 +37,6 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
   final ReportExportService _exportService = ReportExportService();
   final ProfitCalculationService _profitService =
       const ProfitCalculationService();
-  final NumberFormat _moneyFormat = NumberFormat('#,##0.00');
   final DateFormat _monthFormat = DateFormat('MMMM yyyy');
   final DateFormat _dateFormat = DateFormat('dd MMM yyyy');
 
@@ -561,7 +561,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
     return date.year == month.year && date.month == month.month;
   }
 
-  String _money(double value) => 'QAR ${_moneyFormat.format(value)}';
+  String _money(double value) => CurrencyFormatter.formatQAR(value);
 
   List<Room> _filteredRooms(List<Room> rooms) {
     return rooms.where((room) {

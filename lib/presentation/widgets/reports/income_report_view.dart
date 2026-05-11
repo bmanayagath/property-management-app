@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+import '../../../core/utils/currency_formatter.dart';
 import '../../../domain/models/income.dart';
 
 class IncomeReportView extends StatelessWidget {
@@ -12,7 +13,6 @@ class IncomeReportView extends StatelessWidget {
   }) : super(key: key);
 
   static final DateFormat _dateFormat = DateFormat('dd MMM yyyy');
-  static final NumberFormat _moneyFormat = NumberFormat('#,##0.00');
 
   @override
   Widget build(BuildContext context) {
@@ -28,7 +28,7 @@ class IncomeReportView extends StatelessWidget {
           income.villaName,
           income.incomeType,
           income.paymentMethod,
-          'QAR ${_moneyFormat.format(income.amount)}',
+          CurrencyFormatter.formatQAR(income.amount),
         ];
       }).toList(),
       amountColor: const Color(0xFF12B76A),

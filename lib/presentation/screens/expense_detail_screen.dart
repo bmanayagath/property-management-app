@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../core/constants/app_permissions.dart';
+import '../../core/utils/currency_formatter.dart';
 import '../../domain/models/expense.dart';
 import '../providers/auth_provider.dart';
 import '../providers/expense_provider.dart';
@@ -16,7 +17,6 @@ class ExpenseDetailScreen extends ConsumerWidget {
     required this.expenseId,
   }) : super(key: key);
 
-  static final NumberFormat _moneyFormat = NumberFormat('#,##0.00');
   static final DateFormat _dateFormat = DateFormat('dd MMM yyyy');
 
   @override
@@ -85,7 +85,7 @@ class ExpenseDetailScreen extends ConsumerWidget {
                                 ),
                                 const SizedBox(height: 5),
                                 Text(
-                                  'QAR ${_moneyFormat.format(expense.amount)}',
+                                  CurrencyFormatter.formatQAR(expense.amount),
                                   style: const TextStyle(
                                     color: Color(0xFFF04438),
                                     fontSize: 24,

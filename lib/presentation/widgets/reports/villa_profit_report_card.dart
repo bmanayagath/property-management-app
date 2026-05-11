@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 
+import '../../../core/utils/currency_formatter.dart';
 import '../../../domain/models/report_models.dart';
 
 class VillaProfitReportCard extends StatelessWidget {
@@ -10,8 +10,6 @@ class VillaProfitReportCard extends StatelessWidget {
     Key? key,
     required this.item,
   }) : super(key: key);
-
-  static final NumberFormat _moneyFormat = NumberFormat('#,##0.00');
 
   @override
   Widget build(BuildContext context) {
@@ -123,7 +121,7 @@ class VillaProfitReportCard extends StatelessWidget {
     );
   }
 
-  static String _money(double value) => 'QAR ${_moneyFormat.format(value)}';
+  static String _money(double value) => CurrencyFormatter.formatQAR(value);
 }
 
 class _CountChip extends StatelessWidget {
@@ -186,7 +184,7 @@ class _Metric extends StatelessWidget {
             fit: BoxFit.scaleDown,
             alignment: Alignment.centerLeft,
             child: Text(
-              'QAR ${NumberFormat('#,##0.00').format(value)}',
+              CurrencyFormatter.formatQAR(value),
               style: TextStyle(
                 color: color,
                 fontSize: 13,

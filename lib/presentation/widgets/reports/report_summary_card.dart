@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
+
+import '../../../core/utils/currency_formatter.dart';
 
 class ReportSummaryCard extends StatelessWidget {
   final String title;
@@ -19,13 +20,11 @@ class ReportSummaryCard extends StatelessWidget {
     this.isPercentage = false,
   }) : super(key: key);
 
-  static final NumberFormat _moneyFormat = NumberFormat('#,##0.00');
-
   @override
   Widget build(BuildContext context) {
     final valueText = isPercentage
         ? '${value.toStringAsFixed(1)}%'
-        : 'QAR ${_moneyFormat.format(value)}';
+        : CurrencyFormatter.formatQAR(value);
 
     return Container(
       padding: const EdgeInsets.all(16),

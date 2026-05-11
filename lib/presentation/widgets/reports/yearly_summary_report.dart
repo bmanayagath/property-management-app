@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+import '../../../core/utils/currency_formatter.dart';
 import '../../../domain/models/report_models.dart';
 
 class YearlySummaryReport extends StatelessWidget {
@@ -11,7 +12,6 @@ class YearlySummaryReport extends StatelessWidget {
     required this.items,
   }) : super(key: key);
 
-  static final NumberFormat _moneyFormat = NumberFormat('#,##0.00');
   static final DateFormat _monthFormat = DateFormat('MMM');
 
   @override
@@ -41,7 +41,7 @@ class YearlySummaryReport extends StatelessWidget {
                 DataCell(Text(_monthFormat.format(item.month))),
                 DataCell(
                   Text(
-                    'QAR ${_moneyFormat.format(item.income)}',
+                    CurrencyFormatter.formatQAR(item.income),
                     style: const TextStyle(
                       color: Color(0xFF12B76A),
                       fontWeight: FontWeight.w900,
@@ -50,7 +50,7 @@ class YearlySummaryReport extends StatelessWidget {
                 ),
                 DataCell(
                   Text(
-                    'QAR ${_moneyFormat.format(item.expense)}',
+                    CurrencyFormatter.formatQAR(item.expense),
                     style: const TextStyle(
                       color: Color(0xFFF04438),
                       fontWeight: FontWeight.w900,
@@ -59,7 +59,7 @@ class YearlySummaryReport extends StatelessWidget {
                 ),
                 DataCell(
                   Text(
-                    'QAR ${_moneyFormat.format(item.profit)}',
+                    CurrencyFormatter.formatQAR(item.profit),
                     style: TextStyle(
                       color: profitColor,
                       fontWeight: FontWeight.w900,

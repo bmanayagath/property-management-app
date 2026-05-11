@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/constants/app_permissions.dart';
+import '../../../core/utils/currency_formatter.dart';
 import '../../../domain/models/income.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/income_provider.dart';
@@ -16,7 +17,6 @@ class IncomeDetailScreen extends ConsumerWidget {
     required this.incomeId,
   }) : super(key: key);
 
-  static final NumberFormat _moneyFormat = NumberFormat('#,##0.00');
   static final DateFormat _dateFormat = DateFormat('dd MMM yyyy');
   static final DateFormat _monthFormat = DateFormat('MMMM yyyy');
 
@@ -92,7 +92,7 @@ class IncomeDetailScreen extends ConsumerWidget {
                               ),
                               const SizedBox(height: 5),
                               Text(
-                                'QAR ${_moneyFormat.format(income.amount)}',
+                                CurrencyFormatter.formatQAR(income.amount),
                                 style: const TextStyle(
                                   color: Color(0xFF12B76A),
                                   fontSize: 24,

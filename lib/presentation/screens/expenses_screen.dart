@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../core/constants/app_permissions.dart';
+import '../../core/utils/currency_formatter.dart';
 import '../../domain/models/expense.dart';
 import '../providers/auth_provider.dart';
 import '../providers/dashboard_provider.dart';
@@ -19,8 +20,6 @@ class ExpensesScreen extends ConsumerStatefulWidget {
 }
 
 class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
-  static final NumberFormat _moneyFormat = NumberFormat('#,##0.00');
-
   String _searchQuery = '';
   String _selectedCategory = 'All';
 
@@ -347,7 +346,7 @@ class _SummaryCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 5),
                 Text(
-                  'QAR ${_ExpensesScreenState._moneyFormat.format(total)}',
+                  CurrencyFormatter.formatQAR(total),
                   style: const TextStyle(
                     color: Color(0xFF060B26),
                     fontSize: 25,

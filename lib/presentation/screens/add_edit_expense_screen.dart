@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../core/constants/app_permissions.dart';
+import '../../core/utils/currency_formatter.dart';
 import '../../domain/models/app_notification.dart';
 import '../../domain/models/expense.dart';
 import '../../domain/models/villa_model.dart';
@@ -347,7 +348,7 @@ class _AddEditExpenseScreenState extends ConsumerState<AddEditExpenseScreen> {
       id: const Uuid().v4(),
       title: 'New expense added',
       body:
-          'QAR ${_moneyFormat.format(expense.amount)} ${expense.category.toLowerCase()} expense added for ${expense.villaName} by ${currentUser.username}',
+          '${CurrencyFormatter.formatQAR(expense.amount)} ${expense.category.toLowerCase()} expense added for ${expense.villaName} by ${currentUser.username}',
       type: NotificationTypes.expenseAdded,
       createdByUserId: currentUser.id,
       createdByUsername: currentUser.username,
@@ -367,8 +368,6 @@ class _AddEditExpenseScreenState extends ConsumerState<AddEditExpenseScreen> {
   static String _villaLabel(VillaModel villa) {
     return villa.villaName.trim().isEmpty ? 'Villa' : villa.villaName.trim();
   }
-
-  static final NumberFormat _moneyFormat = NumberFormat('#,##0.##');
 }
 
 class _FormPanel extends StatelessWidget {
