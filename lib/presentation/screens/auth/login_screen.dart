@@ -164,6 +164,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                               ),
                             ),
                     ),
+                    const SizedBox(height: 12),
+                    TextButton.icon(
+                      onPressed: _isSubmitting ? null : _resetLocalAuth,
+                      icon: const Icon(Icons.restart_alt_rounded, size: 18),
+                      label: const Text('Reset local admin'),
+                    ),
                   ],
                 ),
               ),
@@ -216,5 +222,20 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     if (mounted) {
       setState(() => _isSubmitting = false);
     }
+  }
+
+  Future<void> _resetLocalAuth() async {
+    setState(() => _isSubmitting = true);
+    await ref.read(authProvider.notifier).resetLocalAuthForDevelopment();
+    if (!mounted) return;
+
+    _usernameController.text = 'admin';
+    _passwordController.text = 'admin';
+    setState(() => _isSubmitting = false);
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Local auth reset. Default admin/admin recreated.'),
+      ),
+    );
   }
 }

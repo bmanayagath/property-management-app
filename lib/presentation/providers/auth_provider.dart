@@ -63,14 +63,24 @@ class AuthNotifier extends StateNotifier<AuthState> {
   Future<bool> login(String username, String password) async {
     try {
       final normalizedUsername = username.trim().toLowerCase();
-      final users =
-          state.users.isEmpty ? await _loadUsersFromPrefs() : state.users;
+      final users = state.users.isEmpty ? await loadUsers() : state.users;
+      debugPrint(
+        '[Auth] Login attempt username="$normalizedUsername", users=${users.length}, usernames=${_usernamesForLog(users)}',
+      );
       final matchedUser = users.where((user) {
-        return user.username.toLowerCase() == normalizedUsername &&
+        return _normalizeUsername(user.username) == normalizedUsername &&
             user.password == password;
       }).firstOrNull;
 
       if (matchedUser == null) {
+        final usernameExists = users.any(
+          (user) => _normalizeUsername(user.username) == normalizedUsername,
+        );
+        debugPrint(
+          usernameExists
+              ? '[Auth] Login failed: password mismatch for "$normalizedUsername".'
+              : '[Auth] Login failed: username "$normalizedUsername" not found.',
+        );
         state = AuthState.ready(
           users: users,
           errorMessage: 'Invalid username or password',
@@ -80,6 +90,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
       final preferences = await SharedPreferences.getInstance();
       await preferences.setString(loggedInUserIdKey, matchedUser.id);
+      debugPrint('[Auth] Login succeeded for "${matchedUser.username}".');
       state = AuthState.ready(users: users, currentUser: matchedUser);
       return true;
     } catch (error, stackTrace) {
@@ -135,13 +146,32 @@ class AuthNotifier extends StateNotifier<AuthState> {
       if (users.isEmpty) {
         users = [_defaultAdminUser()];
         await _saveUsers(users);
+        debugPrint('[Auth] Default admin user created.');
+      } else {
+        debugPrint('[Auth] Default admin user not created: users exist.');
       }
+      debugPrint(
+        '[Auth] Users ready. count=${users.length}, usernames=${_usernamesForLog(users)}',
+      );
       return users;
     } catch (error, stackTrace) {
       debugPrint('[Auth] Failed to load users: $error');
       debugPrintStack(stackTrace: stackTrace);
-      return [_defaultAdminUser()];
+      final users = [_defaultAdminUser()];
+      await _saveUsers(users);
+      debugPrint('[Auth] Default admin user created after load failure.');
+      return users;
     }
+  }
+
+  Future<void> resetLocalAuthForDevelopment() async {
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.remove(usersKey);
+    await preferences.remove(loggedInUserIdKey);
+    debugPrint(
+      '[Auth] Cleared local auth keys: $usersKey, $loggedInUserIdKey.',
+    );
+    await loadSession();
   }
 
   Future<void> addUser(AppUser user) async {
@@ -206,12 +236,19 @@ class AuthNotifier extends StateNotifier<AuthState> {
   Future<List<AppUser>> _loadUsersFromPrefs() async {
     final preferences = await SharedPreferences.getInstance();
     final rawUsers = preferences.getString(usersKey);
-    if (rawUsers == null || rawUsers.isEmpty) return [];
+    if (rawUsers == null || rawUsers.isEmpty) {
+      debugPrint('[Auth] Loaded users count=0, usernames=[]');
+      return [];
+    }
 
     final decoded = jsonDecode(rawUsers) as List<dynamic>;
-    return decoded
+    final users = decoded
         .map((json) => AppUser.fromJson(json as Map<String, dynamic>))
         .toList();
+    debugPrint(
+      '[Auth] Loaded users count=${users.length}, usernames=${_usernamesForLog(users)}',
+    );
+    return users;
   }
 
   Future<void> _saveAndSetUsers(List<AppUser> users) async {
@@ -226,6 +263,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
     final preferences = await SharedPreferences.getInstance();
     final encoded = jsonEncode(users.map((user) => user.toJson()).toList());
     await preferences.setString(usersKey, encoded);
+    debugPrint(
+      '[Auth] Saved users count=${users.length}, usernames=${_usernamesForLog(users)}',
+    );
   }
 
   AppUser _defaultAdminUser() {
@@ -236,6 +276,14 @@ class AuthNotifier extends StateNotifier<AuthState> {
       role: AppRoles.admin,
       createdAt: DateTime.now(),
     );
+  }
+
+  String _usernamesForLog(List<AppUser> users) {
+    return users.map((user) => user.username).join(', ');
+  }
+
+  String _normalizeUsername(String username) {
+    return username.trim().toLowerCase();
   }
 }
 
