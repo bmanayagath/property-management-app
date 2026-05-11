@@ -6,7 +6,6 @@ import 'package:intl/intl.dart';
 
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_permissions.dart';
-import '../../domain/models/income.dart';
 import '../../domain/models/room.dart';
 import '../../domain/models/villa_model.dart';
 import '../providers/auth_provider.dart';
@@ -28,12 +27,7 @@ class DashboardScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final selectedMonth = ref.watch(selectedMonthProvider);
-    final villasAsync = ref.watch(villasProvider);
-    final roomsAsync = ref.watch(allRoomsProvider);
-    final incomesAsync = ref.watch(incomeListProvider);
-    final totalIncomeAsync =
-        ref.watch(totalIncomeForMonthProvider(selectedMonth));
-    final expenses = ref.watch(expenseProvider);
+    final summaryAsync = ref.watch(dashboardSummaryProvider);
     final authState = ref.watch(authProvider);
     final canManageIncome =
         authState.hasPermission(AppPermissions.manageIncome);
@@ -51,40 +45,12 @@ class DashboardScreen extends ConsumerWidget {
             ref.invalidate(villasProvider);
             ref.invalidate(allRoomsProvider);
             ref.invalidate(incomeListProvider);
-            ref.invalidate(totalIncomeForMonthProvider(selectedMonth));
+            ref.invalidate(expenseListProvider);
+            ref.invalidate(dashboardSummaryProvider);
           },
-          child: villasAsync.when(
-            data: (villas) {
-              final rooms = roomsAsync.valueOrNull ?? const <Room>[];
-              final incomes = incomesAsync.valueOrNull ?? const <Income>[];
-              final totalIncome = totalIncomeAsync.valueOrNull ?? 0;
-              final expensesForMonth = expenses.where(
-                (expense) =>
-                    expense.expenseDate.year == selectedMonth.year &&
-                    expense.expenseDate.month == selectedMonth.month,
-              );
-              final expensesByCategory = <String, double>{};
-              for (final expense in expensesForMonth) {
-                expensesByCategory.update(
-                  expense.category,
-                  (value) => value + expense.amount,
-                  ifAbsent: () => expense.amount,
-                );
-              }
-              final totalExpense = expensesByCategory.values.fold<double>(
-                0,
-                (sum, value) => sum + value,
-              );
-              final rentReceivedByRoom = _rentReceivedByRoom(
-                incomes: incomes,
-                month: selectedMonth,
-              );
-              final dashboard = _DashboardRoomMetrics.fromRooms(
-                totalVillas: villas.length,
-                rooms: rooms,
-                rentReceivedByRoom: rentReceivedByRoom,
-              );
-
+          child: summaryAsync.when(
+            data: (summary) {
+              final dashboard = summary.metrics;
               return ListView(
                 padding: const EdgeInsets.fromLTRB(18, 8, 18, 112),
                 children: [
@@ -103,8 +69,8 @@ class DashboardScreen extends ConsumerWidget {
                     occupiedRooms: dashboard.occupiedRooms,
                     vacantRooms: dashboard.vacantRooms,
                     occupancyRate: dashboard.occupancyRate,
-                    totalIncome: totalIncome,
-                    totalExpense: totalExpense,
+                    totalIncome: summary.totalIncome,
+                    totalExpense: summary.totalExpense,
                     pendingRent: dashboard.pendingRent,
                     pendingRooms: dashboard.pendingRooms,
                     vacancyLoss: dashboard.vacancyLoss,
@@ -131,14 +97,16 @@ class DashboardScreen extends ConsumerWidget {
                   ),
                   const SizedBox(height: 22),
                   _VillaSummary(
-                    villas: villas,
-                    rooms: rooms,
-                    rentReceivedByRoom: rentReceivedByRoom,
+                    villas: summary.villas,
+                    rooms: summary.rooms,
+                    rentReceivedByRoom: summary.rentReceivedByRoom,
                     onViewAll: () =>
                         ref.read(selectedTabProvider.notifier).state = 1,
                   ),
                   const SizedBox(height: 18),
-                  _TopExpenses(expensesByCategory: expensesByCategory),
+                  _TopExpenses(
+                    expensesByCategory: summary.expensesByCategory,
+                  ),
                 ],
               );
             },
@@ -227,110 +195,6 @@ double _calculatePendingRent({
   required double rentReceived,
 }) {
   return math.max(expectedRent - rentReceived, 0).toDouble();
-}
-
-Map<String, double> _rentReceivedByRoom({
-  required List<Income> incomes,
-  required DateTime month,
-}) {
-  final totals = <String, double>{};
-  for (final income in incomes.where(
-    (income) =>
-        income.incomeType.toLowerCase() == IncomeTypes.rent.toLowerCase() &&
-        income.roomId.trim().isNotEmpty &&
-        income.monthCovered.year == month.year &&
-        income.monthCovered.month == month.month,
-  )) {
-    totals.update(
-      income.roomId,
-      (value) => value + income.amount,
-      ifAbsent: () => income.amount,
-    );
-  }
-  return totals;
-}
-
-class _DashboardRoomMetrics {
-  final int totalVillas;
-  final int totalRooms;
-  final int occupiedRooms;
-  final int vacantRooms;
-  final int paidRooms;
-  final int pendingRooms;
-  final double rentReceived;
-  final double expectedRent;
-  final double pendingRent;
-  final double vacancyLoss;
-
-  const _DashboardRoomMetrics({
-    required this.totalVillas,
-    required this.totalRooms,
-    required this.occupiedRooms,
-    required this.vacantRooms,
-    required this.paidRooms,
-    required this.pendingRooms,
-    required this.rentReceived,
-    required this.expectedRent,
-    required this.pendingRent,
-    required this.vacancyLoss,
-  });
-
-  double get occupancyRate =>
-      totalRooms == 0 ? 0 : (occupiedRooms / totalRooms) * 100;
-
-  double get rentCollectionProgress =>
-      expectedRent == 0 ? 0 : (rentReceived / expectedRent).clamp(0.0, 1.0);
-
-  static _DashboardRoomMetrics fromRooms({
-    required int totalVillas,
-    required List<Room> rooms,
-    required Map<String, double> rentReceivedByRoom,
-  }) {
-    var occupiedRooms = 0;
-    var vacantRooms = 0;
-    var paidRooms = 0;
-    var pendingRooms = 0;
-    var rentReceived = 0.0;
-    var expectedRent = 0.0;
-    var pendingRent = 0.0;
-    var vacancyLoss = 0.0;
-
-    for (final room in rooms) {
-      final received = rentReceivedByRoom[room.id] ?? 0;
-      rentReceived += received;
-
-      if (room.isOccupied) {
-        occupiedRooms++;
-        expectedRent += room.monthlyRent;
-        final pending = _calculatePendingRent(
-          expectedRent: room.monthlyRent,
-          rentReceived: received,
-        );
-        pendingRent += pending;
-        if (pending <= 0 && room.monthlyRent > 0) {
-          paidRooms++;
-        } else if (pending > 0) {
-          pendingRooms++;
-        }
-      } else if (room.isVacant) {
-        vacantRooms++;
-        vacancyLoss += room.monthlyRent;
-      }
-    }
-
-    return _DashboardRoomMetrics(
-      totalVillas: totalVillas,
-      totalRooms: rooms.length,
-      occupiedRooms: occupiedRooms,
-      vacantRooms: vacantRooms,
-      paidRooms: paidRooms,
-      pendingRooms: pendingRooms,
-      rentReceived: rentReceived,
-      expectedRent: expectedRent,
-      pendingRent: pendingRent,
-      vacancyLoss: vacancyLoss,
-    );
-  }
 }
 
 class _DashboardHeader extends ConsumerWidget {

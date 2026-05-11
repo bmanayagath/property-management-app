@@ -16,6 +16,13 @@ class RoomRepositoryImpl implements RoomRepository {
   }
 
   @override
+  Stream<List<Room>> watchAllRooms() {
+    return database.watchAllRooms().map(
+          (rooms) => rooms.map(_mapToModel).toList(),
+        );
+  }
+
+  @override
   Future<Room?> getRoomById(String id) async {
     final room = await database.getRoomById(id);
     return room == null ? null : _mapToModel(room);
@@ -49,7 +56,7 @@ class RoomRepositoryImpl implements RoomRepository {
   Future<String> addRoom(Room room) async {
     final id = room.id.isEmpty ? const Uuid().v4() : room.id;
     final now = DateTime.now();
-    
+
     await database.insertRoom(
       db.RoomsCompanion(
         id: Value(id),
@@ -72,14 +79,14 @@ class RoomRepositoryImpl implements RoomRepository {
         syncStatus: const Value('pending'),
       ),
     );
-    
+
     return id;
   }
 
   @override
   Future<void> updateRoom(Room room) async {
     final now = DateTime.now();
-    
+
     await database.updateRoom(
       db.RoomsCompanion(
         id: Value(room.id),

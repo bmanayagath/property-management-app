@@ -17,6 +17,13 @@ class ExpenseRepositoryImpl implements ExpenseRepository {
   }
 
   @override
+  Stream<List<ExpenseModel>> watchAllExpenses() {
+    return database.watchAllExpenses().map(
+          (expenses) => expenses.map(_mapToModel).toList(),
+        );
+  }
+
+  @override
   Future<List<ExpenseModel>> getExpensesByVillaId(String villaId) async {
     final expenses = await database.getExpensesByVillaId(villaId);
     return expenses.map((expense) => _mapToModel(expense)).toList();

@@ -4,9 +4,9 @@ import 'auth_provider.dart';
 import 'repository_provider.dart';
 import 'sync_provider.dart';
 
-final villasProvider = FutureProvider<List<VillaModel>>((ref) async {
+final villasProvider = StreamProvider<List<VillaModel>>((ref) {
   final repository = ref.watch(villaRepositoryProvider);
-  return repository.getAllVillas();
+  return repository.watchAllVillas();
 });
 
 final villaByIdProvider =

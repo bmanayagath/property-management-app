@@ -162,6 +162,8 @@ class AppDatabase extends _$AppDatabase {
   // Villa Queries
   Future<List<Villa>> getAllVillas() => select(villas).get();
 
+  Stream<List<Villa>> watchAllVillas() => select(villas).watch();
+
   Future<Villa?> getVillaById(String id) =>
       (select(villas)..where((tbl) => tbl.id.equals(id))).getSingleOrNull();
 
@@ -180,25 +182,39 @@ class AppDatabase extends _$AppDatabase {
       (delete(villas)..where((tbl) => tbl.id.equals(id))).go();
 
   // Room Queries
-  Future<List<Room>> getAllRooms() => select(rooms).get();
+  Future<List<Room>> getAllRooms() =>
+      (select(rooms)..where((tbl) => tbl.isDeleted.equals(0))).get();
 
-  Stream<List<Room>> watchAllRooms() => select(rooms).watch();
+  Stream<List<Room>> watchAllRooms() =>
+      (select(rooms)..where((tbl) => tbl.isDeleted.equals(0))).watch();
 
   Future<Room?> getRoomById(String id) =>
       (select(rooms)..where((tbl) => tbl.id.equals(id))).getSingleOrNull();
 
-  Future<List<Room>> getRoomsByVillaId(String villaId) =>
-      (select(rooms)..where((tbl) => tbl.villaId.equals(villaId))).get();
+  Future<List<Room>> getRoomsByVillaId(String villaId) => (select(rooms)
+        ..where(
+          (tbl) => tbl.villaId.equals(villaId) & tbl.isDeleted.equals(0),
+        ))
+      .get();
 
-  Stream<List<Room>> watchRoomsByVillaId(String villaId) =>
-      (select(rooms)..where((tbl) => tbl.villaId.equals(villaId))).watch();
+  Stream<List<Room>> watchRoomsByVillaId(String villaId) => (select(rooms)
+        ..where(
+          (tbl) => tbl.villaId.equals(villaId) & tbl.isDeleted.equals(0),
+        ))
+      .watch();
 
   Future<int> insertRoom(RoomsCompanion room) => into(rooms).insert(room);
 
   Future<bool> updateRoom(RoomsCompanion room) => update(rooms).replace(room);
 
   Future<int> deleteRoom(String id) =>
-      (delete(rooms)..where((tbl) => tbl.id.equals(id))).go();
+      (update(rooms)..where((tbl) => tbl.id.equals(id))).write(
+        RoomsCompanion(
+          isDeleted: const Value(1),
+          syncStatus: const Value('pending'),
+          updatedAt: Value(DateTime.now()),
+        ),
+      );
 
   // Income Queries
   Future<List<Income>> getAllIncomes() => select(incomes).get();
@@ -228,6 +244,8 @@ class AppDatabase extends _$AppDatabase {
 
   // Expense Queries
   Future<List<Expense>> getAllExpenses() => select(expenses).get();
+
+  Stream<List<Expense>> watchAllExpenses() => select(expenses).watch();
 
   Future<List<Expense>> getExpensesByVillaId(String villaId) =>
       (select(expenses)..where((tbl) => tbl.villaId.equals(villaId))).get();

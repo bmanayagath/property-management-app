@@ -2,6 +2,7 @@ import '../models/expense_model.dart';
 
 abstract class ExpenseRepository {
   Future<List<ExpenseModel>> getAllExpenses();
+  Stream<List<ExpenseModel>> watchAllExpenses();
   Future<List<ExpenseModel>> getExpensesByVillaId(String villaId);
   Future<List<ExpenseModel>> getExpensesByMonth(DateTime month);
   Future<String> addExpense(ExpenseModel expense);

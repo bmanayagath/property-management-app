@@ -1,3 +1,6 @@
+import 'dart:async';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 
@@ -9,6 +12,17 @@ import '../../domain/repositories/villa_repository.dart';
 import 'auth_provider.dart';
 import 'repository_provider.dart';
 import 'sync_provider.dart';
+
+final expenseListProvider = StreamProvider<List<Expense>>((ref) {
+  final repository = ref.watch(expenseRepositoryProvider);
+  final syncService = ref.watch(firebaseSyncServiceProvider);
+  return _mergeExpenseStreams(
+    localStream: repository.watchAllExpenses().map(
+          (models) => models.map(_expenseFromModel).toList(),
+        ),
+    cloudStream: syncService.watchCloudExpenses(),
+  );
+});
 
 final expenseProvider =
     StateNotifierProvider<ExpenseNotifier, List<Expense>>((ref) {
@@ -202,4 +216,96 @@ class ExpenseNotifier extends StateNotifier<List<Expense>> {
         );
     _ref.read(syncRefreshProvider.notifier).state++;
   }
+}
+
+Expense _expenseFromModel(ExpenseModel model) {
+  return Expense(
+    id: model.id,
+    villaId: model.villaId,
+    villaName: model.villaName.isNotEmpty
+        ? model.villaName
+        : model.villaId == null
+            ? 'General Expense'
+            : 'Villa ${model.villaId}',
+    roomId: model.roomId,
+    roomName: model.roomName,
+    category: model.category.displayName,
+    amount: model.amount,
+    expenseDate: model.expenseDate,
+    paidTo: model.paidTo,
+    paymentMethod: _paymentMethodLabel(model.paymentMethod),
+    notes: model.notes ?? '',
+  );
+}
+
+String _paymentMethodLabel(PaymentMethod method) {
+  switch (method) {
+    case PaymentMethod.cash:
+      return ExpensePaymentMethods.cash;
+    case PaymentMethod.transfer:
+      return ExpensePaymentMethods.bankTransfer;
+    case PaymentMethod.online:
+      return ExpensePaymentMethods.card;
+    case PaymentMethod.check:
+      return ExpensePaymentMethods.cheque;
+    case PaymentMethod.other:
+      return ExpensePaymentMethods.other;
+  }
+}
+
+Stream<List<Expense>> _mergeExpenseStreams({
+  required Stream<List<Expense>> localStream,
+  required Stream<List<Expense>> cloudStream,
+}) {
+  late StreamController<List<Expense>> controller;
+  StreamSubscription<List<Expense>>? localSubscription;
+  StreamSubscription<List<Expense>>? cloudSubscription;
+  var localExpenses = <Expense>[];
+  var cloudExpenses = <Expense>[];
+
+  void emitMerged() {
+    final byId = <String, Expense>{};
+    for (final expense in localExpenses) {
+      byId[expense.id] = expense;
+    }
+    for (final expense in cloudExpenses) {
+      byId[expense.id] = expense;
+    }
+
+    final merged = byId.values.toList()
+      ..sort((a, b) => b.expenseDate.compareTo(a.expenseDate));
+    controller.add(merged);
+    debugPrint(
+      '[ExpenseProvider] loaded local=${localExpenses.length}, cloud=${cloudExpenses.length}, merged=${merged.length}',
+    );
+  }
+
+  controller = StreamController<List<Expense>>(
+    onListen: () {
+      localSubscription = localStream.listen(
+        (expenses) {
+          localExpenses = expenses;
+          emitMerged();
+        },
+        onError: controller.addError,
+      );
+
+      cloudSubscription = cloudStream.listen(
+        (expenses) {
+          cloudExpenses = expenses;
+          emitMerged();
+        },
+        onError: (error, stackTrace) {
+          debugPrint('[ExpenseProvider] cloud expense stream failed: $error');
+          emitMerged();
+        },
+      );
+    },
+    onCancel: () async {
+      await localSubscription?.cancel();
+      await cloudSubscription?.cancel();
+    },
+  );
+
+  return controller.stream;
 }

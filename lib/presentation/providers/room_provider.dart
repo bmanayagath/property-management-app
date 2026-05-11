@@ -4,9 +4,9 @@ import 'auth_provider.dart';
 import 'repository_provider.dart';
 import 'sync_provider.dart';
 
-final allRoomsProvider = FutureProvider<List<Room>>((ref) async {
+final allRoomsProvider = StreamProvider<List<Room>>((ref) {
   final repository = ref.watch(roomRepositoryProvider);
-  return repository.getAllRooms();
+  return repository.watchAllRooms();
 });
 
 final roomByIdProvider = FutureProvider.family<Room?, String>((ref, id) async {
@@ -47,8 +47,7 @@ final totalExpectedRentProvider = FutureProvider<double>((ref) async {
   return repository.getTotalExpectedRentForAllVillas();
 });
 
-final addRoomProvider =
-    FutureProvider.family<String, Room>((ref, room) async {
+final addRoomProvider = FutureProvider.family<String, Room>((ref, room) async {
   final repository = ref.watch(roomRepositoryProvider);
   final id = await repository.addRoom(room);
   final currentUser = ref.read(authProvider).currentUser;
@@ -67,8 +66,7 @@ final addRoomProvider =
   return id;
 });
 
-final updateRoomProvider =
-    FutureProvider.family<void, Room>((ref, room) async {
+final updateRoomProvider = FutureProvider.family<void, Room>((ref, room) async {
   final repository = ref.watch(roomRepositoryProvider);
   await repository.updateRoom(room);
   final currentUser = ref.read(authProvider).currentUser;
@@ -86,8 +84,7 @@ final updateRoomProvider =
   ref.invalidate(totalExpectedRentProvider);
 });
 
-final deleteRoomProvider =
-    FutureProvider.family<void, String>((ref, id) async {
+final deleteRoomProvider = FutureProvider.family<void, String>((ref, id) async {
   final repository = ref.watch(roomRepositoryProvider);
   final room = await repository.getRoomById(id);
   await repository.deleteRoom(id);

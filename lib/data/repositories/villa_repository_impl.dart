@@ -16,6 +16,13 @@ class VillaRepositoryImpl implements VillaRepository {
   }
 
   @override
+  Stream<List<VillaModel>> watchAllVillas() {
+    return database.watchAllVillas().map(
+          (villas) => villas.map(_mapToModel).toList(),
+        );
+  }
+
+  @override
   Future<VillaModel?> getVillaById(String id) async {
     final villa = await database.getVillaById(id);
     return villa != null ? _mapToModel(villa) : null;
