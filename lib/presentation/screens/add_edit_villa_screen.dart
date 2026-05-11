@@ -28,7 +28,6 @@ class _AddEditVillaScreenState extends ConsumerState<AddEditVillaScreen> {
   final _deletedRoomIds = <String>{};
 
   late final TextEditingController _villaNameController;
-  late final TextEditingController _villaNumberController;
   late final TextEditingController _locationController;
   late final TextEditingController _notesController;
 
@@ -42,8 +41,6 @@ class _AddEditVillaScreenState extends ConsumerState<AddEditVillaScreen> {
     super.initState();
     final villa = widget.villa;
     _villaNameController = TextEditingController(text: villa?.villaName ?? '');
-    _villaNumberController =
-        TextEditingController(text: villa?.villaNumber ?? '');
     _locationController = TextEditingController(text: villa?.location ?? '');
     _notesController = TextEditingController(text: villa?.notes ?? '');
   }
@@ -51,7 +48,6 @@ class _AddEditVillaScreenState extends ConsumerState<AddEditVillaScreen> {
   @override
   void dispose() {
     _villaNameController.dispose();
-    _villaNumberController.dispose();
     _locationController.dispose();
     _notesController.dispose();
     super.dispose();
@@ -65,9 +61,9 @@ class _AddEditVillaScreenState extends ConsumerState<AddEditVillaScreen> {
       return;
     }
 
-    final duplicateRoomNumber = _findDuplicateRoomNumber();
-    if (duplicateRoomNumber != null) {
-      _showMessage('Room number $duplicateRoomNumber is already added.');
+    final duplicateRoomName = _findDuplicateRoomName();
+    if (duplicateRoomName != null) {
+      _showMessage('Room name "$duplicateRoomName" is already added.');
       return;
     }
 
@@ -77,7 +73,7 @@ class _AddEditVillaScreenState extends ConsumerState<AddEditVillaScreen> {
     final villa = VillaModel(
       id: widget.villa?.id ?? now.microsecondsSinceEpoch.toString(),
       villaName: _villaNameController.text.trim(),
-      villaNumber: _villaNumberController.text.trim(),
+      villaNumber: '',
       location: _locationController.text.trim(),
       notes: _notesController.text.trim(),
       createdAt: widget.villa?.createdAt ?? now,
@@ -160,22 +156,22 @@ class _AddEditVillaScreenState extends ConsumerState<AddEditVillaScreen> {
       useSafeArea: true,
       builder: (context) => _RoomFormSheet(
         room: room,
-        isRoomNumberUnique: (roomNumber) {
-          final normalized = roomNumber.trim().toLowerCase();
+        isRoomNameUnique: (roomName) {
+          final normalized = roomName.trim().toLowerCase();
           return !_rooms.asMap().entries.any((entry) {
             if (entry.key == editIndex) return false;
-            return entry.value.roomNumber.trim().toLowerCase() == normalized;
+            return entry.value.roomName.trim().toLowerCase() == normalized;
           });
         },
       ),
     );
   }
 
-  String? _findDuplicateRoomNumber() {
+  String? _findDuplicateRoomName() {
     final seen = <String>{};
     for (final room in _rooms) {
-      final normalized = room.roomNumber.trim().toLowerCase();
-      if (seen.contains(normalized)) return room.roomNumber.trim();
+      final normalized = room.roomName.trim().toLowerCase();
+      if (seen.contains(normalized)) return room.roomName.trim();
       seen.add(normalized);
     }
     return null;
@@ -297,18 +293,6 @@ class _AddEditVillaScreenState extends ConsumerState<AddEditVillaScreen> {
                       validator: (value) {
                         if (value?.trim().isEmpty ?? true) {
                           return 'Villa name is required';
-                        }
-                        return null;
-                      },
-                    ),
-                    AppTextField(
-                      controller: _villaNumberController,
-                      label: 'Villa Number *',
-                      hint: 'e.g., V001',
-                      prefixIcon: Icons.numbers,
-                      validator: (value) {
-                        if (value?.trim().isEmpty ?? true) {
-                          return 'Villa number is required';
                         }
                         return null;
                       },
@@ -457,11 +441,11 @@ class _AddEditVillaScreenState extends ConsumerState<AddEditVillaScreen> {
 
 class _RoomFormSheet extends StatefulWidget {
   final Room? room;
-  final bool Function(String roomNumber) isRoomNumberUnique;
+  final bool Function(String roomName) isRoomNameUnique;
 
   const _RoomFormSheet({
     this.room,
-    required this.isRoomNumberUnique,
+    required this.isRoomNameUnique,
   });
 
   @override
@@ -472,7 +456,6 @@ class _RoomFormSheetState extends State<_RoomFormSheet> {
   final _formKey = GlobalKey<FormState>();
 
   late final TextEditingController _roomNameController;
-  late final TextEditingController _roomNumberController;
   late final TextEditingController _tenantNameController;
   late final TextEditingController _tenantPhoneController;
   late final TextEditingController _monthlyRentController;
@@ -490,7 +473,6 @@ class _RoomFormSheetState extends State<_RoomFormSheet> {
     super.initState();
     final room = widget.room;
     _roomNameController = TextEditingController(text: room?.roomName ?? '');
-    _roomNumberController = TextEditingController(text: room?.roomNumber ?? '');
     _tenantNameController = TextEditingController(text: room?.tenantName ?? '');
     _tenantPhoneController =
         TextEditingController(text: room?.tenantPhone ?? '');
@@ -511,7 +493,6 @@ class _RoomFormSheetState extends State<_RoomFormSheet> {
   @override
   void dispose() {
     _roomNameController.dispose();
-    _roomNumberController.dispose();
     _tenantNameController.dispose();
     _tenantPhoneController.dispose();
     _monthlyRentController.dispose();
@@ -528,7 +509,7 @@ class _RoomFormSheetState extends State<_RoomFormSheet> {
       villaId: widget.room?.villaId ?? '',
       villaName: widget.room?.villaName ?? '',
       roomName: _roomNameController.text.trim(),
-      roomNumber: _roomNumberController.text.trim(),
+      roomNumber: '',
       tenantName: _tenantNameController.text.trim(),
       tenantPhone: _tenantPhoneController.text.trim(),
       monthlyRent: double.parse(_monthlyRentController.text.trim()),
@@ -596,21 +577,8 @@ class _RoomFormSheetState extends State<_RoomFormSheet> {
                   if (value?.trim().isEmpty ?? true) {
                     return 'Room name is required';
                   }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 16),
-              AppTextField(
-                controller: _roomNumberController,
-                label: 'Room Number *',
-                hint: 'e.g., 101',
-                prefixIcon: Icons.numbers,
-                validator: (value) {
-                  if (value?.trim().isEmpty ?? true) {
-                    return 'Room number is required';
-                  }
-                  if (!widget.isRoomNumberUnique(value!.trim())) {
-                    return 'Room number must be unique inside this villa';
+                  if (!widget.isRoomNameUnique(value!.trim())) {
+                    return 'Room name must be unique inside this villa';
                   }
                   return null;
                 },

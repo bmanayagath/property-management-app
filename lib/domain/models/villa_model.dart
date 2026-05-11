@@ -10,6 +10,8 @@ class VillaModel with _$VillaModel {
     required String id,
     required String villaName,
     required String location,
+    // Legacy compatibility field for old local/Firebase records.
+    // New UI and validation use villaName for identification.
     @Default('') String villaNumber,
     @Default('') String notes,
     required DateTime createdAt,

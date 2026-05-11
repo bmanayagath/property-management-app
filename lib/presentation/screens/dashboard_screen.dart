@@ -1043,7 +1043,7 @@ class _VillaRow extends StatelessWidget {
                       width: 68,
                       child: CustomPaint(
                         painter: _VillaThumbnailPainter(
-                          seed: villa.villaNumber.hashCode,
+                          seed: villa.id.hashCode,
                         ),
                       ),
                     ),
@@ -1058,9 +1058,7 @@ class _VillaRow extends StatelessWidget {
                         fit: BoxFit.scaleDown,
                         alignment: Alignment.centerLeft,
                         child: Text(
-                          villa.villaName.isEmpty
-                              ? 'Villa ${villa.villaNumber}'
-                              : villa.villaName,
+                          villa.villaName.isEmpty ? 'Villa' : villa.villaName,
                           maxLines: 1,
                           style: const TextStyle(
                             color: Color(0xFF060B26),

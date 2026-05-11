@@ -3,7 +3,6 @@ class RoomProfitSummary {
   final String villaId;
   final String villaName;
   final String roomName;
-  final String roomNumber;
   final String tenantName;
   final String status;
   final int paymentDueDay;
@@ -25,7 +24,6 @@ class RoomProfitSummary {
     required this.villaId,
     required this.villaName,
     required this.roomName,
-    required this.roomNumber,
     required this.tenantName,
     required this.status,
     required this.paymentDueDay,
@@ -48,5 +46,5 @@ class RoomProfitSummary {
   bool get isVacant => status.toLowerCase() == 'vacant';
 
   String get displayRoomName =>
-      roomName.trim().isEmpty ? 'Room $roomNumber' : roomName.trim();
+      roomName.trim().isEmpty ? 'Room' : roomName.trim();
 }

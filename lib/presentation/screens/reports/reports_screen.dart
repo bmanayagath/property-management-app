@@ -605,7 +605,6 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
       villaName: summary.villaName,
       roomId: summary.roomId,
       roomName: summary.roomName,
-      roomNumber: summary.roomNumber,
       tenantName: summary.tenantName,
       status: summary.status,
       expectedRent: summary.expectedRent,

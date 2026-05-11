@@ -11,7 +11,7 @@ part 'database.g.dart';
 class Villas extends Table {
   TextColumn get id => text()();
   TextColumn get villaName => text()();
-  TextColumn get villaNumber => text()();
+  TextColumn get villaNumber => text().withDefault(const Constant(''))();
   TextColumn get location => text()();
   TextColumn get notes => text().withDefault(const Constant(''))();
   TextColumn get tenantName => text()();
@@ -34,7 +34,7 @@ class Rooms extends Table {
   TextColumn get villaId => text().references(Villas, #id)();
   TextColumn get villaName => text()();
   TextColumn get roomName => text()();
-  TextColumn get roomNumber => text()();
+  TextColumn get roomNumber => text().withDefault(const Constant(''))();
   TextColumn get tenantName => text().nullable()();
   TextColumn get tenantPhone => text().nullable()();
   RealColumn get monthlyRent => real()();

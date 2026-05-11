@@ -69,9 +69,10 @@ class _AddEditExpenseScreenState extends ConsumerState<AddEditExpenseScreen> {
   @override
   Widget build(BuildContext context) {
     final villasAsync = ref.watch(villasProvider);
-    final roomsAsync = _selectedVillaId != _generalExpenseId && _selectedVillaId.isNotEmpty
-        ? ref.watch(roomsByVillaProvider(_selectedVillaId))
-        : null;
+    final roomsAsync =
+        _selectedVillaId != _generalExpenseId && _selectedVillaId.isNotEmpty
+            ? ref.watch(roomsByVillaProvider(_selectedVillaId))
+            : null;
 
     return Scaffold(
       backgroundColor: const Color(0xFFFCFCFD),
@@ -116,7 +117,8 @@ class _AddEditExpenseScreenState extends ConsumerState<AddEditExpenseScreen> {
                     },
                   ),
                   // Room Selection (if villa is selected, not general)
-                  if (_selectedVillaId != _generalExpenseId && roomsAsync != null) ...[
+                  if (_selectedVillaId != _generalExpenseId &&
+                      roomsAsync != null) ...[
                     const SizedBox(height: 14),
                     roomsAsync.when(
                       data: (rooms) {
@@ -135,8 +137,7 @@ class _AddEditExpenseScreenState extends ConsumerState<AddEditExpenseScreen> {
                             ...rooms.map(
                               (room) => DropdownMenuItem(
                                 value: room.id,
-                                child: Text(
-                                    '${room.roomName} (#${room.roomNumber})'),
+                                child: Text(room.displayName),
                               ),
                             ),
                           ],
@@ -145,10 +146,8 @@ class _AddEditExpenseScreenState extends ConsumerState<AddEditExpenseScreen> {
                           },
                         );
                       },
-                      loading: () =>
-                          const CircularProgressIndicator(),
-                      error: (error, _) =>
-                          Text('Error loading rooms: $error'),
+                      loading: () => const CircularProgressIndicator(),
+                      error: (error, _) => Text('Error loading rooms: $error'),
                     ),
                   ],
                   const SizedBox(height: 14),
@@ -298,7 +297,7 @@ class _AddEditExpenseScreenState extends ConsumerState<AddEditExpenseScreen> {
     final selectedVilla = _selectedVillaId == _generalExpenseId
         ? null
         : villas.where((villa) => villa.id == _selectedVillaId).firstOrNull;
-    
+
     final expense = Expense(
       id: widget.expense?.id ?? const Uuid().v4(),
       villaId: selectedVilla?.id,
@@ -364,9 +363,7 @@ class _AddEditExpenseScreenState extends ConsumerState<AddEditExpenseScreen> {
   }
 
   static String _villaLabel(VillaModel villa) {
-    final number =
-        villa.villaNumber.trim().isEmpty ? '' : ' #${villa.villaNumber}';
-    return '${villa.villaName}$number';
+    return villa.villaName.trim().isEmpty ? 'Villa' : villa.villaName.trim();
   }
 
   static final NumberFormat _moneyFormat = NumberFormat('#,##0.##');

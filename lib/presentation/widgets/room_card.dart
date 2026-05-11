@@ -69,7 +69,7 @@ class RoomCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        room.roomName,
+                        room.displayName,
                         style: const TextStyle(
                           color: Color(0xFF060B26),
                           fontSize: 14,
@@ -77,15 +77,6 @@ class RoomCard extends StatelessWidget {
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Room ${room.roomNumber}',
-                        style: const TextStyle(
-                          color: Color(0xFF646B7A),
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                        ),
                       ),
                     ],
                   ),

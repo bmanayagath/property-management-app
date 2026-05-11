@@ -138,8 +138,8 @@ class _AddEditIncomeScreenState extends ConsumerState<AddEditIncomeScreen> {
                                       ? room.isOccupied
                                       : true)
                               .toList();
-                          final selectedRoomIsValid =
-                              occupiedRooms.any((room) => room.id == _selectedRoomId);
+                          final selectedRoomIsValid = occupiedRooms
+                              .any((room) => room.id == _selectedRoomId);
 
                           return DropdownButtonFormField<String>(
                             initialValue:
@@ -149,8 +149,7 @@ class _AddEditIncomeScreenState extends ConsumerState<AddEditIncomeScreen> {
                                 .map(
                                   (room) => DropdownMenuItem(
                                     value: room.id,
-                                    child: Text(
-                                        '${room.roomName} (#${room.roomNumber})'),
+                                    child: Text(room.displayName),
                                   ),
                                 )
                                 .toList(),
@@ -162,8 +161,7 @@ class _AddEditIncomeScreenState extends ConsumerState<AddEditIncomeScreen> {
                             },
                           );
                         },
-                        loading: () =>
-                            const CircularProgressIndicator(),
+                        loading: () => const CircularProgressIndicator(),
                         error: (error, _) =>
                             Text('Error loading rooms: $error'),
                       ),
@@ -336,12 +334,13 @@ class _AddEditIncomeScreenState extends ConsumerState<AddEditIncomeScreen> {
 
     String roomName = '';
     if (_selectedRoomId != null) {
-      final rooms = ref.read(roomsByVillaProvider(selectedVilla.id)).valueOrNull;
+      final rooms =
+          ref.read(roomsByVillaProvider(selectedVilla.id)).valueOrNull;
       var selectedRoomName = _selectedRoomId!;
       if (rooms != null) {
         for (final room in rooms) {
           if (room.id == _selectedRoomId) {
-            selectedRoomName = '${room.roomName} (#${room.roomNumber})';
+            selectedRoomName = room.displayName;
             break;
           }
         }
@@ -419,9 +418,7 @@ class _AddEditIncomeScreenState extends ConsumerState<AddEditIncomeScreen> {
   }
 
   static String _villaLabel(VillaModel villa) {
-    final number =
-        villa.villaNumber.trim().isEmpty ? '' : ' #${villa.villaNumber}';
-    return '${villa.villaName}$number';
+    return villa.villaName.trim().isEmpty ? 'Villa' : villa.villaName.trim();
   }
 
   static final NumberFormat _moneyFormat = NumberFormat('#,##0.##');

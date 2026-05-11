@@ -99,7 +99,6 @@ class RoomWiseProfitReportItem {
   final String villaName;
   final String roomId;
   final String roomName;
-  final String roomNumber;
   final String tenantName;
   final String status;
   final double expectedRent;
@@ -117,7 +116,6 @@ class RoomWiseProfitReportItem {
     required this.villaName,
     required this.roomId,
     required this.roomName,
-    required this.roomNumber,
     required this.tenantName,
     required this.status,
     required this.expectedRent,
@@ -136,7 +134,7 @@ class RoomWiseProfitReportItem {
   bool get isVacant => status.toLowerCase() == 'vacant';
 
   String get displayRoomName =>
-      roomName.trim().isEmpty ? 'Room $roomNumber' : roomName.trim();
+      roomName.trim().isEmpty ? 'Room' : roomName.trim();
 }
 
 class YearlySummaryReportItem {

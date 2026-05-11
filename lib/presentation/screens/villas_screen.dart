@@ -78,14 +78,8 @@ class _VillasScreenState extends ConsumerState<VillasScreen> {
                               .contains(_searchQuery.toLowerCase()) ||
                           room.roomName
                               .toLowerCase()
-                              .contains(_searchQuery.toLowerCase()) ||
-                          room.roomNumber
-                              .toLowerCase()
                               .contains(_searchQuery.toLowerCase()),
-                    ) ||
-                    villa.villaNumber
-                        .toLowerCase()
-                        .contains(_searchQuery.toLowerCase()))
+                    ))
                 .toList();
 
             final occupiedRooms = rooms.where((room) => room.isOccupied).length;

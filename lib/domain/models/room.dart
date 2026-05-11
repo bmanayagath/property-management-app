@@ -3,6 +3,8 @@ class Room {
   final String villaId;
   final String villaName;
   final String roomName;
+  // Legacy compatibility field for old local/Firebase records.
+  // New UI and validation use roomName for identification.
   final String roomNumber;
   final String tenantName;
   final String tenantPhone;

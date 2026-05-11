@@ -117,13 +117,6 @@ class VillaDetailScreen extends ConsumerWidget {
                               villa.villaName,
                               style: AppStyles.titleLarge,
                             ),
-                            const SizedBox(height: 4),
-                            Text(
-                              'Villa # ${villa.villaNumber}',
-                              style: AppStyles.bodyMedium.copyWith(
-                                color: AppColors.textSecondary,
-                              ),
-                            ),
                           ],
                         ),
                         const SizedBox(height: 16),

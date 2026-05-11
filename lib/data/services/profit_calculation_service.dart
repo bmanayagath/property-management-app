@@ -354,7 +354,6 @@ class ProfitCalculationService {
       villaId: room.villaId,
       villaName: room.villaName,
       roomName: room.roomName,
-      roomNumber: room.roomNumber,
       tenantName: isOccupied ? room.tenantName : 'Vacant',
       status: room.status,
       paymentDueDay: room.paymentDueDay,

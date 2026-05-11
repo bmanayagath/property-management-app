@@ -26,7 +26,6 @@ class AddEditRoomScreen extends ConsumerStatefulWidget {
 
 class _AddEditRoomScreenState extends ConsumerState<AddEditRoomScreen> {
   late TextEditingController _roomNameController;
-  late TextEditingController _roomNumberController;
   late TextEditingController _tenantNameController;
   late TextEditingController _tenantPhoneController;
   late TextEditingController _monthlyRentController;
@@ -43,10 +42,7 @@ class _AddEditRoomScreenState extends ConsumerState<AddEditRoomScreen> {
   void initState() {
     super.initState();
     if (widget.room != null) {
-      _roomNameController =
-          TextEditingController(text: widget.room!.roomName);
-      _roomNumberController =
-          TextEditingController(text: widget.room!.roomNumber);
+      _roomNameController = TextEditingController(text: widget.room!.roomName);
       _tenantNameController =
           TextEditingController(text: widget.room!.tenantName);
       _tenantPhoneController =
@@ -56,14 +52,13 @@ class _AddEditRoomScreenState extends ConsumerState<AddEditRoomScreen> {
       _paymentDueDayController =
           TextEditingController(text: widget.room!.paymentDueDay.toString());
       _contractStartDate = widget.room!.contractStartDate ?? DateTime.now();
-      _contractEndDate =
-          widget.room!.contractEndDate ?? DateTime.now().add(const Duration(days: 365));
+      _contractEndDate = widget.room!.contractEndDate ??
+          DateTime.now().add(const Duration(days: 365));
       _paymentDueDay = widget.room!.paymentDueDay;
       _status = widget.room!.status;
       _selectedVilla = null;
     } else {
       _roomNameController = TextEditingController();
-      _roomNumberController = TextEditingController();
       _tenantNameController = TextEditingController();
       _tenantPhoneController = TextEditingController();
       _monthlyRentController = TextEditingController();
@@ -79,7 +74,6 @@ class _AddEditRoomScreenState extends ConsumerState<AddEditRoomScreen> {
   @override
   void dispose() {
     _roomNameController.dispose();
-    _roomNumberController.dispose();
     _tenantNameController.dispose();
     _tenantPhoneController.dispose();
     _monthlyRentController.dispose();
@@ -101,12 +95,25 @@ class _AddEditRoomScreenState extends ConsumerState<AddEditRoomScreen> {
       return;
     }
 
+    final duplicateRoomName = await _findDuplicateRoomName();
+    if (duplicateRoomName != null) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Room name "$duplicateRoomName" is already used in this villa.',
+          ),
+        ),
+      );
+      return;
+    }
+
     final room = Room(
       id: widget.room?.id ?? DateTime.now().millisecondsSinceEpoch.toString(),
       villaId: _selectedVilla!.id,
       villaName: _selectedVilla!.villaName,
       roomName: _roomNameController.text.trim(),
-      roomNumber: _roomNumberController.text.trim(),
+      roomNumber: '',
       tenantName: _tenantNameController.text.trim(),
       tenantPhone: _tenantPhoneController.text.trim(),
       monthlyRent: double.parse(_monthlyRentController.text),
@@ -136,6 +143,21 @@ class _AddEditRoomScreenState extends ConsumerState<AddEditRoomScreen> {
         SnackBar(content: Text('Error: $e')),
       );
     }
+  }
+
+  Future<String?> _findDuplicateRoomName() async {
+    final selectedVilla = _selectedVilla;
+    if (selectedVilla == null) return null;
+
+    final rooms = await ref.read(roomsByVillaProvider(selectedVilla.id).future);
+    final normalized = _roomNameController.text.trim().toLowerCase();
+    for (final room in rooms) {
+      if (room.id == widget.room?.id) continue;
+      if (room.roomName.trim().toLowerCase() == normalized) {
+        return room.roomName.trim();
+      }
+    }
+    return null;
   }
 
   Widget _buildSectionHeader(String title, IconData icon) {
@@ -222,7 +244,8 @@ class _AddEditRoomScreenState extends ConsumerState<AddEditRoomScreen> {
                   data: (villaList) {
                     // Set selected villa on first load
                     if (_selectedVilla == null && villaList.isNotEmpty) {
-                      final targetVillaId = widget.room?.villaId ?? widget.villaId;
+                      final targetVillaId =
+                          widget.room?.villaId ?? widget.villaId;
                       for (final villa in villaList) {
                         if (villa.id == targetVillaId) {
                           _selectedVilla = villa;
@@ -265,7 +288,8 @@ class _AddEditRoomScreenState extends ConsumerState<AddEditRoomScreen> {
                       ],
                     );
                   },
-                  loading: () => const Center(child: CircularProgressIndicator()),
+                  loading: () =>
+                      const Center(child: CircularProgressIndicator()),
                   error: (error, stack) => Center(child: Text('Error: $error')),
                 ),
                 const SizedBox(height: 24),
@@ -301,7 +325,8 @@ class _AddEditRoomScreenState extends ConsumerState<AddEditRoomScreen> {
                 const SizedBox(height: 24),
 
                 // Room Details Section
-                _buildSectionHeader('Room Details', Icons.meeting_room_outlined),
+                _buildSectionHeader(
+                    'Room Details', Icons.meeting_room_outlined),
                 _buildFormCard(
                   children: [
                     AppTextField(
@@ -312,18 +337,6 @@ class _AddEditRoomScreenState extends ConsumerState<AddEditRoomScreen> {
                       validator: (value) {
                         if (value?.isEmpty ?? true) {
                           return 'Room name is required';
-                        }
-                        return null;
-                      },
-                    ),
-                    AppTextField(
-                      controller: _roomNumberController,
-                      label: 'Room Number *',
-                      hint: 'e.g., 101',
-                      prefixIcon: Icons.numbers,
-                      validator: (value) {
-                        if (value?.isEmpty ?? true) {
-                          return 'Room number is required';
                         }
                         return null;
                       },
@@ -389,7 +402,8 @@ class _AddEditRoomScreenState extends ConsumerState<AddEditRoomScreen> {
 
                 // Tenant Information Section (Conditional)
                 if (_isTenantRequired) ...[
-                  _buildSectionHeader('Tenant Information', Icons.person_outlined),
+                  _buildSectionHeader(
+                      'Tenant Information', Icons.person_outlined),
                   _buildFormCard(
                     children: [
                       AppTextField(
@@ -422,7 +436,8 @@ class _AddEditRoomScreenState extends ConsumerState<AddEditRoomScreen> {
                   const SizedBox(height: 24),
 
                   // Contract Dates Section
-                  _buildSectionHeader('Contract Details', Icons.description_outlined),
+                  _buildSectionHeader(
+                      'Contract Details', Icons.description_outlined),
                   _buildFormCard(
                     children: [
                       AppDatePickerField(

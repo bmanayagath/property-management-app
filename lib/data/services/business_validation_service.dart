@@ -217,17 +217,6 @@ class BusinessValidationService {
     if (villa.villaName.trim().isEmpty) {
       return const ValidationResult.invalid('Villa name is required.');
     }
-    if (villa.villaNumber.trim().isEmpty) {
-      return const ValidationResult.invalid('Villa number is required.');
-    }
-    final duplicateVillaNumber = existingVillas.any(
-      (existing) =>
-          existing.id != originalVilla?.id &&
-          _normalize(existing.villaNumber) == _normalize(villa.villaNumber),
-    );
-    if (duplicateVillaNumber) {
-      return const ValidationResult.invalid('Villa number must be unique.');
-    }
     if (villa.monthlyRent <= 0) {
       return const ValidationResult.invalid(
         'Monthly rent must be greater than 0.',
