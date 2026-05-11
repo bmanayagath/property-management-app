@@ -64,13 +64,11 @@ class DashboardScreen extends ConsumerWidget {
                   ),
                   const SizedBox(height: 18),
                   _MetricGrid(
-                    totalVillas: dashboard.totalVillas,
                     totalRooms: dashboard.totalRooms,
                     occupiedRooms: dashboard.occupiedRooms,
                     vacantRooms: dashboard.vacantRooms,
-                    occupancyRate: dashboard.occupancyRate,
                     totalIncome: summary.totalIncome,
-                    totalExpense: summary.totalExpense,
+                    actualNetProfit: summary.totalIncome - summary.totalExpense,
                     pendingRent: dashboard.pendingRent,
                     pendingRooms: dashboard.pendingRooms,
                     vacancyLoss: dashboard.vacancyLoss,
@@ -210,14 +208,6 @@ class _DashboardHeader extends ConsumerWidget {
       child: Stack(
         alignment: Alignment.center,
         children: [
-          const Align(
-            alignment: Alignment.centerLeft,
-            child: Icon(
-              Icons.menu_rounded,
-              color: Colors.black,
-              size: 34,
-            ),
-          ),
           const Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
@@ -389,25 +379,21 @@ class _MonthFilter extends StatelessWidget {
 }
 
 class _MetricGrid extends StatelessWidget {
-  final int totalVillas;
   final int totalRooms;
   final int occupiedRooms;
   final int vacantRooms;
-  final double occupancyRate;
   final double totalIncome;
-  final double totalExpense;
+  final double actualNetProfit;
   final double pendingRent;
   final int pendingRooms;
   final double vacancyLoss;
 
   const _MetricGrid({
-    required this.totalVillas,
     required this.totalRooms,
     required this.occupiedRooms,
     required this.vacantRooms,
-    required this.occupancyRate,
     required this.totalIncome,
-    required this.totalExpense,
+    required this.actualNetProfit,
     required this.pendingRent,
     required this.pendingRooms,
     required this.vacancyLoss,
@@ -417,68 +403,6 @@ class _MetricGrid extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        Row(
-          children: [
-            Expanded(
-              child: _MetricCard(
-                title: 'Total Villas',
-                value: totalVillas.toString(),
-                color: const Color(0xFF5549DE),
-                background: const Color(0xFFF4F0FF),
-                border: const Color(0xFFE1D6FF),
-                icon: Icons.home_work_outlined,
-                iconBackground: const Color(0xFFEDE9FF),
-                showTrendArrow: false,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _MetricCard(
-                title: 'Total Rooms',
-                value: totalRooms.toString(),
-                color: const Color(0xFF2563EB),
-                background: const Color(0xFFF4F8FF),
-                border: const Color(0xFFD2E2FF),
-                icon: Icons.meeting_room_outlined,
-                iconBackground: const Color(0xFFE2EAFF),
-                showTrendArrow: false,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(
-              child: _MetricCard(
-                title: 'Occupied Rooms',
-                value: occupiedRooms.toString(),
-                color: const Color(0xFF2EA043),
-                background: const Color(0xFFF1FCF3),
-                border: const Color(0xFFC8EFD0),
-                icon: Icons.check_circle_outline_rounded,
-                iconBackground: const Color(0xFFDDF6E2),
-                showTrendArrow: false,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _MetricCard(
-                title: 'Vacant Rooms',
-                value: vacantRooms.toString(),
-                color: const Color(0xFFEA580C),
-                background: const Color(0xFFFFF7ED),
-                border: const Color(0xFFFED7AA),
-                icon: Icons.sensor_door_outlined,
-                iconBackground: const Color(0xFFFFEDD5),
-                showTrendArrow: false,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        _OccupancyRateCard(rate: occupancyRate),
-        const SizedBox(height: 12),
         Row(
           children: [
             Expanded(
@@ -495,24 +419,8 @@ class _MetricGrid extends StatelessWidget {
             const SizedBox(width: 12),
             Expanded(
               child: _MetricCard(
-                title: 'Total Expense',
-                value: DashboardScreen.money(totalExpense),
-                color: const Color(0xFFF04438),
-                background: const Color(0xFFFFF6F4),
-                border: const Color(0xFFFBD2CE),
-                icon: Icons.show_chart_rounded,
-                iconBackground: const Color(0xFFFFDFDA),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(
-              child: _MetricCard(
-                title: 'Net Profit',
-                value: DashboardScreen.money(totalIncome - totalExpense),
+                title: 'Actual Net Profit',
+                value: DashboardScreen.money(actualNetProfit),
                 color: const Color(0xFF2563EB),
                 background: const Color(0xFFF4F8FF),
                 border: const Color(0xFFD2E2FF),
@@ -520,7 +428,11 @@ class _MetricGrid extends StatelessWidget {
                 iconBackground: const Color(0xFFE2EAFF),
               ),
             ),
-            const SizedBox(width: 12),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
             Expanded(
               child: _MetricCard(
                 title: 'Pending Rent',
@@ -534,94 +446,64 @@ class _MetricGrid extends StatelessWidget {
                 showTrendArrow: false,
               ),
             ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _MetricCard(
+                title: 'Vacancy Loss',
+                value: DashboardScreen.money(vacancyLoss),
+                trend: 'Vacant Rooms: $vacantRooms',
+                color: const Color(0xFFEA580C),
+                background: const Color(0xFFFFF7ED),
+                border: const Color(0xFFFED7AA),
+                icon: Icons.home_work_outlined,
+                iconBackground: const Color(0xFFFFEDD5),
+                showTrendArrow: false,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: _MetricCard(
+                title: 'Total Rooms',
+                value: totalRooms.toString(),
+                color: const Color(0xFF5549DE),
+                background: const Color(0xFFF4F0FF),
+                border: const Color(0xFFE1D6FF),
+                icon: Icons.meeting_room_outlined,
+                iconBackground: const Color(0xFFEDE9FF),
+                showTrendArrow: false,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _MetricCard(
+                title: 'Occupied Rooms',
+                value: occupiedRooms.toString(),
+                color: const Color(0xFF2EA043),
+                background: const Color(0xFFF1FCF3),
+                border: const Color(0xFFC8EFD0),
+                icon: Icons.check_circle_outline_rounded,
+                iconBackground: const Color(0xFFDDF6E2),
+                showTrendArrow: false,
+              ),
+            ),
           ],
         ),
         const SizedBox(height: 12),
         _MetricCard(
-          title: 'Vacancy Loss',
-          value: DashboardScreen.money(vacancyLoss),
-          trend: 'Vacant Rooms: $vacantRooms',
+          title: 'Vacant Rooms',
+          value: vacantRooms.toString(),
           color: const Color(0xFFEA580C),
           background: const Color(0xFFFFF7ED),
           border: const Color(0xFFFED7AA),
-          icon: Icons.home_work_outlined,
+          icon: Icons.sensor_door_outlined,
           iconBackground: const Color(0xFFFFEDD5),
           showTrendArrow: false,
         ),
       ],
-    );
-  }
-}
-
-class _OccupancyRateCard extends StatelessWidget {
-  final double rate;
-
-  const _OccupancyRateCard({required this.rate});
-
-  @override
-  Widget build(BuildContext context) {
-    final progress = (rate / 100).clamp(0.0, 1.0);
-
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE8EAF0)),
-      ),
-      child: Row(
-        children: [
-          Container(
-            height: 44,
-            width: 44,
-            decoration: const BoxDecoration(
-              color: Color(0xFFEAF0FF),
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(
-              Icons.percent_rounded,
-              color: Color(0xFF2563EB),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Occupancy Rate',
-                  style: TextStyle(
-                    color: Color(0xFF060B26),
-                    fontSize: 14,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-                const SizedBox(height: 9),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(20),
-                  child: LinearProgressIndicator(
-                    value: progress,
-                    minHeight: 9,
-                    backgroundColor: const Color(0xFFE4E4E6),
-                    valueColor: const AlwaysStoppedAnimation(
-                      Color(0xFF2563EB),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 12),
-          Text(
-            '${rate.toStringAsFixed(1)}%',
-            style: const TextStyle(
-              color: Color(0xFF060B26),
-              fontSize: 20,
-              fontWeight: FontWeight.w900,
-            ),
-          ),
-        ],
-      ),
     );
   }
 }

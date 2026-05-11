@@ -127,7 +127,6 @@ class DashboardSummary {
       rentReceivedByRoom: rentReceivedByRoom,
       expensesByCategory: expensesByCategory,
       metrics: DashboardRoomMetrics.fromRooms(
-        totalVillas: villas.length,
         rooms: activeRooms,
         rentReceivedByRoom: rentReceivedByRoom,
       ),
@@ -138,7 +137,6 @@ class DashboardSummary {
 }
 
 class DashboardRoomMetrics {
-  final int totalVillas;
   final int totalRooms;
   final int occupiedRooms;
   final int vacantRooms;
@@ -150,7 +148,6 @@ class DashboardRoomMetrics {
   final double vacancyLoss;
 
   const DashboardRoomMetrics({
-    required this.totalVillas,
     required this.totalRooms,
     required this.occupiedRooms,
     required this.vacantRooms,
@@ -162,14 +159,10 @@ class DashboardRoomMetrics {
     required this.vacancyLoss,
   });
 
-  double get occupancyRate =>
-      totalRooms == 0 ? 0 : (occupiedRooms / totalRooms) * 100;
-
   double get rentCollectionProgress =>
       expectedRent == 0 ? 0 : (rentReceived / expectedRent).clamp(0.0, 1.0);
 
   static DashboardRoomMetrics fromRooms({
-    required int totalVillas,
     required List<Room> rooms,
     required Map<String, double> rentReceivedByRoom,
   }) {
@@ -206,7 +199,6 @@ class DashboardRoomMetrics {
     }
 
     return DashboardRoomMetrics(
-      totalVillas: totalVillas,
       totalRooms: rooms.length,
       occupiedRooms: occupiedRooms,
       vacantRooms: vacantRooms,
