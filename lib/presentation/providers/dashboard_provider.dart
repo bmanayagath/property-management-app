@@ -85,15 +85,19 @@ class DashboardSummary {
     required List<Expense> expenses,
   }) {
     final activeVillaIds = villas.map((villa) => villa.id).toSet();
-    final activeRooms =
-        rooms.where((room) => activeVillaIds.contains(room.villaId)).toList();
+    final activeRooms = rooms
+        .where(
+            (room) => !room.isDeleted && activeVillaIds.contains(room.villaId))
+        .toList();
     final activeRoomIds = activeRooms.map((room) => room.id).toSet();
     final activeIncomes = incomes.where((income) {
+      if (income.isDeleted) return false;
       if (!activeVillaIds.contains(income.villaId)) return false;
       if (income.roomId.trim().isEmpty) return true;
       return activeRoomIds.contains(income.roomId);
     }).toList();
     final activeExpenses = expenses.where((expense) {
+      if (expense.isDeleted) return false;
       final villaId = expense.villaId;
       if (villaId == null || villaId.trim().isEmpty) return true;
       if (!activeVillaIds.contains(villaId)) return false;
@@ -143,6 +147,7 @@ class DashboardRoomMetrics {
   final int paidRooms;
   final int pendingRooms;
   final double rentReceived;
+  final double totalRoomRent;
   final double expectedRent;
   final double pendingRent;
   final double vacancyLoss;
@@ -154,6 +159,7 @@ class DashboardRoomMetrics {
     required this.paidRooms,
     required this.pendingRooms,
     required this.rentReceived,
+    required this.totalRoomRent,
     required this.expectedRent,
     required this.pendingRent,
     required this.vacancyLoss,
@@ -171,16 +177,18 @@ class DashboardRoomMetrics {
     var paidRooms = 0;
     var pendingRooms = 0;
     var rentReceived = 0.0;
+    var totalRoomRent = 0.0;
     var expectedRent = 0.0;
     var pendingRent = 0.0;
     var vacancyLoss = 0.0;
 
     for (final room in rooms) {
       final received = rentReceivedByRoom[room.id] ?? 0;
-      rentReceived += received;
+      totalRoomRent += room.monthlyRent;
 
       if (room.isOccupied) {
         occupiedRooms++;
+        rentReceived += received;
         expectedRent += room.monthlyRent;
         final pending = _calculatePendingRent(
           expectedRent: room.monthlyRent,
@@ -205,6 +213,7 @@ class DashboardRoomMetrics {
       paidRooms: paidRooms,
       pendingRooms: pendingRooms,
       rentReceived: rentReceived,
+      totalRoomRent: totalRoomRent,
       expectedRent: expectedRent,
       pendingRent: pendingRent,
       vacancyLoss: vacancyLoss,

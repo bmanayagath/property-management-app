@@ -36,14 +36,20 @@ class MonthlySummaryReportData {
   final double totalIncome;
   final double totalExpenses;
   final double netProfit;
+  final double totalRoomRent;
+  final double expectedRent;
   final double pendingRent;
+  final double vacancyLoss;
   final double rentCollectionPercentage;
 
   const MonthlySummaryReportData({
     required this.totalIncome,
     required this.totalExpenses,
     required this.netProfit,
+    required this.totalRoomRent,
+    required this.expectedRent,
     required this.pendingRent,
+    required this.vacancyLoss,
     required this.rentCollectionPercentage,
   });
 }

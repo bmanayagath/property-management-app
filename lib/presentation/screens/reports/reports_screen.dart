@@ -193,20 +193,41 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
     List<Expense> expenses,
   ) {
     final filteredRooms = _filteredRooms(rooms);
+    final activeVillaIds = villas.map((villa) => villa.id).toSet();
+    final activeRooms = filteredRooms
+        .where(
+            (room) => !room.isDeleted && activeVillaIds.contains(room.villaId))
+        .toList();
+    final activeRoomIds = activeRooms.map((room) => room.id).toSet();
+    final activeIncomes = incomes.where((income) {
+      if (income.isDeleted) return false;
+      if (!activeVillaIds.contains(income.villaId)) return false;
+      if (income.roomId.trim().isEmpty) return true;
+      return activeRoomIds.contains(income.roomId);
+    }).toList();
+    final activeExpenses = expenses.where((expense) {
+      if (expense.isDeleted) return false;
+      final villaId = expense.villaId;
+      if (villaId == null || villaId.trim().isEmpty) return true;
+      if (!activeVillaIds.contains(villaId)) return false;
+      final roomId = expense.roomId;
+      if (roomId == null || roomId.trim().isEmpty) return true;
+      return activeRoomIds.contains(roomId);
+    }).toList();
     final roomSummaries = _profitService.calculateRoomProfitSummaries(
-      rooms: filteredRooms,
-      incomes: incomes,
-      expenses: expenses,
+      rooms: activeRooms,
+      incomes: activeIncomes,
+      expenses: activeExpenses,
       month: _selectedMonth,
       status: _selectedStatus,
     );
     final roomTotals = _profitService.calculateRoomProfitTotals(roomSummaries);
-    final monthlyIncomes = incomes
+    final monthlyIncomes = activeIncomes
         .where((income) =>
             _isSameMonth(income.paymentDate, _selectedMonth) &&
             _matchesIncomeFilters(income))
         .toList();
-    final monthlyExpenses = expenses
+    final monthlyExpenses = activeExpenses
         .where((expense) =>
             _isSameMonth(expense.expenseDate, _selectedMonth) &&
             _matchesExpenseFilters(expense))
@@ -220,7 +241,13 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
       totalIncome: totalIncome,
       totalExpenses: totalExpenses,
       netProfit: totalIncome - totalExpenses,
+      totalRoomRent: activeRooms.fold<double>(
+        0,
+        (sum, room) => sum + room.monthlyRent,
+      ),
+      expectedRent: roomTotals.expectedRent,
       pendingRent: roomTotals.pendingRent,
+      vacancyLoss: roomTotals.vacancyLoss,
       rentCollectionPercentage: roomTotals.rentCollectionPercentage,
     );
 
@@ -388,7 +415,10 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
             ['Total Income', _money(data.monthlySummary.totalIncome)],
             ['Total Expenses', _money(data.monthlySummary.totalExpenses)],
             ['Net Profit', _money(data.monthlySummary.netProfit)],
+            ['Total Room Rent', _money(data.monthlySummary.totalRoomRent)],
+            ['Expected Rent', _money(data.monthlySummary.expectedRent)],
             ['Pending Rent', _money(data.monthlySummary.pendingRent)],
+            ['Vacancy Loss', _money(data.monthlySummary.vacancyLoss)],
             [
               'Rent Collection',
               '${data.monthlySummary.rentCollectionPercentage.toStringAsFixed(1)}%',

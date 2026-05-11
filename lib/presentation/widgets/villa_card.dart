@@ -21,23 +21,30 @@ class VillaCard extends StatelessWidget {
     this.onDelete,
   }) : super(key: key);
 
-  int get _occupiedRooms => rooms.where((room) => room.isOccupied).length;
+  Iterable<Room> get _activeRooms => rooms.where((room) => !room.isDeleted);
 
-  int get _vacantRooms => rooms.where((room) => room.isVacant).length;
+  int get _occupiedRooms =>
+      _activeRooms.where((room) => room.isOccupied).length;
 
-  double get _expectedRent => rooms
+  int get _vacantRooms => _activeRooms.where((room) => room.isVacant).length;
+
+  double get _totalRoomRent =>
+      _activeRooms.fold<double>(0, (sum, room) => sum + room.monthlyRent);
+
+  double get _expectedRent => _activeRooms
       .where((room) => room.isOccupied)
       .fold<double>(0, (sum, room) => sum + room.monthlyRent);
 
-  double get _collectedRent => rooms.fold<double>(
-        0,
-        (sum, room) => sum + (rentReceivedByRoom[room.id] ?? 0),
-      );
+  double get _collectedRent =>
+      _activeRooms.where((room) => room.isOccupied).fold<double>(
+            0,
+            (sum, room) => sum + (rentReceivedByRoom[room.id] ?? 0),
+          );
 
   double get _pendingRent =>
       (_expectedRent - _collectedRent).clamp(0.0, double.infinity).toDouble();
 
-  double get _vacancyLoss => rooms
+  double get _vacancyLoss => _activeRooms
       .where((room) => room.isVacant)
       .fold<double>(0, (sum, room) => sum + room.monthlyRent);
 
@@ -142,7 +149,7 @@ class VillaCard extends StatelessWidget {
             const SizedBox(height: 10),
             Row(
               children: [
-                _RoomChip(label: 'Total', value: rooms.length),
+                _RoomChip(label: 'Total', value: _activeRooms.length),
                 const SizedBox(width: 8),
                 _RoomChip(
                   label: 'Occupied',
@@ -162,15 +169,15 @@ class VillaCard extends StatelessWidget {
               children: [
                 Expanded(
                   child: _FinancialValue(
-                    label: 'Expected',
-                    value: CurrencyFormatter.format(_expectedRent),
+                    label: 'Total Room Rent',
+                    value: CurrencyFormatter.format(_totalRoomRent),
                   ),
                 ),
                 Expanded(
                   child: _FinancialValue(
-                    label: 'Collected',
-                    value: CurrencyFormatter.format(_collectedRent),
-                    color: AppColors.success,
+                    label: 'Expected Rent',
+                    value: CurrencyFormatter.format(_expectedRent),
+                    color: AppColors.primary,
                   ),
                 ),
               ],
@@ -178,6 +185,13 @@ class VillaCard extends StatelessWidget {
             const SizedBox(height: 8),
             Row(
               children: [
+                Expanded(
+                  child: _FinancialValue(
+                    label: 'Collected',
+                    value: CurrencyFormatter.format(_collectedRent),
+                    color: AppColors.success,
+                  ),
+                ),
                 Expanded(
                   child: _FinancialValue(
                     label: 'Pending',

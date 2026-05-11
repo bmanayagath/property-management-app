@@ -1,6 +1,7 @@
 import '../../core/utils/currency_formatter.dart';
 import '../../domain/models/expense.dart';
 import '../../domain/models/income.dart';
+import '../../domain/models/room.dart';
 import '../../domain/models/villa_model.dart';
 
 class ValidationResult {
@@ -40,6 +41,7 @@ class BusinessValidationService {
     required Income income,
     required List<Income> existingIncomes,
     required List<VillaModel> villas,
+    List<Room> rooms = const [],
     Income? originalIncome,
     DateTime? now,
   }) {
@@ -70,16 +72,22 @@ class BusinessValidationService {
       if (income.villaId.trim().isEmpty || selectedVilla == null) {
         return const ValidationResult.invalid('Villa is required for rent.');
       }
-      if (_isVacantVilla(selectedVilla)) {
+      final selectedRoom =
+          rooms.where((room) => room.id == income.roomId).firstOrNull;
+      if (selectedRoom == null || selectedRoom.isDeleted) {
         return const ValidationResult.invalid(
-          'Cannot add rent for a vacant villa.',
+            'Active room is required for rent.');
+      }
+      if (!selectedRoom.isOccupied) {
+        return const ValidationResult.invalid(
+          'Cannot add rent for a vacant room.',
         );
       }
 
       final duplicateRentResult = checkDuplicateRent(
         income: income,
         existingIncomes: existingIncomes,
-        villa: selectedVilla,
+        room: selectedRoom,
         originalIncome: originalIncome,
       );
       if (!duplicateRentResult.isValid) return duplicateRentResult;
@@ -111,26 +119,27 @@ class BusinessValidationService {
   ValidationResult checkDuplicateRent({
     required Income income,
     required List<Income> existingIncomes,
-    required VillaModel villa,
+    required Room room,
     Income? originalIncome,
   }) {
     final existingRentReceived = existingIncomes
         .where(
           (existing) =>
               existing.id != originalIncome?.id &&
-              existing.villaId == income.villaId &&
+              existing.roomId == room.id &&
               _isRentIncome(existing) &&
+              !existing.isDeleted &&
               _isSameMonth(existing.monthCovered, income.monthCovered),
         )
         .fold<double>(0, (sum, existing) => sum + existing.amount);
 
-    if (existingRentReceived >= villa.monthlyRent) {
+    if (existingRentReceived >= room.monthlyRent) {
       return const ValidationResult.invalid(
-        'Rent for this villa and month is already fully recorded.',
+        'Rent for this room and month is already fully recorded.',
       );
     }
 
-    final remainingRent = villa.monthlyRent - existingRentReceived;
+    final remainingRent = room.monthlyRent - existingRentReceived;
     if (income.amount > remainingRent) {
       return ValidationResult.invalid(
         'Amount exceeds pending rent. Remaining rent is ${_money(remainingRent)}.',
@@ -218,40 +227,6 @@ class BusinessValidationService {
     if (villa.villaName.trim().isEmpty) {
       return const ValidationResult.invalid('Villa name is required.');
     }
-    if (villa.monthlyRent <= 0) {
-      return const ValidationResult.invalid(
-        'Monthly rent must be greater than 0.',
-      );
-    }
-    if (villa.paymentDueDay < 1 || villa.paymentDueDay > 31) {
-      return const ValidationResult.invalid(
-        'Payment due day must be between 1 and 31.',
-      );
-    }
-    if (!villa.contractEndDate.isAfter(villa.contractStartDate)) {
-      return const ValidationResult.invalid(
-        'Contract end date must be after contract start date.',
-      );
-    }
-    if (_isOccupiedVilla(villa)) {
-      if (villa.tenantName.trim().isEmpty) {
-        return const ValidationResult.invalid(
-          'Tenant name is required when villa is occupied.',
-        );
-      }
-      if (villa.tenantPhone.trim().isEmpty) {
-        return const ValidationResult.invalid(
-          'Tenant phone is required when villa is occupied.',
-        );
-      }
-    }
-
-    if (villa.contractEndDate.isBefore(_dateOnly(now ?? DateTime.now()))) {
-      return const ValidationResult.confirmation(
-        'Contract is already expired. Do you still want to save?',
-      );
-    }
-
     return const ValidationResult.valid();
   }
 

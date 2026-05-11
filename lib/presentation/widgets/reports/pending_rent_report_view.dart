@@ -111,7 +111,7 @@ class _PendingRentCard extends StatelessWidget {
           const Spacer(),
           Row(
             children: [
-              Expanded(child: _Metric('Expected', item.expectedRent)),
+              Expanded(child: _Metric('Expected Rent', item.expectedRent)),
               Expanded(
                 child: _Metric(
                   'Received',

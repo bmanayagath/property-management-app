@@ -231,14 +231,16 @@ class VillaDetailScreen extends ConsumerWidget {
 
     return roomsAsync.when(
       data: (rooms) {
-        final occupiedCount = rooms.where((r) => r.isOccupied).length;
-        final vacantCount = rooms.where((r) => r.isVacant).length;
-        final occupancyRate =
-            rooms.isEmpty ? 0.0 : (occupiedCount / rooms.length) * 100;
-        final expectedRent = rooms
-            .where((r) => r.isOccupied)
-            .fold<double>(0, (sum, r) => sum + r.monthlyRent);
-
+        final activeRooms = rooms.where((room) => !room.isDeleted).toList();
+        final occupiedCount = activeRooms.where((r) => r.isOccupied).length;
+        final vacantCount = activeRooms.where((r) => r.isVacant).length;
+        final occupancyRate = activeRooms.isEmpty
+            ? 0.0
+            : (occupiedCount / activeRooms.length) * 100;
+        final totalRoomRent = activeRooms.fold<double>(
+          0,
+          (sum, room) => sum + room.monthlyRent,
+        );
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -268,7 +270,7 @@ class VillaDetailScreen extends ConsumerWidget {
                             ),
                             const SizedBox(height: 4),
                             Text(
-                              rooms.length.toString(),
+                              activeRooms.length.toString(),
                               style: AppStyles.headlineSmall.copyWith(
                                 color: AppColors.primary,
                                 fontWeight: FontWeight.w700,
@@ -320,12 +322,12 @@ class VillaDetailScreen extends ConsumerWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'Expected Rent',
+                              'Total Room Rent',
                               style: AppStyles.labelSmall,
                             ),
                             const SizedBox(height: 4),
                             Text(
-                              CurrencyFormatter.format(expectedRent),
+                              CurrencyFormatter.format(totalRoomRent),
                               style: AppStyles.bodySmall.copyWith(
                                 color: AppColors.success,
                                 fontWeight: FontWeight.w700,

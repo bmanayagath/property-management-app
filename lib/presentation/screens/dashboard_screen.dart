@@ -85,6 +85,8 @@ class DashboardScreen extends ConsumerWidget {
                   ),
                   const SizedBox(height: 16),
                   _RentCollectionCard(
+                    totalRoomRent: dashboard.totalRoomRent,
+                    expectedRent: dashboard.expectedRent,
                     collected: dashboard.rentReceived,
                     pending: dashboard.pendingRent,
                     paidRooms: dashboard.paidRooms,
@@ -703,6 +705,8 @@ class _ActionPill extends StatelessWidget {
 }
 
 class _RentCollectionCard extends StatelessWidget {
+  final double totalRoomRent;
+  final double expectedRent;
   final double collected;
   final double pending;
   final int paidRooms;
@@ -710,6 +714,8 @@ class _RentCollectionCard extends StatelessWidget {
   final double progress;
 
   const _RentCollectionCard({
+    required this.totalRoomRent,
+    required this.expectedRent,
     required this.collected,
     required this.pending,
     required this.paidRooms,
@@ -741,6 +747,33 @@ class _RentCollectionCard extends StatelessWidget {
               Expanded(
                 child: Column(
                   children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _CollectionAmount(
+                            label: 'Total Room Rent',
+                            value: DashboardScreen.money(totalRoomRent),
+                            color: const Color(0xFF060B26),
+                          ),
+                        ),
+                        Container(
+                          width: 1,
+                          height: 45,
+                          color: const Color(0xFFD8DCE5),
+                        ),
+                        Expanded(
+                          child: Padding(
+                            padding: const EdgeInsets.only(left: 18),
+                            child: _CollectionAmount(
+                              label: 'Expected Rent',
+                              value: DashboardScreen.money(expectedRent),
+                              color: const Color(0xFF5549DE),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
                     Row(
                       children: [
                         Expanded(
@@ -1048,7 +1081,7 @@ class _VillaRow extends StatelessWidget {
                           Expanded(
                             flex: 4,
                             child: _VillaAmount(
-                              label: 'Expected',
+                              label: 'Expected Rent',
                               value:
                                   DashboardScreen.money(summary.expectedRent),
                               color: const Color(0xFF060B26),
@@ -1187,7 +1220,7 @@ class _VillaRoomSummary {
     var pendingRent = 0.0;
     var vacancyLoss = 0.0;
 
-    for (final room in rooms) {
+    for (final room in rooms.where((room) => !room.isDeleted)) {
       totalRooms++;
       final received = rentReceivedByRoom[room.id] ?? 0;
       rentReceived += received;

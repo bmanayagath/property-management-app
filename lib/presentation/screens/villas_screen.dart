@@ -82,13 +82,15 @@ class _VillasScreenState extends ConsumerState<VillasScreen> {
                     ))
                 .toList();
 
-            final occupiedRooms = rooms.where((room) => room.isOccupied).length;
-            final vacantRooms = rooms.where((room) => room.isVacant).length;
-            final expectedRent =
-                rooms.where((room) => room.isOccupied).fold<double>(
-                      0,
-                      (sum, room) => sum + room.monthlyRent,
-                    );
+            final activeRooms = rooms.where((room) => !room.isDeleted).toList();
+            final occupiedRooms =
+                activeRooms.where((room) => room.isOccupied).length;
+            final vacantRooms =
+                activeRooms.where((room) => room.isVacant).length;
+            final totalRoomRent = activeRooms.fold<double>(
+              0,
+              (sum, room) => sum + room.monthlyRent,
+            );
 
             return SingleChildScrollView(
               child: Padding(
@@ -132,8 +134,8 @@ class _VillasScreenState extends ConsumerState<VillasScreen> {
                         const SizedBox(width: 12),
                         Expanded(
                           child: SummaryCard(
-                            title: 'Monthly Rent',
-                            value: CurrencyFormatter.format(expectedRent),
+                            title: 'Total Room Rent',
+                            value: CurrencyFormatter.format(totalRoomRent),
                             color: AppColors.profit,
                             icon: Icons.trending_up,
                           ),

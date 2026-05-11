@@ -93,7 +93,7 @@ class VillaProfitReportCard extends StatelessWidget {
             spacing: 10,
             runSpacing: 10,
             children: [
-              _Metric(label: 'Expected', value: item.expectedRent),
+              _Metric(label: 'Expected Rent', value: item.expectedRent),
               _Metric(
                 label: 'Received',
                 value: item.receivedIncome,
