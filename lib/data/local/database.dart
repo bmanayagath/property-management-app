@@ -23,6 +23,13 @@ class Villas extends Table {
   TextColumn get status => text()(); // occupied, vacant
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
   DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
+  IntColumn get isDeleted => integer().withDefault(const Constant(0))();
+  TextColumn get syncStatus => text().withDefault(const Constant('pending'))();
+  DateTimeColumn get deletedAt => dateTime().nullable()();
+  TextColumn get deletedBy => text().nullable()();
+  TextColumn get createdBy => text().nullable()();
+  TextColumn get updatedBy => text().nullable()();
+  DateTimeColumn get lastSyncedAt => dateTime().nullable()();
 
   @override
   Set<Column> get primaryKey => {id};
@@ -46,6 +53,10 @@ class Rooms extends Table {
   DateTimeColumn get updatedAt => dateTime().nullable()();
   IntColumn get isDeleted => integer().withDefault(const Constant(0))();
   TextColumn get syncStatus => text().withDefault(const Constant('pending'))();
+  DateTimeColumn get deletedAt => dateTime().nullable()();
+  TextColumn get deletedBy => text().nullable()();
+  TextColumn get createdBy => text().nullable()();
+  TextColumn get updatedBy => text().nullable()();
   DateTimeColumn get lastSyncedAt => dateTime().nullable()();
 
   @override
@@ -69,6 +80,13 @@ class Incomes extends Table {
   TextColumn get notes => text().nullable()();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
   DateTimeColumn get updatedAt => dateTime().nullable()();
+  IntColumn get isDeleted => integer().withDefault(const Constant(0))();
+  TextColumn get syncStatus => text().withDefault(const Constant('pending'))();
+  DateTimeColumn get deletedAt => dateTime().nullable()();
+  TextColumn get deletedBy => text().nullable()();
+  TextColumn get createdBy => text().nullable()();
+  TextColumn get updatedBy => text().nullable()();
+  DateTimeColumn get lastSyncedAt => dateTime().nullable()();
 
   @override
   Set<Column> get primaryKey => {id};
@@ -90,6 +108,14 @@ class Expenses extends Table {
       text()(); // cash, check, transfer, online, other
   TextColumn get notes => text().nullable()();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+  DateTimeColumn get updatedAt => dateTime().nullable()();
+  IntColumn get isDeleted => integer().withDefault(const Constant(0))();
+  TextColumn get syncStatus => text().withDefault(const Constant('pending'))();
+  DateTimeColumn get deletedAt => dateTime().nullable()();
+  TextColumn get deletedBy => text().nullable()();
+  TextColumn get createdBy => text().nullable()();
+  TextColumn get updatedBy => text().nullable()();
+  DateTimeColumn get lastSyncedAt => dateTime().nullable()();
 
   @override
   Set<Column> get primaryKey => {id};
@@ -100,7 +126,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -156,13 +182,67 @@ class AppDatabase extends _$AppDatabase {
               WHERE monthly_rent > 0
             ''');
           }
+          if (from < 4) {
+            await _addSyncColumns(migrator);
+          }
         },
       );
 
-  // Villa Queries
-  Future<List<Villa>> getAllVillas() => select(villas).get();
+  Future<void> _addSyncColumns(Migrator migrator) async {
+    await _addColumnIfMissingSql(
+        'villas', 'is_deleted', 'INTEGER NOT NULL DEFAULT 0');
+    await _addColumnIfMissingSql(
+        'villas', 'sync_status', "TEXT NOT NULL DEFAULT 'pending'");
+    await _addColumnIfMissingSql('villas', 'deleted_at', 'INTEGER');
+    await _addColumnIfMissingSql('villas', 'deleted_by', 'TEXT');
+    await _addColumnIfMissingSql('villas', 'created_by', 'TEXT');
+    await _addColumnIfMissingSql('villas', 'updated_by', 'TEXT');
+    await _addColumnIfMissingSql('villas', 'last_synced_at', 'INTEGER');
 
-  Stream<List<Villa>> watchAllVillas() => select(villas).watch();
+    await _addColumnIfMissingSql('rooms', 'deleted_at', 'INTEGER');
+    await _addColumnIfMissingSql('rooms', 'deleted_by', 'TEXT');
+    await _addColumnIfMissingSql('rooms', 'created_by', 'TEXT');
+    await _addColumnIfMissingSql('rooms', 'updated_by', 'TEXT');
+
+    await _addColumnIfMissingSql(
+        'incomes', 'is_deleted', 'INTEGER NOT NULL DEFAULT 0');
+    await _addColumnIfMissingSql(
+        'incomes', 'sync_status', "TEXT NOT NULL DEFAULT 'pending'");
+    await _addColumnIfMissingSql('incomes', 'deleted_at', 'INTEGER');
+    await _addColumnIfMissingSql('incomes', 'deleted_by', 'TEXT');
+    await _addColumnIfMissingSql('incomes', 'created_by', 'TEXT');
+    await _addColumnIfMissingSql('incomes', 'updated_by', 'TEXT');
+    await _addColumnIfMissingSql('incomes', 'last_synced_at', 'INTEGER');
+
+    await _addColumnIfMissingSql('expenses', 'updated_at', 'INTEGER');
+    await _addColumnIfMissingSql(
+        'expenses', 'is_deleted', 'INTEGER NOT NULL DEFAULT 0');
+    await _addColumnIfMissingSql(
+        'expenses', 'sync_status', "TEXT NOT NULL DEFAULT 'pending'");
+    await _addColumnIfMissingSql('expenses', 'deleted_at', 'INTEGER');
+    await _addColumnIfMissingSql('expenses', 'deleted_by', 'TEXT');
+    await _addColumnIfMissingSql('expenses', 'created_by', 'TEXT');
+    await _addColumnIfMissingSql('expenses', 'updated_by', 'TEXT');
+    await _addColumnIfMissingSql('expenses', 'last_synced_at', 'INTEGER');
+  }
+
+  Future<void> _addColumnIfMissingSql(
+    String tableName,
+    String columnName,
+    String definition,
+  ) async {
+    final columns = await customSelect('PRAGMA table_info($tableName)').get();
+    if (columns.any((row) => row.data['name'] == columnName)) return;
+    await customStatement(
+        'ALTER TABLE $tableName ADD COLUMN $columnName $definition');
+  }
+
+  // Villa Queries
+  Future<List<Villa>> getAllVillas() =>
+      (select(villas)..where((tbl) => tbl.isDeleted.equals(0))).get();
+
+  Stream<List<Villa>> watchAllVillas() =>
+      (select(villas)..where((tbl) => tbl.isDeleted.equals(0))).watch();
 
   Future<Villa?> getVillaById(String id) =>
       (select(villas)..where((tbl) => tbl.id.equals(id))).getSingleOrNull();
@@ -178,8 +258,36 @@ class AppDatabase extends _$AppDatabase {
         .write(villa.copyWith(id: const Value.absent()));
   }
 
-  Future<int> deleteVilla(String id) =>
-      (delete(villas)..where((tbl) => tbl.id.equals(id))).go();
+  Future<void> deleteVilla(String id, {String? deletedBy}) {
+    return transaction(() async {
+      final childRooms =
+          await (select(rooms)..where((tbl) => tbl.villaId.equals(id))).get();
+      final roomIds = childRooms.map((room) => room.id).toSet();
+      await softDeleteVilla(id, deletedBy: deletedBy);
+      await softDeleteRoomsByVilla(id, deletedBy: deletedBy);
+      await softDeleteIncomesForVillaOrRooms(
+        villaId: id,
+        roomIds: roomIds,
+        deletedBy: deletedBy,
+      );
+      await softDeleteExpensesForVillaOrRooms(
+        villaId: id,
+        roomIds: roomIds,
+        deletedBy: deletedBy,
+      );
+    });
+  }
+
+  Future<int> softDeleteVilla(String id, {String? deletedBy}) {
+    final now = DateTime.now();
+    return _softDeleteWhere(
+      tableName: 'villas',
+      whereClause: 'id = ?',
+      whereArgs: [Variable<String>(id)],
+      now: now,
+      deletedBy: deletedBy,
+    );
+  }
 
   // Room Queries
   Future<List<Room>> getAllRooms() =>
@@ -207,29 +315,56 @@ class AppDatabase extends _$AppDatabase {
 
   Future<bool> updateRoom(RoomsCompanion room) => update(rooms).replace(room);
 
-  Future<int> deleteRoom(String id) =>
-      (update(rooms)..where((tbl) => tbl.id.equals(id))).write(
-        RoomsCompanion(
-          isDeleted: const Value(1),
-          syncStatus: const Value('pending'),
-          updatedAt: Value(DateTime.now()),
-        ),
-      );
+  Future<void> deleteRoom(String id, {String? deletedBy}) {
+    return transaction(() async {
+      await softDeleteRoom(id, deletedBy: deletedBy);
+      await softDeleteIncomesForRoom(id, deletedBy: deletedBy);
+      await softDeleteExpensesForRoom(id, deletedBy: deletedBy);
+    });
+  }
+
+  Future<int> softDeleteRoom(String id, {String? deletedBy}) {
+    final now = DateTime.now();
+    return _softDeleteWhere(
+      tableName: 'rooms',
+      whereClause: 'id = ?',
+      whereArgs: [Variable<String>(id)],
+      now: now,
+      deletedBy: deletedBy,
+    );
+  }
+
+  Future<int> softDeleteRoomsByVilla(String villaId, {String? deletedBy}) {
+    final now = DateTime.now();
+    return _softDeleteWhere(
+      tableName: 'rooms',
+      whereClause: 'villa_id = ?',
+      whereArgs: [Variable<String>(villaId)],
+      now: now,
+      deletedBy: deletedBy,
+    );
+  }
 
   // Income Queries
-  Future<List<Income>> getAllIncomes() => select(incomes).get();
+  Future<List<Income>> getAllIncomes() =>
+      (select(incomes)..where((tbl) => tbl.isDeleted.equals(0))).get();
 
-  Stream<List<Income>> watchAllIncomes() => select(incomes).watch();
+  Stream<List<Income>> watchAllIncomes() =>
+      (select(incomes)..where((tbl) => tbl.isDeleted.equals(0))).watch();
 
-  Future<List<Income>> getIncomesByVillaId(String villaId) =>
-      (select(incomes)..where((tbl) => tbl.villaId.equals(villaId))).get();
+  Future<List<Income>> getIncomesByVillaId(String villaId) => (select(incomes)
+        ..where(
+          (tbl) => tbl.villaId.equals(villaId) & tbl.isDeleted.equals(0),
+        ))
+      .get();
 
   Future<List<Income>> getIncomesByMonth(DateTime month) async {
     final startOfMonth = DateTime(month.year, month.month, 1);
     final endOfMonth = DateTime(month.year, month.month + 1, 0);
     return (select(incomes)
           ..where((tbl) =>
-              tbl.paymentDate.isBetweenValues(startOfMonth, endOfMonth)))
+              tbl.paymentDate.isBetweenValues(startOfMonth, endOfMonth) &
+              tbl.isDeleted.equals(0)))
         .get();
   }
 
@@ -239,23 +374,70 @@ class AppDatabase extends _$AppDatabase {
   Future<bool> updateIncome(IncomesCompanion income) =>
       update(incomes).replace(income);
 
-  Future<int> deleteIncome(String id) =>
-      (delete(incomes)..where((tbl) => tbl.id.equals(id))).go();
+  Future<int> deleteIncome(String id, {String? deletedBy}) {
+    final now = DateTime.now();
+    return _softDeleteWhere(
+      tableName: 'incomes',
+      whereClause: 'id = ?',
+      whereArgs: [Variable<String>(id)],
+      now: now,
+      deletedBy: deletedBy,
+    );
+  }
+
+  Future<int> softDeleteIncomesForRoom(String roomId, {String? deletedBy}) {
+    final now = DateTime.now();
+    return _softDeleteWhere(
+      tableName: 'incomes',
+      whereClause: 'room_id = ?',
+      whereArgs: [Variable<String>(roomId)],
+      now: now,
+      deletedBy: deletedBy,
+    );
+  }
+
+  Future<int> softDeleteIncomesForVillaOrRooms({
+    required String villaId,
+    required Set<String> roomIds,
+    String? deletedBy,
+  }) {
+    final now = DateTime.now();
+    final placeholders = roomIds.map((_) => '?').join(', ');
+    return _softDeleteWhere(
+      tableName: 'incomes',
+      whereClause: roomIds.isEmpty
+          ? 'villa_id = ?'
+          : 'villa_id = ? OR room_id IN ($placeholders)',
+      whereArgs: [
+        Variable<String>(villaId),
+        for (final roomId in roomIds) Variable<String>(roomId),
+      ],
+      now: now,
+      deletedBy: deletedBy,
+    );
+  }
 
   // Expense Queries
-  Future<List<Expense>> getAllExpenses() => select(expenses).get();
+  Future<List<Expense>> getAllExpenses() =>
+      (select(expenses)..where((tbl) => tbl.isDeleted.equals(0))).get();
 
-  Stream<List<Expense>> watchAllExpenses() => select(expenses).watch();
+  Stream<List<Expense>> watchAllExpenses() =>
+      (select(expenses)..where((tbl) => tbl.isDeleted.equals(0))).watch();
 
   Future<List<Expense>> getExpensesByVillaId(String villaId) =>
-      (select(expenses)..where((tbl) => tbl.villaId.equals(villaId))).get();
+      (select(expenses)
+            ..where(
+              (tbl) => tbl.villaId.equals(villaId) & tbl.isDeleted.equals(0),
+            ))
+          .get();
 
   Future<List<Expense>> getExpensesByMonth(DateTime month) async {
     final startOfMonth = DateTime(month.year, month.month, 1);
     final endOfMonth = DateTime(month.year, month.month + 1, 0);
     return (select(expenses)
           ..where((tbl) =>
-              tbl.expenseDate.isBetweenValues(startOfMonth, endOfMonth)))
+              tbl.expenseDate.isBetweenValues(startOfMonth, endOfMonth) &
+              tbl.isDeleted.equals(0)))
         .get();
   }
 
@@ -265,8 +447,76 @@ class AppDatabase extends _$AppDatabase {
   Future<bool> updateExpense(ExpensesCompanion expense) =>
       update(expenses).replace(expense);
 
-  Future<int> deleteExpense(String id) =>
-      (delete(expenses)..where((tbl) => tbl.id.equals(id))).go();
+  Future<int> deleteExpense(String id, {String? deletedBy}) {
+    final now = DateTime.now();
+    return _softDeleteWhere(
+      tableName: 'expenses',
+      whereClause: 'id = ?',
+      whereArgs: [Variable<String>(id)],
+      now: now,
+      deletedBy: deletedBy,
+    );
+  }
+
+  Future<int> softDeleteExpensesForRoom(String roomId, {String? deletedBy}) {
+    final now = DateTime.now();
+    return _softDeleteWhere(
+      tableName: 'expenses',
+      whereClause: 'room_id = ?',
+      whereArgs: [Variable<String>(roomId)],
+      now: now,
+      deletedBy: deletedBy,
+    );
+  }
+
+  Future<int> softDeleteExpensesForVillaOrRooms({
+    required String villaId,
+    required Set<String> roomIds,
+    String? deletedBy,
+  }) {
+    final now = DateTime.now();
+    final placeholders = roomIds.map((_) => '?').join(', ');
+    return _softDeleteWhere(
+      tableName: 'expenses',
+      whereClause: roomIds.isEmpty
+          ? 'villa_id = ?'
+          : 'villa_id = ? OR room_id IN ($placeholders)',
+      whereArgs: [
+        Variable<String>(villaId),
+        for (final roomId in roomIds) Variable<String>(roomId),
+      ],
+      now: now,
+      deletedBy: deletedBy,
+    );
+  }
+
+  Future<int> _softDeleteWhere({
+    required String tableName,
+    required String whereClause,
+    required List<Variable> whereArgs,
+    required DateTime now,
+    required String? deletedBy,
+  }) {
+    return customUpdate(
+      '''
+      UPDATE $tableName
+      SET is_deleted = 1,
+          sync_status = 'pending',
+          deleted_at = ?,
+          deleted_by = ?,
+          updated_at = ?,
+          updated_by = ?
+      WHERE $whereClause
+      ''',
+      variables: [
+        Variable<DateTime>(now),
+        Variable<String>(deletedBy),
+        Variable<DateTime>(now),
+        Variable<String>(deletedBy),
+        ...whereArgs,
+      ],
+    );
+  }
 
   // Dashboard Queries
   Future<double> getTotalIncomeForMonth(DateTime month) async {
@@ -274,7 +524,8 @@ class AppDatabase extends _$AppDatabase {
     final endOfMonth = DateTime(month.year, month.month + 1, 0);
     final result = await (select(incomes)
           ..where((tbl) =>
-              tbl.paymentDate.isBetweenValues(startOfMonth, endOfMonth)))
+              tbl.paymentDate.isBetweenValues(startOfMonth, endOfMonth) &
+              tbl.isDeleted.equals(0)))
         .map((r) => r.amount)
         .get();
     return result.fold<double>(0, (sum, amount) => sum + amount);
@@ -285,7 +536,8 @@ class AppDatabase extends _$AppDatabase {
     final endOfMonth = DateTime(month.year, month.month + 1, 0);
     final result = await (select(expenses)
           ..where((tbl) =>
-              tbl.expenseDate.isBetweenValues(startOfMonth, endOfMonth)))
+              tbl.expenseDate.isBetweenValues(startOfMonth, endOfMonth) &
+              tbl.isDeleted.equals(0)))
         .map((r) => r.amount)
         .get();
     return result.fold<double>(0, (sum, amount) => sum + amount);
@@ -296,7 +548,8 @@ class AppDatabase extends _$AppDatabase {
     final endOfMonth = DateTime(month.year, month.month + 1, 0);
     final expenseList = await (select(expenses)
           ..where((tbl) =>
-              tbl.expenseDate.isBetweenValues(startOfMonth, endOfMonth)))
+              tbl.expenseDate.isBetweenValues(startOfMonth, endOfMonth) &
+              tbl.isDeleted.equals(0)))
         .get();
 
     final categoryMap = <String, double>{};
@@ -315,7 +568,8 @@ class AppDatabase extends _$AppDatabase {
     final endOfMonth = DateTime(month.year, month.month + 1, 0);
     final incomeList = await (select(incomes)
           ..where((tbl) =>
-              tbl.paymentDate.isBetweenValues(startOfMonth, endOfMonth)))
+              tbl.paymentDate.isBetweenValues(startOfMonth, endOfMonth) &
+              tbl.isDeleted.equals(0)))
         .get();
 
     final villaSummary = <String, double>{};

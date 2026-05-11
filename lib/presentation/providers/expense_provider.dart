@@ -73,14 +73,15 @@ class ExpenseNotifier extends StateNotifier<List<Expense>> {
   }
 
   Future<void> deleteExpense(String id) async {
-    await _expenseRepository.deleteExpense(id);
     final currentUser = _ref.read(authProvider).currentUser;
+    await _expenseRepository.deleteExpense(id, deletedBy: currentUser?.id);
     if (currentUser != null) {
       await _ref.read(firebaseSyncServiceProvider).queueDelete(
             collection: 'expenses',
             id: id,
             userId: currentUser.id,
           );
+      await _ref.read(firebaseSyncServiceProvider).syncPendingDeletes();
       _ref.read(syncRefreshProvider.notifier).state++;
     }
     await loadExpenses();
@@ -137,6 +138,7 @@ class ExpenseNotifier extends StateNotifier<List<Expense>> {
       paidTo: model.paidTo,
       paymentMethod: _paymentMethodLabel(model.paymentMethod),
       notes: model.notes ?? '',
+      createdAt: model.createdAt,
     );
   }
 
@@ -235,6 +237,7 @@ Expense _expenseFromModel(ExpenseModel model) {
     paidTo: model.paidTo,
     paymentMethod: _paymentMethodLabel(model.paymentMethod),
     notes: model.notes ?? '',
+    createdAt: model.createdAt,
   );
 }
 

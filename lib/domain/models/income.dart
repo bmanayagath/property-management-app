@@ -10,6 +10,15 @@ class Income {
   final String paymentMethod;
   final DateTime monthCovered;
   final String notes;
+  final DateTime createdAt;
+  final DateTime? updatedAt;
+  final bool isDeleted;
+  final String syncStatus;
+  final DateTime? deletedAt;
+  final String? deletedBy;
+  final String? createdBy;
+  final String? updatedBy;
+  final DateTime? lastSyncedAt;
 
   const Income({
     required this.id,
@@ -23,6 +32,15 @@ class Income {
     required this.paymentMethod,
     required this.monthCovered,
     required this.notes,
+    required this.createdAt,
+    this.updatedAt,
+    this.isDeleted = false,
+    this.syncStatus = 'pending',
+    this.deletedAt,
+    this.deletedBy,
+    this.createdBy,
+    this.updatedBy,
+    this.lastSyncedAt,
   });
 
   Income copyWith({
@@ -37,6 +55,21 @@ class Income {
     String? paymentMethod,
     DateTime? monthCovered,
     String? notes,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+    bool clearUpdatedAt = false,
+    bool? isDeleted,
+    String? syncStatus,
+    DateTime? deletedAt,
+    bool clearDeletedAt = false,
+    String? deletedBy,
+    bool clearDeletedBy = false,
+    String? createdBy,
+    bool clearCreatedBy = false,
+    String? updatedBy,
+    bool clearUpdatedBy = false,
+    DateTime? lastSyncedAt,
+    bool clearLastSyncedAt = false,
   }) {
     return Income(
       id: id ?? this.id,
@@ -50,6 +83,16 @@ class Income {
       paymentMethod: paymentMethod ?? this.paymentMethod,
       monthCovered: monthCovered ?? this.monthCovered,
       notes: notes ?? this.notes,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: clearUpdatedAt ? null : updatedAt ?? this.updatedAt,
+      isDeleted: isDeleted ?? this.isDeleted,
+      syncStatus: syncStatus ?? this.syncStatus,
+      deletedAt: clearDeletedAt ? null : deletedAt ?? this.deletedAt,
+      deletedBy: clearDeletedBy ? null : deletedBy ?? this.deletedBy,
+      createdBy: clearCreatedBy ? null : createdBy ?? this.createdBy,
+      updatedBy: clearUpdatedBy ? null : updatedBy ?? this.updatedBy,
+      lastSyncedAt:
+          clearLastSyncedAt ? null : lastSyncedAt ?? this.lastSyncedAt,
     );
   }
 }

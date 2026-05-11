@@ -78,8 +78,8 @@ class ExpenseRepositoryImpl implements ExpenseRepository {
   }
 
   @override
-  Future<void> deleteExpense(String id) async {
-    await database.deleteExpense(id);
+  Future<void> deleteExpense(String id, {String? deletedBy}) async {
+    await database.deleteExpense(id, deletedBy: deletedBy);
   }
 
   @override

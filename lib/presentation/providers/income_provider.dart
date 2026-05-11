@@ -85,14 +85,15 @@ class IncomeController extends StateNotifier<AsyncValue<void>> {
 
   Future<void> deleteIncome(String id) async {
     await _run(() async {
-      await _repository.deleteIncome(id);
       final currentUser = _ref.read(authProvider).currentUser;
+      await _repository.deleteIncome(id, deletedBy: currentUser?.id);
       if (currentUser == null) return;
       await _ref.read(firebaseSyncServiceProvider).queueDelete(
             collection: 'incomes',
             id: id,
             userId: currentUser.id,
           );
+      await _ref.read(firebaseSyncServiceProvider).syncPendingDeletes();
       _ref.read(syncRefreshProvider.notifier).state++;
     });
   }

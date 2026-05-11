@@ -11,6 +11,8 @@ class SyncStatusWidget extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final isOnline = ref.watch(isOnlineProvider).valueOrNull ?? false;
     final pendingCount = ref.watch(pendingSyncCountProvider).valueOrNull ?? 0;
+    final pendingDeleteCount =
+        ref.watch(pendingDeleteCountProvider).valueOrNull ?? 0;
     final lastSyncedAt = ref.watch(lastSyncedAtProvider).valueOrNull;
     final controller = ref.watch(syncControllerProvider);
 
@@ -65,7 +67,15 @@ class SyncStatusWidget extends ConsumerWidget {
           ),
           const SizedBox(height: 14),
           Text(
-            'Pending sync: $pendingCount',
+            'Pending upload: $pendingCount',
+            style: const TextStyle(
+              color: Color(0xFF060B26),
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Pending deletes: $pendingDeleteCount',
             style: const TextStyle(
               color: Color(0xFF060B26),
               fontWeight: FontWeight.w700,

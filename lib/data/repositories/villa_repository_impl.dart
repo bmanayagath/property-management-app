@@ -68,8 +68,8 @@ class VillaRepositoryImpl implements VillaRepository {
   }
 
   @override
-  Future<void> deleteVilla(String id) async {
-    await database.deleteVilla(id);
+  Future<void> deleteVilla(String id, {String? deletedBy}) async {
+    await database.deleteVilla(id, deletedBy: deletedBy);
   }
 
   VillaModel _mapToModel(Villa villa) {

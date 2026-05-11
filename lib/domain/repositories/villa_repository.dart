@@ -6,5 +6,5 @@ abstract class VillaRepository {
   Future<VillaModel?> getVillaById(String id);
   Future<String> addVilla(VillaModel villa);
   Future<void> updateVilla(VillaModel villa);
-  Future<void> deleteVilla(String id);
+  Future<void> deleteVilla(String id, {String? deletedBy});
 }

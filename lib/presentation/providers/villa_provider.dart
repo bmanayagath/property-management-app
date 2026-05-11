@@ -49,14 +49,15 @@ final updateVillaProvider =
 final deleteVillaProvider =
     FutureProvider.family<void, String>((ref, id) async {
   final repository = ref.watch(villaRepositoryProvider);
-  await repository.deleteVilla(id);
   final currentUser = ref.read(authProvider).currentUser;
+  await repository.deleteVilla(id, deletedBy: currentUser?.id);
   if (currentUser != null) {
     await ref.read(firebaseSyncServiceProvider).queueDelete(
           collection: 'villas',
           id: id,
           userId: currentUser.id,
         );
+    await ref.read(firebaseSyncServiceProvider).syncPendingDeletes();
     ref.read(syncRefreshProvider.notifier).state++;
   }
   ref.invalidate(villasProvider);

@@ -19,6 +19,82 @@ class LocalDatabaseRepository {
 
   const LocalDatabaseRepository(this.database);
 
+  Future<List<PendingDeleteRecord>> getPendingDeleteRecords() async {
+    final records = <PendingDeleteRecord>[];
+    for (final collection in ['villas', 'rooms', 'incomes', 'expenses']) {
+      final rows = await database.customSelect(
+        '''
+        SELECT id, deleted_at, deleted_by, updated_at
+        FROM $collection
+        WHERE is_deleted = 1 AND sync_status = 'pending'
+        ''',
+      ).get();
+      records.addAll(
+        rows.map(
+          (row) => PendingDeleteRecord(
+            collection: collection,
+            id: row.read<String>('id'),
+            deletedAt: row.readNullable<DateTime>('deleted_at'),
+            deletedBy: row.readNullable<String>('deleted_by'),
+            updatedAt: row.readNullable<DateTime>('updated_at'),
+          ),
+        ),
+      );
+    }
+    return records;
+  }
+
+  Future<int> getPendingDeleteCount() async {
+    final records = await getPendingDeleteRecords();
+    return records.length;
+  }
+
+  Future<void> markSyncRecordSynced({
+    required String collection,
+    required String id,
+  }) async {
+    await database.customUpdate(
+      '''
+      UPDATE $collection
+      SET sync_status = 'synced',
+          last_synced_at = ?
+      WHERE id = ?
+      ''',
+      variables: [
+        Variable<DateTime>(DateTime.now()),
+        Variable<String>(id),
+      ],
+    );
+  }
+
+  Future<void> markRecordDeletedFromCloud({
+    required String collection,
+    required String id,
+    DateTime? deletedAt,
+    String? deletedBy,
+  }) async {
+    final now = DateTime.now();
+    await database.customUpdate(
+      '''
+      UPDATE $collection
+      SET is_deleted = 1,
+          sync_status = 'synced',
+          deleted_at = ?,
+          deleted_by = ?,
+          updated_at = ?,
+          last_synced_at = ?
+      WHERE id = ?
+      ''',
+      variables: [
+        Variable<DateTime>(deletedAt ?? now),
+        Variable<String>(deletedBy),
+        Variable<DateTime>(deletedAt ?? now),
+        Variable<DateTime>(now),
+        Variable<String>(id),
+      ],
+    );
+  }
+
   Future<void> upsertVilla(VillaModel villa) async {
     final existing = await database.getVillaById(villa.id);
     final now = DateTime.now();
@@ -173,9 +249,14 @@ class LocalDatabaseRepository {
     );
   }
 
-  Future<void> deleteVilla(String id) => database.deleteVilla(id);
-  Future<void> deleteIncome(String id) => database.deleteIncome(id);
-  Future<void> deleteExpense(String id) => database.deleteExpense(id);
+  Future<void> deleteVilla(String id, {String? deletedBy}) =>
+      database.deleteVilla(id, deletedBy: deletedBy);
+  Future<void> deleteRoom(String id, {String? deletedBy}) =>
+      database.deleteRoom(id, deletedBy: deletedBy);
+  Future<void> deleteIncome(String id, {String? deletedBy}) =>
+      database.deleteIncome(id, deletedBy: deletedBy);
+  Future<void> deleteExpense(String id, {String? deletedBy}) =>
+      database.deleteExpense(id, deletedBy: deletedBy);
 
   Future<db.Income?> _getIncomeById(String id) {
     return (database.select(database.incomes)
@@ -234,4 +315,20 @@ class LocalDatabaseRepository {
     final encoded = jsonEncode(users.map((user) => user.toJson()).toList());
     await preferences.setString(_usersKey, encoded);
   }
+}
+
+class PendingDeleteRecord {
+  final String collection;
+  final String id;
+  final DateTime? deletedAt;
+  final String? deletedBy;
+  final DateTime? updatedAt;
+
+  const PendingDeleteRecord({
+    required this.collection,
+    required this.id,
+    required this.deletedAt,
+    required this.deletedBy,
+    required this.updatedAt,
+  });
 }

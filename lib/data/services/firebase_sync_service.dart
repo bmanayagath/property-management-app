@@ -178,6 +178,50 @@ class FirebaseSyncService {
   Future<void> syncPendingUsers() => _syncCollection('users');
   Future<void> syncPendingNotifications() => _syncCollection('notifications');
 
+  Future<void> syncPendingDeletes() async {
+    final localRepository = _localRepository;
+    if (localRepository == null) return;
+    if (!await _connectivityService.isOnline) return;
+
+    final pendingDeletes = await localRepository.getPendingDeleteRecords();
+    if (pendingDeletes.isEmpty) return;
+
+    for (final record in pendingDeletes) {
+      final now = DateTime.now();
+      final payload = {
+        'id': record.id,
+        'isDeleted': true,
+        'syncStatus': 'synced',
+        'deletedAt': (record.deletedAt ?? now).toIso8601String(),
+        'deletedBy': record.deletedBy,
+        'updatedAt': now.toIso8601String(),
+        'lastSyncedAt': now.toIso8601String(),
+      };
+
+      try {
+        if (_usesRestSync) {
+          await _setDocumentWithRest(record.collection, record.id, payload);
+        } else {
+          final firestore = _safeFirestore;
+          if (firestore == null) return;
+          await firestore
+              .collection(record.collection)
+              .doc(record.id)
+              .set(payload, SetOptions(merge: true));
+        }
+        await localRepository.markSyncRecordSynced(
+          collection: record.collection,
+          id: record.id,
+        );
+      } catch (error, stackTrace) {
+        debugPrint(
+          '[FirebaseSync] failed pending delete ${record.collection}/${record.id}: $error',
+        );
+        debugPrintStack(stackTrace: stackTrace);
+      }
+    }
+  }
+
   Future<void> syncAllPendingData() async {
     if (!_isFirestoreEnabled) {
       debugPrint('[FirebaseSync] sync skipped: Firestore sync is disabled.');
@@ -195,6 +239,7 @@ class FirebaseSyncService {
     await syncPendingRooms();
     await syncPendingIncomes();
     await syncPendingExpenses();
+    await syncPendingDeletes();
     await syncPendingUsers();
     await syncPendingNotifications();
 
@@ -227,14 +272,60 @@ class FirebaseSyncService {
       return Stream.value(const []);
     }
 
-    return firestore.collection('villas').snapshots().map((snapshot) {
+    return firestore
+        .collection('villas')
+        .snapshots()
+        .asyncMap((snapshot) async {
+      await _applyDeletedDocsToLocal('villas', snapshot.docs);
       final activeDocs = snapshot.docs
           .where((doc) => doc.data()['isDeleted'] != true)
           .toList();
+      final activeVillas = activeDocs
+          .map((doc) => _villaFromJson(_withDocumentId(doc)))
+          .toList();
+      final localRepository = _localRepository;
+      if (localRepository != null) {
+        for (final villa in activeVillas) {
+          await localRepository.upsertVilla(villa);
+        }
+      }
       debugPrint(
         '[FirebaseSync] cloud villas snapshot raw=${snapshot.docs.length}, active=${activeDocs.length}',
       );
-      return activeDocs.map((doc) => _villaFromJson(doc.data())).toList();
+      return activeVillas;
+    });
+  }
+
+  Stream<List<Room>> watchCloudRooms() {
+    if (_usesRestSync) {
+      debugPrint(
+          '[FirebaseSync] cloud room stream disabled on Windows REST sync.');
+      return Stream.value(const []);
+    }
+
+    final firestore = _safeFirestore;
+    if (firestore == null) {
+      debugPrint('[FirebaseSync] cloud room stream disabled on desktop.');
+      return Stream.value(const []);
+    }
+
+    return firestore.collection('rooms').snapshots().asyncMap((snapshot) async {
+      await _applyDeletedDocsToLocal('rooms', snapshot.docs);
+      final activeDocs = snapshot.docs
+          .where((doc) => doc.data()['isDeleted'] != true)
+          .toList();
+      final activeRooms =
+          activeDocs.map((doc) => _roomFromJson(_withDocumentId(doc))).toList();
+      final localRepository = _localRepository;
+      if (localRepository != null) {
+        for (final room in activeRooms) {
+          await localRepository.upsertRoom(room);
+        }
+      }
+      debugPrint(
+        '[FirebaseSync] cloud rooms snapshot raw=${snapshot.docs.length}, active=${activeDocs.length}',
+      );
+      return activeRooms;
     });
   }
 
@@ -251,14 +342,27 @@ class FirebaseSyncService {
       return Stream.value(const []);
     }
 
-    return firestore.collection('incomes').snapshots().map((snapshot) {
+    return firestore
+        .collection('incomes')
+        .snapshots()
+        .asyncMap((snapshot) async {
+      await _applyDeletedDocsToLocal('incomes', snapshot.docs);
       final activeDocs = snapshot.docs
           .where((doc) => doc.data()['isDeleted'] != true)
           .toList();
+      final activeIncomes = activeDocs
+          .map((doc) => _incomeFromJson(_withDocumentId(doc)))
+          .toList();
+      final localRepository = _localRepository;
+      if (localRepository != null) {
+        for (final income in activeIncomes) {
+          await localRepository.upsertIncome(income);
+        }
+      }
       debugPrint(
         '[FirebaseSync] cloud incomes snapshot raw=${snapshot.docs.length}, active=${activeDocs.length}',
       );
-      return activeDocs.map((doc) => _incomeFromJson(doc.data())).toList();
+      return activeIncomes;
     });
   }
 
@@ -275,14 +379,27 @@ class FirebaseSyncService {
       return Stream.value(const []);
     }
 
-    return firestore.collection('expenses').snapshots().map((snapshot) {
+    return firestore
+        .collection('expenses')
+        .snapshots()
+        .asyncMap((snapshot) async {
+      await _applyDeletedDocsToLocal('expenses', snapshot.docs);
       final activeDocs = snapshot.docs
           .where((doc) => doc.data()['isDeleted'] != true)
           .toList();
+      final activeExpenses = activeDocs
+          .map((doc) => _expenseFromJson(_withDocumentId(doc)))
+          .toList();
+      final localRepository = _localRepository;
+      if (localRepository != null) {
+        for (final expense in activeExpenses) {
+          await localRepository.upsertExpense(expense);
+        }
+      }
       debugPrint(
         '[FirebaseSync] cloud expenses snapshot raw=${snapshot.docs.length}, active=${activeDocs.length}',
       );
-      return activeDocs.map((doc) => _expenseFromJson(doc.data())).toList();
+      return activeExpenses;
     });
   }
 
@@ -330,7 +447,12 @@ class FirebaseSyncService {
     for (final doc in villaDocs) {
       final data = _withDocumentId(doc);
       if (_isDeleted(data)) {
-        await localRepository.deleteVilla(doc.id);
+        await localRepository.markRecordDeletedFromCloud(
+          collection: 'villas',
+          id: doc.id,
+          deletedAt: _readNullableDateTime(data['deletedAt']),
+          deletedBy: data['deletedBy'] as String?,
+        );
         continue;
       }
       await localRepository.upsertVilla(_villaFromJson(data));
@@ -339,7 +461,12 @@ class FirebaseSyncService {
     for (final doc in roomDocs) {
       final data = _withDocumentId(doc);
       if (_isDeleted(data)) {
-        await localRepository.markRoomDeleted(doc.id);
+        await localRepository.markRecordDeletedFromCloud(
+          collection: 'rooms',
+          id: doc.id,
+          deletedAt: _readNullableDateTime(data['deletedAt']),
+          deletedBy: data['deletedBy'] as String?,
+        );
         continue;
       }
       await localRepository.upsertRoom(_roomFromJson(data));
@@ -348,7 +475,12 @@ class FirebaseSyncService {
     for (final doc in incomeDocs) {
       final data = _withDocumentId(doc);
       if (_isDeleted(data)) {
-        await localRepository.deleteIncome(doc.id);
+        await localRepository.markRecordDeletedFromCloud(
+          collection: 'incomes',
+          id: doc.id,
+          deletedAt: _readNullableDateTime(data['deletedAt']),
+          deletedBy: data['deletedBy'] as String?,
+        );
         continue;
       }
       await localRepository.upsertIncome(_incomeFromJson(data));
@@ -357,7 +489,12 @@ class FirebaseSyncService {
     for (final doc in expenseDocs) {
       final data = _withDocumentId(doc);
       if (_isDeleted(data)) {
-        await localRepository.deleteExpense(doc.id);
+        await localRepository.markRecordDeletedFromCloud(
+          collection: 'expenses',
+          id: doc.id,
+          deletedAt: _readNullableDateTime(data['deletedAt']),
+          deletedBy: data['deletedBy'] as String?,
+        );
         continue;
       }
       await localRepository.upsertExpense(_expenseFromJson(data));
@@ -391,6 +528,25 @@ class FirebaseSyncService {
 
   Future<void> pullCloudDataToLocal() => initialPullFromFirestore();
 
+  Future<void> _applyDeletedDocsToLocal(
+    String collection,
+    List<QueryDocumentSnapshot<Map<String, dynamic>>> docs,
+  ) async {
+    final localRepository = _localRepository;
+    if (localRepository == null) return;
+
+    for (final doc in docs) {
+      final data = _withDocumentId(doc);
+      if (!_isDeleted(data)) continue;
+      await localRepository.markRecordDeletedFromCloud(
+        collection: collection,
+        id: doc.id,
+        deletedAt: _readNullableDateTime(data['deletedAt']),
+        deletedBy: data['deletedBy'] as String?,
+      );
+    }
+  }
+
   Map<String, dynamic> _withDocumentId(
     QueryDocumentSnapshot<Map<String, dynamic>> doc,
   ) {
@@ -419,6 +575,10 @@ class FirebaseSyncService {
     final preferences = await SharedPreferences.getInstance();
     final value = preferences.getString(_lastSyncedAtKey);
     return value == null ? null : DateTime.tryParse(value);
+  }
+
+  Future<int> getPendingDeleteCount() {
+    return _localRepository?.getPendingDeleteCount() ?? Future.value(0);
   }
 
   Future<void> _queueRecord({
@@ -665,6 +825,13 @@ class FirebaseSyncService {
       'status': room.status,
       'createdAt': room.createdAt.toIso8601String(),
       'updatedAt': room.updatedAt?.toIso8601String(),
+      'isDeleted': room.isDeleted,
+      'syncStatus': room.syncStatus,
+      'deletedAt': room.deletedAt?.toIso8601String(),
+      'deletedBy': room.deletedBy,
+      'createdBy': room.createdBy,
+      'updatedBy': room.updatedBy,
+      'lastSyncedAt': room.lastSyncedAt?.toIso8601String(),
     };
   }
 
@@ -681,6 +848,15 @@ class FirebaseSyncService {
       'paymentMethod': income.paymentMethod,
       'monthCovered': income.monthCovered.toIso8601String(),
       'notes': income.notes,
+      'createdAt': income.createdAt.toIso8601String(),
+      'updatedAt': income.updatedAt?.toIso8601String(),
+      'isDeleted': income.isDeleted,
+      'syncStatus': income.syncStatus,
+      'deletedAt': income.deletedAt?.toIso8601String(),
+      'deletedBy': income.deletedBy,
+      'createdBy': income.createdBy,
+      'updatedBy': income.updatedBy,
+      'lastSyncedAt': income.lastSyncedAt?.toIso8601String(),
     };
   }
 
@@ -697,6 +873,15 @@ class FirebaseSyncService {
       'paidTo': expense.paidTo,
       'paymentMethod': expense.paymentMethod,
       'notes': expense.notes,
+      'createdAt': expense.createdAt.toIso8601String(),
+      'updatedAt': expense.updatedAt?.toIso8601String(),
+      'isDeleted': expense.isDeleted,
+      'syncStatus': expense.syncStatus,
+      'deletedAt': expense.deletedAt?.toIso8601String(),
+      'deletedBy': expense.deletedBy,
+      'createdBy': expense.createdBy,
+      'updatedBy': expense.updatedBy,
+      'lastSyncedAt': expense.lastSyncedAt?.toIso8601String(),
     };
   }
 
@@ -739,6 +924,13 @@ class FirebaseSyncService {
       status: json['status'] as String? ?? RoomStatuses.vacant,
       createdAt: _readDateTime(json['createdAt']),
       updatedAt: _readNullableDateTime(json['updatedAt']),
+      isDeleted: _isDeleted(json),
+      syncStatus: json['syncStatus'] as String? ?? 'synced',
+      deletedAt: _readNullableDateTime(json['deletedAt']),
+      deletedBy: json['deletedBy'] as String?,
+      createdBy: json['createdBy'] as String?,
+      updatedBy: json['updatedBy'] as String?,
+      lastSyncedAt: _readNullableDateTime(json['lastSyncedAt']),
     );
   }
 
@@ -756,6 +948,15 @@ class FirebaseSyncService {
           json['paymentMethod'] as String? ?? IncomePaymentMethods.other,
       monthCovered: _readDateTime(json['monthCovered']),
       notes: json['notes'] as String? ?? '',
+      createdAt: _readDateTime(json['createdAt']),
+      updatedAt: _readNullableDateTime(json['updatedAt']),
+      isDeleted: _isDeleted(json),
+      syncStatus: json['syncStatus'] as String? ?? 'synced',
+      deletedAt: _readNullableDateTime(json['deletedAt']),
+      deletedBy: json['deletedBy'] as String?,
+      createdBy: json['createdBy'] as String?,
+      updatedBy: json['updatedBy'] as String?,
+      lastSyncedAt: _readNullableDateTime(json['lastSyncedAt']),
     );
   }
 
@@ -773,6 +974,15 @@ class FirebaseSyncService {
       paymentMethod:
           json['paymentMethod'] as String? ?? ExpensePaymentMethods.other,
       notes: json['notes'] as String? ?? '',
+      createdAt: _readDateTime(json['createdAt']),
+      updatedAt: _readNullableDateTime(json['updatedAt']),
+      isDeleted: _isDeleted(json),
+      syncStatus: json['syncStatus'] as String? ?? 'synced',
+      deletedAt: _readNullableDateTime(json['deletedAt']),
+      deletedBy: json['deletedBy'] as String?,
+      createdBy: json['createdBy'] as String?,
+      updatedBy: json['updatedBy'] as String?,
+      lastSyncedAt: _readNullableDateTime(json['lastSyncedAt']),
     );
   }
 

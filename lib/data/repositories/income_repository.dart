@@ -62,8 +62,8 @@ class IncomeRepository {
     );
   }
 
-  Future<void> deleteIncome(String id) {
-    return database.deleteIncome(id);
+  Future<void> deleteIncome(String id, {String? deletedBy}) {
+    return database.deleteIncome(id, deletedBy: deletedBy);
   }
 
   Future<List<Income>> getIncomesByVilla(String villaId) async {
@@ -95,6 +95,8 @@ class IncomeRepository {
       paymentMethod: _paymentMethodLabel(row.paymentMethod),
       monthCovered: _monthStart(row.monthCovered),
       notes: row.notes ?? '',
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
     );
   }
 

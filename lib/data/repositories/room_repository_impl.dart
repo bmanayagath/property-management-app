@@ -109,7 +109,8 @@ class RoomRepositoryImpl implements RoomRepository {
   }
 
   @override
-  Future<void> deleteRoom(String id) => database.deleteRoom(id);
+  Future<void> deleteRoom(String id, {String? deletedBy}) =>
+      database.deleteRoom(id, deletedBy: deletedBy);
 
   @override
   Future<double> getTotalExpectedRentForVilla(String villaId) async {

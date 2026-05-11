@@ -10,7 +10,7 @@ abstract class RoomRepository {
   Future<List<Room>> getVacantRooms();
   Future<String> addRoom(Room room);
   Future<void> updateRoom(Room room);
-  Future<void> deleteRoom(String id);
+  Future<void> deleteRoom(String id, {String? deletedBy});
   Future<double> getTotalExpectedRentForVilla(String villaId);
   Future<double> getTotalExpectedRentForAllVillas();
 }

@@ -311,6 +311,8 @@ class _AddEditExpenseScreenState extends ConsumerState<AddEditExpenseScreen> {
       paidTo: _paidToController.text.trim(),
       paymentMethod: _selectedPaymentMethod,
       notes: _notesController.text.trim(),
+      createdAt: widget.expense?.createdAt ?? DateTime.now(),
+      updatedAt: DateTime.now(),
     );
 
     final notifier = ref.read(expenseProvider.notifier);

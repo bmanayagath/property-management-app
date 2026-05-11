@@ -9,6 +9,7 @@ import 'expense_provider.dart';
 import 'auth_provider.dart';
 import 'income_provider.dart';
 import 'repository_provider.dart';
+import 'room_provider.dart';
 import 'villa_provider.dart';
 
 final connectivityServiceProvider = Provider<ConnectivityService>((ref) {
@@ -35,6 +36,11 @@ final firebaseSyncServiceProvider = Provider<FirebaseSyncService>((ref) {
 final pendingSyncCountProvider = FutureProvider<int>((ref) {
   ref.watch(syncRefreshProvider);
   return ref.watch(firebaseSyncServiceProvider).getPendingSyncCount();
+});
+
+final pendingDeleteCountProvider = FutureProvider<int>((ref) {
+  ref.watch(syncRefreshProvider);
+  return ref.watch(firebaseSyncServiceProvider).getPendingDeleteCount();
 });
 
 final lastSyncedAtProvider = FutureProvider<DateTime?>((ref) {
@@ -65,11 +71,15 @@ class SyncController {
 
     final syncService = _ref.read(firebaseSyncServiceProvider);
     final villas = await _ref.read(villasProvider.future);
+    final rooms = await _ref.read(allRoomsProvider.future);
     final incomes = _ref.read(incomeListProvider).valueOrNull ?? const [];
     final expenses = _ref.read(expenseProvider);
 
     for (final villa in villas) {
       await syncService.queueVilla(villa: villa, userId: currentUser.id);
+    }
+    for (final room in rooms) {
+      await syncService.queueRoom(room: room, userId: currentUser.id);
     }
     for (final income in incomes) {
       await syncService.queueIncome(income: income, userId: currentUser.id);

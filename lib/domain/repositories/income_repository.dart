@@ -6,7 +6,7 @@ abstract class IncomeRepository {
   Future<List<IncomeModel>> getIncomesByMonth(DateTime month);
   Future<String> addIncome(IncomeModel income);
   Future<void> updateIncome(IncomeModel income);
-  Future<void> deleteIncome(String id);
+  Future<void> deleteIncome(String id, {String? deletedBy});
   Future<double> getTotalIncomeForMonth(DateTime month);
   Future<Map<String, double>> getIncomeByVillaSummary(DateTime month);
 }

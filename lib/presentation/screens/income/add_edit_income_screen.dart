@@ -360,6 +360,8 @@ class _AddEditIncomeScreenState extends ConsumerState<AddEditIncomeScreen> {
       paymentMethod: _selectedPaymentMethod,
       monthCovered: DateTime(_monthCovered.year, _monthCovered.month, 1),
       notes: _notesController.text.trim(),
+      createdAt: widget.income?.createdAt ?? DateTime.now(),
+      updatedAt: DateTime.now(),
     );
 
     final controller = ref.read(incomeControllerProvider.notifier);

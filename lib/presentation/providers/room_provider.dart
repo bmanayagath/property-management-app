@@ -87,14 +87,15 @@ final updateRoomProvider = FutureProvider.family<void, Room>((ref, room) async {
 final deleteRoomProvider = FutureProvider.family<void, String>((ref, id) async {
   final repository = ref.watch(roomRepositoryProvider);
   final room = await repository.getRoomById(id);
-  await repository.deleteRoom(id);
   final currentUser = ref.read(authProvider).currentUser;
+  await repository.deleteRoom(id, deletedBy: currentUser?.id);
   if (currentUser != null) {
     await ref.read(firebaseSyncServiceProvider).queueDelete(
           collection: 'rooms',
           id: id,
           userId: currentUser.id,
         );
+    await ref.read(firebaseSyncServiceProvider).syncPendingDeletes();
     ref.read(syncRefreshProvider.notifier).state++;
   }
   ref.invalidate(allRoomsProvider);

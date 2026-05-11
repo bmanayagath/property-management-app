@@ -71,8 +71,8 @@ class IncomeRepositoryImpl implements IncomeRepository {
   }
 
   @override
-  Future<void> deleteIncome(String id) async {
-    await database.deleteIncome(id);
+  Future<void> deleteIncome(String id, {String? deletedBy}) async {
+    await database.deleteIncome(id, deletedBy: deletedBy);
   }
 
   @override
