@@ -5,8 +5,10 @@ import 'package:uuid/uuid.dart';
 
 import '../../core/constants/app_permissions.dart';
 import '../../core/utils/currency_formatter.dart';
+import '../../data/services/business_validation_service.dart';
 import '../../domain/models/app_notification.dart';
 import '../../domain/models/expense.dart';
+import '../../domain/models/room.dart';
 import '../../domain/models/villa_model.dart';
 import '../providers/auth_provider.dart';
 import '../providers/expense_provider.dart';
@@ -29,6 +31,8 @@ class AddEditExpenseScreen extends ConsumerStatefulWidget {
 
 class _AddEditExpenseScreenState extends ConsumerState<AddEditExpenseScreen> {
   static const String _generalExpenseId = '__general_expense__';
+  static const double _defaultHighExpenseLimit = 10000;
+  static const _validationService = BusinessValidationService();
 
   final _formKey = GlobalKey<FormState>();
   final _amountController = TextEditingController();
@@ -208,6 +212,9 @@ class _AddEditExpenseScreenState extends ConsumerState<AddEditExpenseScreen> {
                   TextFormField(
                     controller: _paidToController,
                     decoration: _decoration('Paid To'),
+                    validator: (value) => (value?.length ?? 0) > 100
+                        ? 'Paid To should not exceed 100 characters'
+                        : null,
                   ),
                   const SizedBox(height: 14),
                   DropdownButtonFormField<String>(
@@ -221,6 +228,9 @@ class _AddEditExpenseScreenState extends ConsumerState<AddEditExpenseScreen> {
                           ),
                         )
                         .toList(),
+                    validator: (value) => value == null || value.isEmpty
+                        ? 'Payment method is required'
+                        : null,
                     onChanged: (value) {
                       if (value == null) return;
                       setState(() => _selectedPaymentMethod = value);
@@ -232,6 +242,9 @@ class _AddEditExpenseScreenState extends ConsumerState<AddEditExpenseScreen> {
                     minLines: 3,
                     maxLines: 5,
                     decoration: _decoration('Notes'),
+                    validator: (value) => (value?.length ?? 0) > 500
+                        ? 'Notes should not exceed 500 characters'
+                        : null,
                   ),
                 ],
               ),
@@ -298,6 +311,12 @@ class _AddEditExpenseScreenState extends ConsumerState<AddEditExpenseScreen> {
     final selectedVilla = _selectedVillaId == _generalExpenseId
         ? null
         : villas.where((villa) => villa.id == _selectedVillaId).firstOrNull;
+    final allRooms = ref.read(allRoomsProvider).valueOrNull ?? const <Room>[];
+    final selectedRoom = _selectedRoomId == null
+        ? null
+        : allRooms.where((room) => room.id == _selectedRoomId).firstOrNull;
+    final List<Expense> existingExpenses =
+        ref.read(expenseListProvider).valueOrNull ?? ref.read(expenseProvider);
 
     final expense = Expense(
       id: widget.expense?.id ?? const Uuid().v4(),
@@ -305,7 +324,7 @@ class _AddEditExpenseScreenState extends ConsumerState<AddEditExpenseScreen> {
       villaName:
           selectedVilla == null ? 'General Expense' : selectedVilla.villaName,
       roomId: _selectedRoomId,
-      roomName: _selectedRoomId ?? '',
+      roomName: selectedRoom?.displayName ?? '',
       category: _selectedCategory,
       amount: double.parse(_amountController.text.trim()),
       expenseDate: _selectedDate,
@@ -315,6 +334,16 @@ class _AddEditExpenseScreenState extends ConsumerState<AddEditExpenseScreen> {
       createdAt: widget.expense?.createdAt ?? DateTime.now(),
       updatedAt: DateTime.now(),
     );
+
+    final validation = _validationService.validateExpense(
+      expense: expense,
+      existingExpenses: existingExpenses,
+      villas: villas,
+      rooms: allRooms,
+      originalExpense: widget.expense,
+      highExpenseLimit: _defaultHighExpenseLimit,
+    );
+    if (!await _handleValidation(validation)) return;
 
     final notifier = ref.read(expenseProvider.notifier);
     if (_isEditing) {
@@ -367,6 +396,39 @@ class _AddEditExpenseScreenState extends ConsumerState<AddEditExpenseScreen> {
 
   static String _villaLabel(VillaModel villa) {
     return villa.villaName.trim().isEmpty ? 'Villa' : villa.villaName.trim();
+  }
+
+  void _showMessage(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
+  }
+
+  Future<bool> _handleValidation(ValidationResult result) async {
+    if (!result.isValid) {
+      _showMessage(result.message ?? 'Please check the expense details.');
+      return false;
+    }
+    if (!result.requiresConfirmation) return true;
+
+    return await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: Text(result.confirmationTitle ?? 'Please confirm'),
+            content: Text(result.message ?? 'Do you want to continue?'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: const Text('Continue'),
+              ),
+            ],
+          ),
+        ) ??
+        false;
   }
 }
 

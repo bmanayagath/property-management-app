@@ -5,8 +5,10 @@ import 'package:uuid/uuid.dart';
 
 import '../../../core/constants/app_permissions.dart';
 import '../../../core/utils/currency_formatter.dart';
+import '../../../data/services/business_validation_service.dart';
 import '../../../domain/models/app_notification.dart';
 import '../../../domain/models/income.dart';
+import '../../../domain/models/room.dart';
 import '../../../domain/models/villa_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/income_provider.dart';
@@ -28,6 +30,8 @@ class AddEditIncomeScreen extends ConsumerStatefulWidget {
 }
 
 class _AddEditIncomeScreenState extends ConsumerState<AddEditIncomeScreen> {
+  static const _validationService = BusinessValidationService();
+
   final _formKey = GlobalKey<FormState>();
   final _amountController = TextEditingController();
   final _notesController = TextEditingController();
@@ -147,6 +151,7 @@ class _AddEditIncomeScreenState extends ConsumerState<AddEditIncomeScreen> {
                                 selectedRoomIsValid ? _selectedRoomId : null,
                             decoration: _decoration('Room'),
                             items: occupiedRooms
+                                .where((room) => !room.isDeleted)
                                 .map(
                                   (room) => DropdownMenuItem(
                                     value: room.id,
@@ -154,9 +159,13 @@ class _AddEditIncomeScreenState extends ConsumerState<AddEditIncomeScreen> {
                                   ),
                                 )
                                 .toList(),
-                            validator: (value) => value == null || value.isEmpty
-                                ? 'Room is required'
-                                : null,
+                            validator: (value) {
+                              if (_selectedIncomeType == IncomeTypes.rent &&
+                                  (value == null || value.isEmpty)) {
+                                return 'Room is required for rent';
+                              }
+                              return null;
+                            },
                             onChanged: (value) {
                               setState(() => _selectedRoomId = value);
                             },
@@ -249,6 +258,9 @@ class _AddEditIncomeScreenState extends ConsumerState<AddEditIncomeScreen> {
                       minLines: 3,
                       maxLines: 5,
                       decoration: _decoration('Notes'),
+                      validator: (value) => (value?.length ?? 0) > 500
+                          ? 'Notes should not exceed 500 characters'
+                          : null,
                     ),
                   ],
                 ),
@@ -326,6 +338,9 @@ class _AddEditIncomeScreenState extends ConsumerState<AddEditIncomeScreen> {
     final selectedVilla =
         villas.where((villa) => villa.id == _selectedVillaId).firstOrNull;
     if (selectedVilla == null) return;
+    final allRooms = ref.read(allRoomsProvider).valueOrNull ?? const <Room>[];
+    final existingIncomes =
+        ref.read(incomeListProvider).valueOrNull ?? const <Income>[];
 
     // For rent income, room is required
     if (_selectedIncomeType == IncomeTypes.rent && _selectedRoomId == null) {
@@ -364,6 +379,15 @@ class _AddEditIncomeScreenState extends ConsumerState<AddEditIncomeScreen> {
       createdAt: widget.income?.createdAt ?? DateTime.now(),
       updatedAt: DateTime.now(),
     );
+
+    final validation = _validationService.validateIncome(
+      income: income,
+      existingIncomes: existingIncomes,
+      villas: villas,
+      rooms: allRooms,
+      originalIncome: widget.income,
+    );
+    if (!await _handleValidation(validation)) return;
 
     final controller = ref.read(incomeControllerProvider.notifier);
     if (_isEditing) {
@@ -418,6 +442,33 @@ class _AddEditIncomeScreenState extends ConsumerState<AddEditIncomeScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(message)),
     );
+  }
+
+  Future<bool> _handleValidation(ValidationResult result) async {
+    if (!result.isValid) {
+      _showMessage(result.message ?? 'Please check the income details.');
+      return false;
+    }
+    if (!result.requiresConfirmation) return true;
+
+    return await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: Text(result.confirmationTitle ?? 'Please confirm'),
+            content: Text(result.message ?? 'Do you want to continue?'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: const Text('Continue'),
+              ),
+            ],
+          ),
+        ) ??
+        false;
   }
 
   static String _villaLabel(VillaModel villa) {

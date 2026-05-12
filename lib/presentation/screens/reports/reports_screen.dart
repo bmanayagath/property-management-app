@@ -14,6 +14,7 @@ import '../../../domain/models/room_profit_summary.dart';
 import '../../../domain/models/villa_model.dart';
 import '../../providers/expense_provider.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/dashboard_provider.dart';
 import '../../providers/income_provider.dart';
 import '../../providers/room_provider.dart';
 import '../../providers/villa_provider.dart';
@@ -51,9 +52,8 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
   @override
   void initState() {
     super.initState();
-    final now = DateTime.now();
-    _selectedMonth = DateTime(now.year, now.month, 1);
-    _selectedYear = now.year;
+    _selectedMonth = ref.read(selectedMonthProvider);
+    _selectedYear = _selectedMonth.year;
   }
 
   @override
@@ -585,6 +585,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
       );
       _selectedYear = _selectedMonth.year;
     });
+    ref.read(selectedMonthProvider.notifier).state = _selectedMonth;
   }
 
   bool _isSameMonth(DateTime date, DateTime month) {

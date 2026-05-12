@@ -57,8 +57,7 @@ class DashboardScreen extends ConsumerWidget {
                   const SizedBox(height: 24),
                   _MonthFilter(
                     selectedMonth: selectedMonth,
-                    onSelectMonth: () =>
-                        _selectMonth(context, ref, selectedMonth),
+                    onTap: () => _showMonthFilter(context, ref, selectedMonth),
                   ),
                   const SizedBox(height: 14),
                   _MetricGrid(
@@ -149,6 +148,48 @@ class DashboardScreen extends ConsumerWidget {
     );
   }
 
+  Future<void> _showMonthFilter(
+    BuildContext context,
+    WidgetRef ref,
+    DateTime selectedMonth,
+  ) async {
+    final action = await showModalBottomSheet<_MonthFilterAction>(
+      context: context,
+      showDragHandle: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) => const _MonthFilterSheet(),
+    );
+
+    if (action == null || !context.mounted) return;
+
+    final now = DateTime.now();
+    switch (action) {
+      case _MonthFilterAction.thisMonth:
+        ref.read(selectedMonthProvider.notifier).state = DateTime(
+          now.year,
+          now.month,
+          1,
+        );
+        return;
+      case _MonthFilterAction.lastMonth:
+        ref.read(selectedMonthProvider.notifier).state = DateTime(
+          now.year,
+          now.month - 1,
+          1,
+        );
+        return;
+      case _MonthFilterAction.selectMonth:
+        await _selectMonth(context, ref, selectedMonth);
+        return;
+      case _MonthFilterAction.selectYear:
+        await _selectYear(context, ref, selectedMonth);
+        return;
+    }
+  }
+
   Future<void> _selectMonth(
     BuildContext context,
     WidgetRef ref,
@@ -167,6 +208,28 @@ class DashboardScreen extends ConsumerWidget {
     ref.read(selectedMonthProvider.notifier).state = DateTime(
       picked.year,
       picked.month,
+      1,
+    );
+  }
+
+  Future<void> _selectYear(
+    BuildContext context,
+    WidgetRef ref,
+    DateTime selectedMonth,
+  ) async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: selectedMonth,
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2100, 12, 31),
+      initialDatePickerMode: DatePickerMode.year,
+    );
+
+    if (picked == null) return;
+
+    ref.read(selectedMonthProvider.notifier).state = DateTime(
+      picked.year,
+      selectedMonth.month,
       1,
     );
   }
@@ -273,11 +336,11 @@ class _DashboardHeader extends ConsumerWidget {
 
 class _MonthFilter extends StatelessWidget {
   final DateTime selectedMonth;
-  final VoidCallback onSelectMonth;
+  final VoidCallback onTap;
 
   const _MonthFilter({
     required this.selectedMonth,
-    required this.onSelectMonth,
+    required this.onTap,
   });
 
   @override
@@ -287,13 +350,31 @@ class _MonthFilter extends StatelessWidget {
     return Align(
       alignment: Alignment.centerLeft,
       child: InkWell(
-        onTap: onSelectMonth,
-        borderRadius: BorderRadius.circular(10),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 4),
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(18),
+        child: Ink(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: const Color(0xFFE1D6FF)),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF5549DE).withValues(alpha: 0.08),
+                blurRadius: 14,
+                offset: const Offset(0, 6),
+              ),
+            ],
+          ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
+              const Icon(
+                Icons.calendar_month_rounded,
+                color: Color(0xFF5549DE),
+                size: 21,
+              ),
+              const SizedBox(width: 9),
               Flexible(
                 child: FittedBox(
                   fit: BoxFit.scaleDown,
@@ -303,20 +384,141 @@ class _MonthFilter extends StatelessWidget {
                     maxLines: 1,
                     style: const TextStyle(
                       color: Color(0xFF060B26),
-                      fontSize: 28,
-                      fontWeight: FontWeight.w900,
+                      fontSize: 17,
+                      fontWeight: FontWeight.w800,
                     ),
                   ),
                 ),
               ),
-              const SizedBox(width: 5),
+              const SizedBox(width: 6),
               const Icon(
                 Icons.keyboard_arrow_down_rounded,
-                color: Color(0xFF060B26),
+                color: Color(0xFF5549DE),
                 size: 22,
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+enum _MonthFilterAction {
+  thisMonth,
+  lastMonth,
+  selectMonth,
+  selectYear,
+}
+
+class _MonthFilterSheet extends StatelessWidget {
+  const _MonthFilterSheet();
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      top: false,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(18, 4, 18, 18),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                'Choose period',
+                style: TextStyle(
+                  color: Color(0xFF060B26),
+                  fontSize: 18,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
+            _MonthOptionTile(
+              icon: Icons.today_rounded,
+              label: 'This Month',
+              onTap: () => Navigator.pop(
+                context,
+                _MonthFilterAction.thisMonth,
+              ),
+            ),
+            _MonthOptionTile(
+              icon: Icons.history_rounded,
+              label: 'Last Month',
+              onTap: () => Navigator.pop(
+                context,
+                _MonthFilterAction.lastMonth,
+              ),
+            ),
+            _MonthOptionTile(
+              icon: Icons.calendar_month_rounded,
+              label: 'Select Month',
+              onTap: () => Navigator.pop(
+                context,
+                _MonthFilterAction.selectMonth,
+              ),
+            ),
+            _MonthOptionTile(
+              icon: Icons.event_note_rounded,
+              label: 'Select Year',
+              onTap: () => Navigator.pop(
+                context,
+                _MonthFilterAction.selectYear,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _MonthOptionTile extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  const _MonthOptionTile({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(14),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+        child: Row(
+          children: [
+            Container(
+              height: 38,
+              width: 38,
+              decoration: BoxDecoration(
+                color: const Color(0xFFF4F0FF),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(icon, color: const Color(0xFF5549DE), size: 20),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                label,
+                style: const TextStyle(
+                  color: Color(0xFF060B26),
+                  fontSize: 15,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+            const Icon(
+              Icons.chevron_right_rounded,
+              color: Color(0xFF89909E),
+            ),
+          ],
         ),
       ),
     );

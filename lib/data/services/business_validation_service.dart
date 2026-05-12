@@ -8,11 +8,13 @@ class ValidationResult {
   final bool isValid;
   final String? message;
   final bool requiresConfirmation;
+  final String? confirmationTitle;
 
   const ValidationResult({
     required this.isValid,
     this.message,
     this.requiresConfirmation = false,
+    this.confirmationTitle,
   });
 
   const ValidationResult.valid()
@@ -26,11 +28,14 @@ class ValidationResult {
           message: message,
         );
 
-  const ValidationResult.confirmation(String message)
-      : this(
+  const ValidationResult.confirmation(
+    String message, {
+    String? confirmationTitle,
+  }) : this(
           isValid: true,
           message: message,
           requiresConfirmation: true,
+          confirmationTitle: confirmationTitle,
         );
 }
 
@@ -45,38 +50,48 @@ class BusinessValidationService {
     Income? originalIncome,
     DateTime? now,
   }) {
+    final today = _dateOnly(now ?? DateTime.now());
     final amountResult = _validatePositiveAmount(income.amount);
     if (!amountResult.isValid) return amountResult;
 
+    final selectedVilla =
+        villas.where((villa) => villa.id == income.villaId).firstOrNull;
+    if (income.villaId.trim().isEmpty || selectedVilla == null) {
+      return const ValidationResult.invalid('Please select a villa.');
+    }
     if (income.incomeType.trim().isEmpty) {
-      return const ValidationResult.invalid('Income type is required.');
+      return const ValidationResult.invalid('Please select an income type.');
     }
     if (income.paymentMethod.trim().isEmpty) {
-      return const ValidationResult.invalid('Payment method is required.');
+      return const ValidationResult.invalid('Please select a payment method.');
     }
     if (income.notes.length > 500) {
       return const ValidationResult.invalid(
         'Notes should not exceed 500 characters.',
       );
     }
-    if (_isMoreThanMonthsInFuture(
-        income.monthCovered, now ?? DateTime.now(), 3)) {
+    if (income.paymentDate.isAfter(today.add(const Duration(days: 30)))) {
       return const ValidationResult.invalid(
-        'Rent month covered cannot be more than 3 months in the future.',
+        'Payment date is too far in the future.',
+      );
+    }
+    if (_isMoreThanMonthsInFuture(
+      income.monthCovered,
+      today,
+      3,
+    )) {
+      return const ValidationResult.invalid(
+        'Month covered cannot be more than 3 months in the future.',
       );
     }
 
-    final selectedVilla =
-        villas.where((villa) => villa.id == income.villaId).firstOrNull;
+    final selectedRoom =
+        rooms.where((room) => room.id == income.roomId).firstOrNull;
     if (_isRentIncome(income)) {
-      if (income.villaId.trim().isEmpty || selectedVilla == null) {
-        return const ValidationResult.invalid('Villa is required for rent.');
-      }
-      final selectedRoom =
-          rooms.where((room) => room.id == income.roomId).firstOrNull;
       if (selectedRoom == null || selectedRoom.isDeleted) {
         return const ValidationResult.invalid(
-            'Active room is required for rent.');
+          'Please select an active room for rent.',
+        );
       }
       if (!selectedRoom.isOccupied) {
         return const ValidationResult.invalid(
@@ -91,25 +106,35 @@ class BusinessValidationService {
         originalIncome: originalIncome,
       );
       if (!duplicateRentResult.isValid) return duplicateRentResult;
+    } else if (selectedRoom != null &&
+        !selectedRoom.isDeleted &&
+        selectedRoom.isVacant) {
+      return const ValidationResult.confirmation(
+        'This room is vacant. Do you still want to record this income?',
+        confirmationTitle: 'Vacant room income',
+      );
     }
 
     if (_isDepositIncome(income)) {
       final hasExistingDeposit = existingIncomes.any(
         (existing) =>
             existing.id != originalIncome?.id &&
-            existing.villaId == income.villaId &&
+            !existing.isDeleted &&
+            existing.roomId == income.roomId &&
             _isDepositIncome(existing),
       );
       if (hasExistingDeposit) {
         return const ValidationResult.confirmation(
-          'A deposit already exists for this villa. Do you still want to save?',
+          'A deposit already exists for this room. Do you still want to save?',
+          confirmationTitle: 'Duplicate deposit',
         );
       }
     }
 
-    if (income.paymentDate.isAfter(_dateOnly(now ?? DateTime.now()))) {
+    if (income.paymentDate.isAfter(today)) {
       return const ValidationResult.confirmation(
         'Payment date is in the future. Do you still want to save?',
+        confirmationTitle: 'Future payment date',
       );
     }
 
@@ -117,6 +142,20 @@ class BusinessValidationService {
   }
 
   ValidationResult checkDuplicateRent({
+    required Income income,
+    required List<Income> existingIncomes,
+    required Room room,
+    Income? originalIncome,
+  }) {
+    return validateRentDuplicate(
+      income: income,
+      existingIncomes: existingIncomes,
+      room: room,
+      originalIncome: originalIncome,
+    );
+  }
+
+  ValidationResult validateRentDuplicate({
     required Income income,
     required List<Income> existingIncomes,
     required Room room,
@@ -135,7 +174,7 @@ class BusinessValidationService {
 
     if (existingRentReceived >= room.monthlyRent) {
       return const ValidationResult.invalid(
-        'Rent for this room and month is already fully recorded.',
+        'Rent for this room is already fully recorded for this month.',
       );
     }
 
@@ -153,9 +192,12 @@ class BusinessValidationService {
     required Expense expense,
     required List<Expense> existingExpenses,
     required List<VillaModel> villas,
+    List<Room> rooms = const [],
     Expense? originalExpense,
     DateTime? now,
+    double? highExpenseLimit,
   }) {
+    final today = _dateOnly(now ?? DateTime.now());
     final amountResult = _validatePositiveAmount(expense.amount);
     if (!amountResult.isValid) return amountResult;
 
@@ -175,21 +217,56 @@ class BusinessValidationService {
         'Notes should not exceed 500 characters.',
       );
     }
-    if (expense.villaId != null &&
-        !villas.any((villa) => villa.id == expense.villaId)) {
-      return const ValidationResult.invalid('Selected villa does not exist.');
+    final villaId = expense.villaId?.trim() ?? '';
+    final roomId = expense.roomId?.trim() ?? '';
+    final selectedVilla = villaId.isEmpty
+        ? null
+        : villas.where((v) => v.id == villaId).firstOrNull;
+    final selectedRoom =
+        roomId.isEmpty ? null : rooms.where((r) => r.id == roomId).firstOrNull;
+
+    if (roomId.isNotEmpty) {
+      if (villaId.isEmpty || selectedVilla == null) {
+        return const ValidationResult.invalid(
+          'Please select a villa for this room expense.',
+        );
+      }
+      if (selectedRoom == null || selectedRoom.isDeleted) {
+        return const ValidationResult.invalid(
+          'Please select an active room for this expense.',
+        );
+      }
+    } else if (villaId.isNotEmpty && selectedVilla == null) {
+      return const ValidationResult.invalid(
+        'Please select an active villa for this expense.',
+      );
     }
 
-    final duplicateResult = checkDuplicateExpense(
+    final duplicateResult = validateDuplicateExpense(
       expense: expense,
       existingExpenses: existingExpenses,
       originalExpense: originalExpense,
     );
     if (duplicateResult.requiresConfirmation) return duplicateResult;
 
-    if (expense.expenseDate.isAfter(_dateOnly(now ?? DateTime.now()))) {
+    if (expense.expenseDate.isAfter(today.add(const Duration(days: 30)))) {
+      return const ValidationResult.invalid(
+        'Expense date is too far in the future.',
+      );
+    }
+    if (expense.expenseDate.isAfter(today)) {
       return const ValidationResult.confirmation(
         'Expense date is in the future. Do you still want to save?',
+        confirmationTitle: 'Future expense date',
+      );
+    }
+
+    if (highExpenseLimit != null &&
+        highExpenseLimit > 0 &&
+        expense.amount > highExpenseLimit) {
+      return const ValidationResult.confirmation(
+        'This is a high expense. Do you want to continue?',
+        confirmationTitle: 'High expense',
       );
     }
 
@@ -201,10 +278,24 @@ class BusinessValidationService {
     required List<Expense> existingExpenses,
     Expense? originalExpense,
   }) {
+    return validateDuplicateExpense(
+      expense: expense,
+      existingExpenses: existingExpenses,
+      originalExpense: originalExpense,
+    );
+  }
+
+  ValidationResult validateDuplicateExpense({
+    required Expense expense,
+    required List<Expense> existingExpenses,
+    Expense? originalExpense,
+  }) {
     final hasDuplicate = existingExpenses.any(
       (existing) =>
           existing.id != originalExpense?.id &&
+          !existing.isDeleted &&
           existing.villaId == expense.villaId &&
+          existing.roomId == expense.roomId &&
           _normalize(existing.category) == _normalize(expense.category) &&
           existing.amount == expense.amount &&
           _isSameDay(existing.expenseDate, expense.expenseDate) &&
@@ -215,6 +306,7 @@ class BusinessValidationService {
 
     return const ValidationResult.confirmation(
       'Similar expense already exists. Do you still want to save?',
+      confirmationTitle: 'Duplicate expense',
     );
   }
 
