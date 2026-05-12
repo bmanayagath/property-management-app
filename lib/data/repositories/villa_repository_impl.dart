@@ -54,6 +54,8 @@ class VillaRepositoryImpl implements VillaRepository {
         status: const Value('vacant'),
         createdAt: Value(now),
         updatedAt: Value(now),
+        isDeleted: const Value(0),
+        syncStatus: const Value('pending'),
       ),
     );
     return id;
@@ -69,6 +71,7 @@ class VillaRepositoryImpl implements VillaRepository {
         location: Value(villa.location),
         notes: Value(villa.notes),
         updatedAt: Value(DateTime.now()),
+        syncStatus: const Value('pending'),
       ),
     );
   }
@@ -87,6 +90,13 @@ class VillaRepositoryImpl implements VillaRepository {
       notes: villa.notes,
       createdAt: villa.createdAt,
       updatedAt: villa.updatedAt,
+      isDeleted: villa.isDeleted == 1,
+      syncStatus: villa.syncStatus,
+      deletedAt: villa.deletedAt,
+      deletedBy: villa.deletedBy,
+      createdBy: villa.createdBy,
+      updatedBy: villa.updatedBy,
+      lastSyncedAt: villa.lastSyncedAt,
     );
   }
 }

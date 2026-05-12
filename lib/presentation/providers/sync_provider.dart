@@ -70,8 +70,8 @@ class SyncController {
     if (currentUser == null) return;
 
     final syncService = _ref.read(firebaseSyncServiceProvider);
-    final villas = await _ref.read(villasProvider.future);
-    final rooms = await _ref.read(allRoomsProvider.future);
+    final villas = await _ref.read(villaListProvider.future);
+    final rooms = await _ref.read(roomListProvider.future);
     final incomes = _ref.read(incomeListProvider).valueOrNull ?? const [];
     final expenses = _ref.read(expenseProvider);
 
@@ -109,7 +109,29 @@ class SyncController {
         .cleanupOrphanRecords(deletedBy: currentUser?.id);
     await _ref.read(firebaseSyncServiceProvider).syncPendingDeletes();
     _ref.invalidate(villasProvider);
+    _ref.invalidate(villaListProvider);
+    _ref.invalidate(activeVillaListProvider);
     _ref.invalidate(allRoomsProvider);
+    _ref.invalidate(roomListProvider);
+    _ref.invalidate(activeRoomListProvider);
+    _ref.invalidate(incomeListProvider);
+    _ref.invalidate(expenseListProvider);
+    _refresh();
+    return count;
+  }
+
+  Future<int> cleanupDeletedAndOrphanRooms() async {
+    final currentUser = _ref.read(authProvider).currentUser;
+    final count = await _ref
+        .read(localDatabaseRepositoryProvider)
+        .cleanupDeletedAndOrphanRooms(deletedBy: currentUser?.id);
+    await _ref.read(firebaseSyncServiceProvider).syncPendingDeletes();
+    _ref.invalidate(villasProvider);
+    _ref.invalidate(villaListProvider);
+    _ref.invalidate(activeVillaListProvider);
+    _ref.invalidate(allRoomsProvider);
+    _ref.invalidate(roomListProvider);
+    _ref.invalidate(activeRoomListProvider);
     _ref.invalidate(incomeListProvider);
     _ref.invalidate(expenseListProvider);
     _refresh();

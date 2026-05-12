@@ -10,6 +10,7 @@ import '../../domain/models/app_notification.dart';
 import '../../domain/models/expense.dart';
 import '../../domain/models/room.dart';
 import '../../domain/models/villa_model.dart';
+import '../providers/active_data_helpers.dart';
 import '../providers/auth_provider.dart';
 import '../providers/dashboard_provider.dart';
 import '../providers/expense_provider.dart';
@@ -76,12 +77,8 @@ class _AddEditExpenseScreenState extends ConsumerState<AddEditExpenseScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final villasAsync = ref.watch(villasProvider);
-    final roomsAsync = !_isOwnerRent &&
-            _selectedVillaId != _generalExpenseId &&
-            _selectedVillaId.isNotEmpty
-        ? ref.watch(roomsByVillaProvider(_selectedVillaId))
-        : null;
+    final villasAsync = ref.watch(villaListProvider);
+    final roomsAsync = ref.watch(roomListProvider);
 
     return Scaffold(
       backgroundColor: const Color(0xFFFCFCFD),
@@ -90,207 +87,222 @@ class _AddEditExpenseScreenState extends ConsumerState<AddEditExpenseScreen> {
         elevation: 0,
       ),
       body: villasAsync.when(
-        data: (villas) => Form(
-          key: _formKey,
-          child: ListView(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-            children: [
-              _FormPanel(
-                children: [
-                  _SectionTitle(
-                    title: 'Expense Details',
-                    icon: Icons.receipt_long_rounded,
-                  ),
-                  const SizedBox(height: 18),
-                  DropdownButtonFormField<String>(
-                    initialValue: _selectedVillaId,
-                    decoration: _decoration(
-                      _isOwnerRent ? 'Villa' : 'Expense Scope',
-                    ),
-                    items: [
-                      DropdownMenuItem(
-                        value: _generalExpenseId,
-                        child: Text(
-                            _isOwnerRent ? 'Select Villa' : 'General Expense'),
-                      ),
-                      ...villas.map(
-                        (villa) => DropdownMenuItem(
-                          value: villa.id,
-                          child: Text(_villaLabel(villa)),
-                        ),
-                      ),
-                    ],
-                    onChanged: (value) {
-                      if (value == null) return;
-                      setState(() {
-                        _selectedVillaId = value;
-                        _selectedRoomId = null; // Reset room selection
-                      });
-                    },
-                    validator: (value) {
-                      if (_isOwnerRent &&
-                          (value == null || value == _generalExpenseId)) {
-                        return 'Villa is required for Owner Rent';
-                      }
-                      return null;
-                    },
-                  ),
-                  // Room Selection (if villa is selected, not general)
-                  if (!_isOwnerRent &&
-                      _selectedVillaId != _generalExpenseId &&
-                      roomsAsync != null) ...[
-                    const SizedBox(height: 14),
-                    roomsAsync.when(
-                      data: (rooms) {
-                        final activeRooms = rooms
-                            .where((room) =>
-                                room.villaId == _selectedVillaId &&
-                                !room.isDeleted)
-                            .toList();
-                        final selectedRoomIsValid = activeRooms
-                            .any((room) => room.id == _selectedRoomId);
+        data: (villas) => roomsAsync.when(
+          data: (rooms) {
+            final activeVillas = activeVillasOnly(villas);
+            final activeRooms = activeRoomsForVillas(
+              rooms: rooms,
+              villas: activeVillas,
+            );
+            final roomsForSelectedVilla = activeRooms
+                .where((room) => room.villaId == _selectedVillaId)
+                .toList();
+            final selectedVillaIsValid =
+                _selectedVillaId == _generalExpenseId ||
+                    activeVillas.any((villa) => villa.id == _selectedVillaId);
 
-                        return DropdownButtonFormField<String?>(
-                          initialValue:
-                              selectedRoomIsValid ? _selectedRoomId : null,
-                          decoration: _decoration('Room (Optional)'),
-                          items: [
-                            const DropdownMenuItem(
-                              value: null,
-                              child: Text('Villa-level expense'),
-                            ),
-                            ...activeRooms.map(
-                              (room) => DropdownMenuItem(
-                                value: room.id,
-                                child: Text(room.displayName),
-                              ),
-                            ),
-                          ],
-                          onChanged: (value) {
-                            setState(() => _selectedRoomId = value);
-                          },
-                        );
-                      },
-                      loading: () => const CircularProgressIndicator(),
-                      error: (error, _) => Text('Error loading rooms: $error'),
-                    ),
-                  ],
-                  const SizedBox(height: 14),
-                  DropdownButtonFormField<String>(
-                    initialValue: _selectedCategory,
-                    decoration: _decoration('Category'),
-                    items: ExpenseCategories.values
-                        .map(
-                          (category) => DropdownMenuItem(
-                            value: category,
-                            child: Text(category),
+            return Form(
+              key: _formKey,
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+                children: [
+                  _FormPanel(
+                    children: [
+                      _SectionTitle(
+                        title: 'Expense Details',
+                        icon: Icons.receipt_long_rounded,
+                      ),
+                      const SizedBox(height: 18),
+                      DropdownButtonFormField<String>(
+                        initialValue:
+                            selectedVillaIsValid ? _selectedVillaId : null,
+                        decoration: _decoration(
+                          _isOwnerRent ? 'Villa' : 'Expense Scope',
+                        ),
+                        items: [
+                          DropdownMenuItem(
+                            value: _generalExpenseId,
+                            child: Text(_isOwnerRent
+                                ? 'Select Villa'
+                                : 'General Expense'),
                           ),
-                        )
-                        .toList(),
-                    validator: (value) => value == null || value.isEmpty
-                        ? 'Category is required'
-                        : null,
-                    onChanged: (value) {
-                      if (value == null) return;
-                      setState(() {
-                        _selectedCategory = value;
-                        if (_selectedCategory == ExpenseCategories.ownerRent) {
-                          _selectedRoomId = null;
-                        }
-                      });
-                    },
-                  ),
-                  const SizedBox(height: 14),
-                  TextFormField(
-                    controller: _amountController,
-                    keyboardType:
-                        const TextInputType.numberWithOptions(decimal: true),
-                    decoration: _decoration('Amount', prefixText: 'QAR '),
-                    validator: (value) {
-                      final amount = double.tryParse(value?.trim() ?? '');
-                      if (amount == null) return 'Amount is required';
-                      if (amount <= 0) return 'Amount must be greater than 0';
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 14),
-                  InkWell(
-                    borderRadius: BorderRadius.circular(14),
-                    onTap: _pickDate,
-                    child: InputDecorator(
-                      decoration: _decoration('Expense Date'),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: Text(DateFormat('dd MMM yyyy')
-                                .format(_selectedDate)),
-                          ),
-                          const Icon(
-                            Icons.calendar_month_rounded,
-                            color: Color(0xFFF04438),
+                          ...activeVillas.map(
+                            (villa) => DropdownMenuItem(
+                              value: villa.id,
+                              child: Text(_villaLabel(villa)),
+                            ),
                           ),
                         ],
+                        onChanged: (value) {
+                          if (value == null) return;
+                          setState(() {
+                            _selectedVillaId = value;
+                            _selectedRoomId = null; // Reset room selection
+                          });
+                        },
+                        validator: (value) {
+                          if (_isOwnerRent &&
+                              (value == null || value == _generalExpenseId)) {
+                            return 'Villa is required for Owner Rent';
+                          }
+                          return null;
+                        },
+                      ),
+                      // Room Selection (if villa is selected, not general)
+                      if (!_isOwnerRent &&
+                          _selectedVillaId != _generalExpenseId &&
+                          _selectedVillaId.isNotEmpty) ...[
+                        const SizedBox(height: 14),
+                        Builder(
+                          builder: (context) {
+                            final selectedRoomIsValid = roomsForSelectedVilla
+                                .any((room) => room.id == _selectedRoomId);
+
+                            return DropdownButtonFormField<String?>(
+                              initialValue:
+                                  selectedRoomIsValid ? _selectedRoomId : null,
+                              decoration: _decoration('Room (Optional)'),
+                              items: [
+                                const DropdownMenuItem(
+                                  value: null,
+                                  child: Text('Villa-level expense'),
+                                ),
+                                ...roomsForSelectedVilla.map(
+                                  (room) => DropdownMenuItem(
+                                    value: room.id,
+                                    child: Text(room.displayName),
+                                  ),
+                                ),
+                              ],
+                              onChanged: (value) {
+                                setState(() => _selectedRoomId = value);
+                              },
+                            );
+                          },
+                        ),
+                      ],
+                      const SizedBox(height: 14),
+                      DropdownButtonFormField<String>(
+                        initialValue: _selectedCategory,
+                        decoration: _decoration('Category'),
+                        items: ExpenseCategories.values
+                            .map(
+                              (category) => DropdownMenuItem(
+                                value: category,
+                                child: Text(category),
+                              ),
+                            )
+                            .toList(),
+                        validator: (value) => value == null || value.isEmpty
+                            ? 'Category is required'
+                            : null,
+                        onChanged: (value) {
+                          if (value == null) return;
+                          setState(() {
+                            _selectedCategory = value;
+                            if (_selectedCategory ==
+                                ExpenseCategories.ownerRent) {
+                              _selectedRoomId = null;
+                            }
+                          });
+                        },
+                      ),
+                      const SizedBox(height: 14),
+                      TextFormField(
+                        controller: _amountController,
+                        keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true),
+                        decoration: _decoration('Amount', prefixText: 'QAR '),
+                        validator: (value) {
+                          final amount = double.tryParse(value?.trim() ?? '');
+                          if (amount == null) return 'Amount is required';
+                          if (amount <= 0)
+                            return 'Amount must be greater than 0';
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 14),
+                      InkWell(
+                        borderRadius: BorderRadius.circular(14),
+                        onTap: _pickDate,
+                        child: InputDecorator(
+                          decoration: _decoration('Expense Date'),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Text(DateFormat('dd MMM yyyy')
+                                    .format(_selectedDate)),
+                              ),
+                              const Icon(
+                                Icons.calendar_month_rounded,
+                                color: Color(0xFFF04438),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      TextFormField(
+                        controller: _paidToController,
+                        decoration: _decoration(
+                          _isOwnerRent ? 'Paid To / Owner Name' : 'Paid To',
+                        ),
+                        validator: (value) => (value?.length ?? 0) > 100
+                            ? 'Paid To should not exceed 100 characters'
+                            : null,
+                      ),
+                      const SizedBox(height: 14),
+                      DropdownButtonFormField<String>(
+                        initialValue: _selectedPaymentMethod,
+                        decoration: _decoration('Payment Method'),
+                        items: ExpensePaymentMethods.values
+                            .map(
+                              (method) => DropdownMenuItem(
+                                value: method,
+                                child: Text(method),
+                              ),
+                            )
+                            .toList(),
+                        validator: (value) => value == null || value.isEmpty
+                            ? 'Payment method is required'
+                            : null,
+                        onChanged: (value) {
+                          if (value == null) return;
+                          setState(() => _selectedPaymentMethod = value);
+                        },
+                      ),
+                      const SizedBox(height: 14),
+                      TextFormField(
+                        controller: _notesController,
+                        minLines: 3,
+                        maxLines: 5,
+                        decoration: _decoration('Notes'),
+                        validator: (value) => (value?.length ?? 0) > 500
+                            ? 'Notes should not exceed 500 characters'
+                            : null,
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 22),
+                  FilledButton.icon(
+                    onPressed: () => _save(activeVillas),
+                    icon: const Icon(Icons.check_rounded),
+                    label: Text(_isEditing ? 'Update Expense' : 'Save Expense'),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: const Color(0xFFF04438),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 14),
-                  TextFormField(
-                    controller: _paidToController,
-                    decoration: _decoration(
-                      _isOwnerRent ? 'Paid To / Owner Name' : 'Paid To',
-                    ),
-                    validator: (value) => (value?.length ?? 0) > 100
-                        ? 'Paid To should not exceed 100 characters'
-                        : null,
-                  ),
-                  const SizedBox(height: 14),
-                  DropdownButtonFormField<String>(
-                    initialValue: _selectedPaymentMethod,
-                    decoration: _decoration('Payment Method'),
-                    items: ExpensePaymentMethods.values
-                        .map(
-                          (method) => DropdownMenuItem(
-                            value: method,
-                            child: Text(method),
-                          ),
-                        )
-                        .toList(),
-                    validator: (value) => value == null || value.isEmpty
-                        ? 'Payment method is required'
-                        : null,
-                    onChanged: (value) {
-                      if (value == null) return;
-                      setState(() => _selectedPaymentMethod = value);
-                    },
-                  ),
-                  const SizedBox(height: 14),
-                  TextFormField(
-                    controller: _notesController,
-                    minLines: 3,
-                    maxLines: 5,
-                    decoration: _decoration('Notes'),
-                    validator: (value) => (value?.length ?? 0) > 500
-                        ? 'Notes should not exceed 500 characters'
-                        : null,
                   ),
                 ],
               ),
-              const SizedBox(height: 22),
-              FilledButton.icon(
-                onPressed: () => _save(villas),
-                icon: const Icon(Icons.check_rounded),
-                label: Text(_isEditing ? 'Update Expense' : 'Save Expense'),
-                style: FilledButton.styleFrom(
-                  backgroundColor: const Color(0xFFF04438),
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                ),
-              ),
-            ],
-          ),
+            );
+          },
+          error: (error, _) => Center(child: Text(error.toString())),
+          loading: () => const Center(child: CircularProgressIndicator()),
         ),
         error: (error, _) => Center(child: Text(error.toString())),
         loading: () => const Center(child: CircularProgressIndicator()),

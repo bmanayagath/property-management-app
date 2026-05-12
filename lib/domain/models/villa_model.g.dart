@@ -17,6 +17,17 @@ _$VillaModelImpl _$$VillaModelImplFromJson(Map<String, dynamic> json) =>
       updatedAt: json['updatedAt'] == null
           ? null
           : DateTime.parse(json['updatedAt'] as String),
+      isDeleted: json['isDeleted'] as bool? ?? false,
+      syncStatus: json['syncStatus'] as String? ?? 'pending',
+      deletedAt: json['deletedAt'] == null
+          ? null
+          : DateTime.parse(json['deletedAt'] as String),
+      deletedBy: json['deletedBy'] as String?,
+      createdBy: json['createdBy'] as String?,
+      updatedBy: json['updatedBy'] as String?,
+      lastSyncedAt: json['lastSyncedAt'] == null
+          ? null
+          : DateTime.parse(json['lastSyncedAt'] as String),
     );
 
 Map<String, dynamic> _$$VillaModelImplToJson(_$VillaModelImpl instance) =>
@@ -28,4 +39,11 @@ Map<String, dynamic> _$$VillaModelImplToJson(_$VillaModelImpl instance) =>
       'notes': instance.notes,
       'createdAt': instance.createdAt.toIso8601String(),
       'updatedAt': instance.updatedAt?.toIso8601String(),
+      'isDeleted': instance.isDeleted,
+      'syncStatus': instance.syncStatus,
+      'deletedAt': instance.deletedAt?.toIso8601String(),
+      'deletedBy': instance.deletedBy,
+      'createdBy': instance.createdBy,
+      'updatedBy': instance.updatedBy,
+      'lastSyncedAt': instance.lastSyncedAt?.toIso8601String(),
     };

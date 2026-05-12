@@ -472,6 +472,10 @@ class AppDatabase extends _$AppDatabase {
     });
   }
 
+  Future<int> cleanupDeletedAndOrphanRooms({String? deletedBy}) {
+    return cleanupOrphanRecords(deletedBy: deletedBy);
+  }
+
   Future<Room?> getRoomById(String id) =>
       (select(rooms)..where((tbl) => tbl.id.equals(id))).getSingleOrNull();
 

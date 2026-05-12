@@ -74,6 +74,19 @@ class LocalDatabaseRepository {
     String? deletedBy,
   }) async {
     final now = DateTime.now();
+    late final Set<ResultSetImplementation<dynamic, dynamic>> updatedTables;
+    switch (collection) {
+      case 'villas':
+        updatedTables = {database.villas};
+      case 'rooms':
+        updatedTables = {database.rooms};
+      case 'incomes':
+        updatedTables = {database.incomes};
+      case 'expenses':
+        updatedTables = {database.expenses};
+      default:
+        updatedTables = const {};
+    }
     await database.customUpdate(
       '''
       UPDATE $collection
@@ -92,6 +105,7 @@ class LocalDatabaseRepository {
         Variable<DateTime>(now),
         Variable<String>(id),
       ],
+      updates: updatedTables,
     );
   }
 
@@ -116,6 +130,13 @@ class LocalDatabaseRepository {
       status: Value(existing?.status ?? 'vacant'),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
+      isDeleted: Value(villa.isDeleted ? 1 : 0),
+      syncStatus: const Value('synced'),
+      deletedAt: Value(villa.deletedAt),
+      deletedBy: Value(villa.deletedBy),
+      createdBy: Value(villa.createdBy),
+      updatedBy: Value(villa.updatedBy),
+      lastSyncedAt: Value(DateTime.now()),
     );
 
     if (existing == null) {
@@ -153,8 +174,12 @@ class LocalDatabaseRepository {
       status: Value(room.status),
       createdAt: Value(room.createdAt),
       updatedAt: Value(room.updatedAt),
-      isDeleted: const Value(0),
-      syncStatus: const Value('synced'),
+      isDeleted: Value(room.isDeleted ? 1 : 0),
+      syncStatus: Value(room.syncStatus == 'pending' ? 'pending' : 'synced'),
+      deletedAt: Value(room.deletedAt),
+      deletedBy: Value(room.deletedBy),
+      createdBy: Value(room.createdBy),
+      updatedBy: Value(room.updatedBy),
       lastSyncedAt: Value(DateTime.now()),
     );
 
@@ -260,6 +285,10 @@ class LocalDatabaseRepository {
 
   Future<int> cleanupOrphanRecords({String? deletedBy}) {
     return database.cleanupOrphanRecords(deletedBy: deletedBy);
+  }
+
+  Future<int> cleanupDeletedAndOrphanRooms({String? deletedBy}) {
+    return database.cleanupDeletedAndOrphanRooms(deletedBy: deletedBy);
   }
 
   Future<db.Income?> _getIncomeById(String id) {

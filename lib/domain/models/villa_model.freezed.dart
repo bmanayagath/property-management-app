@@ -29,6 +29,13 @@ mixin _$VillaModel {
   String get notes => throw _privateConstructorUsedError;
   DateTime get createdAt => throw _privateConstructorUsedError;
   DateTime? get updatedAt => throw _privateConstructorUsedError;
+  bool get isDeleted => throw _privateConstructorUsedError;
+  String get syncStatus => throw _privateConstructorUsedError;
+  DateTime? get deletedAt => throw _privateConstructorUsedError;
+  String? get deletedBy => throw _privateConstructorUsedError;
+  String? get createdBy => throw _privateConstructorUsedError;
+  String? get updatedBy => throw _privateConstructorUsedError;
+  DateTime? get lastSyncedAt => throw _privateConstructorUsedError;
 
   /// Serializes this VillaModel to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
@@ -53,7 +60,14 @@ abstract class $VillaModelCopyWith<$Res> {
       String villaNumber,
       String notes,
       DateTime createdAt,
-      DateTime? updatedAt});
+      DateTime? updatedAt,
+      bool isDeleted,
+      String syncStatus,
+      DateTime? deletedAt,
+      String? deletedBy,
+      String? createdBy,
+      String? updatedBy,
+      DateTime? lastSyncedAt});
 }
 
 /// @nodoc
@@ -78,6 +92,13 @@ class _$VillaModelCopyWithImpl<$Res, $Val extends VillaModel>
     Object? notes = null,
     Object? createdAt = null,
     Object? updatedAt = freezed,
+    Object? isDeleted = null,
+    Object? syncStatus = null,
+    Object? deletedAt = freezed,
+    Object? deletedBy = freezed,
+    Object? createdBy = freezed,
+    Object? updatedBy = freezed,
+    Object? lastSyncedAt = freezed,
   }) {
     return _then(_value.copyWith(
       id: null == id
@@ -108,6 +129,34 @@ class _$VillaModelCopyWithImpl<$Res, $Val extends VillaModel>
           ? _value.updatedAt
           : updatedAt // ignore: cast_nullable_to_non_nullable
               as DateTime?,
+      isDeleted: null == isDeleted
+          ? _value.isDeleted
+          : isDeleted // ignore: cast_nullable_to_non_nullable
+              as bool,
+      syncStatus: null == syncStatus
+          ? _value.syncStatus
+          : syncStatus // ignore: cast_nullable_to_non_nullable
+              as String,
+      deletedAt: freezed == deletedAt
+          ? _value.deletedAt
+          : deletedAt // ignore: cast_nullable_to_non_nullable
+              as DateTime?,
+      deletedBy: freezed == deletedBy
+          ? _value.deletedBy
+          : deletedBy // ignore: cast_nullable_to_non_nullable
+              as String?,
+      createdBy: freezed == createdBy
+          ? _value.createdBy
+          : createdBy // ignore: cast_nullable_to_non_nullable
+              as String?,
+      updatedBy: freezed == updatedBy
+          ? _value.updatedBy
+          : updatedBy // ignore: cast_nullable_to_non_nullable
+              as String?,
+      lastSyncedAt: freezed == lastSyncedAt
+          ? _value.lastSyncedAt
+          : lastSyncedAt // ignore: cast_nullable_to_non_nullable
+              as DateTime?,
     ) as $Val);
   }
 }
@@ -127,7 +176,14 @@ abstract class _$$VillaModelImplCopyWith<$Res>
       String villaNumber,
       String notes,
       DateTime createdAt,
-      DateTime? updatedAt});
+      DateTime? updatedAt,
+      bool isDeleted,
+      String syncStatus,
+      DateTime? deletedAt,
+      String? deletedBy,
+      String? createdBy,
+      String? updatedBy,
+      DateTime? lastSyncedAt});
 }
 
 /// @nodoc
@@ -150,6 +206,13 @@ class __$$VillaModelImplCopyWithImpl<$Res>
     Object? notes = null,
     Object? createdAt = null,
     Object? updatedAt = freezed,
+    Object? isDeleted = null,
+    Object? syncStatus = null,
+    Object? deletedAt = freezed,
+    Object? deletedBy = freezed,
+    Object? createdBy = freezed,
+    Object? updatedBy = freezed,
+    Object? lastSyncedAt = freezed,
   }) {
     return _then(_$VillaModelImpl(
       id: null == id
@@ -180,6 +243,34 @@ class __$$VillaModelImplCopyWithImpl<$Res>
           ? _value.updatedAt
           : updatedAt // ignore: cast_nullable_to_non_nullable
               as DateTime?,
+      isDeleted: null == isDeleted
+          ? _value.isDeleted
+          : isDeleted // ignore: cast_nullable_to_non_nullable
+              as bool,
+      syncStatus: null == syncStatus
+          ? _value.syncStatus
+          : syncStatus // ignore: cast_nullable_to_non_nullable
+              as String,
+      deletedAt: freezed == deletedAt
+          ? _value.deletedAt
+          : deletedAt // ignore: cast_nullable_to_non_nullable
+              as DateTime?,
+      deletedBy: freezed == deletedBy
+          ? _value.deletedBy
+          : deletedBy // ignore: cast_nullable_to_non_nullable
+              as String?,
+      createdBy: freezed == createdBy
+          ? _value.createdBy
+          : createdBy // ignore: cast_nullable_to_non_nullable
+              as String?,
+      updatedBy: freezed == updatedBy
+          ? _value.updatedBy
+          : updatedBy // ignore: cast_nullable_to_non_nullable
+              as String?,
+      lastSyncedAt: freezed == lastSyncedAt
+          ? _value.lastSyncedAt
+          : lastSyncedAt // ignore: cast_nullable_to_non_nullable
+              as DateTime?,
     ));
   }
 }
@@ -194,7 +285,14 @@ class _$VillaModelImpl implements _VillaModel {
       this.villaNumber = '',
       this.notes = '',
       required this.createdAt,
-      this.updatedAt});
+      this.updatedAt,
+      this.isDeleted = false,
+      this.syncStatus = 'pending',
+      this.deletedAt,
+      this.deletedBy,
+      this.createdBy,
+      this.updatedBy,
+      this.lastSyncedAt});
 
   factory _$VillaModelImpl.fromJson(Map<String, dynamic> json) =>
       _$$VillaModelImplFromJson(json);
@@ -217,10 +315,26 @@ class _$VillaModelImpl implements _VillaModel {
   final DateTime createdAt;
   @override
   final DateTime? updatedAt;
+  @override
+  @JsonKey()
+  final bool isDeleted;
+  @override
+  @JsonKey()
+  final String syncStatus;
+  @override
+  final DateTime? deletedAt;
+  @override
+  final String? deletedBy;
+  @override
+  final String? createdBy;
+  @override
+  final String? updatedBy;
+  @override
+  final DateTime? lastSyncedAt;
 
   @override
   String toString() {
-    return 'VillaModel(id: $id, villaName: $villaName, location: $location, villaNumber: $villaNumber, notes: $notes, createdAt: $createdAt, updatedAt: $updatedAt)';
+    return 'VillaModel(id: $id, villaName: $villaName, location: $location, villaNumber: $villaNumber, notes: $notes, createdAt: $createdAt, updatedAt: $updatedAt, isDeleted: $isDeleted, syncStatus: $syncStatus, deletedAt: $deletedAt, deletedBy: $deletedBy, createdBy: $createdBy, updatedBy: $updatedBy, lastSyncedAt: $lastSyncedAt)';
   }
 
   @override
@@ -239,13 +353,41 @@ class _$VillaModelImpl implements _VillaModel {
             (identical(other.createdAt, createdAt) ||
                 other.createdAt == createdAt) &&
             (identical(other.updatedAt, updatedAt) ||
-                other.updatedAt == updatedAt));
+                other.updatedAt == updatedAt) &&
+            (identical(other.isDeleted, isDeleted) ||
+                other.isDeleted == isDeleted) &&
+            (identical(other.syncStatus, syncStatus) ||
+                other.syncStatus == syncStatus) &&
+            (identical(other.deletedAt, deletedAt) ||
+                other.deletedAt == deletedAt) &&
+            (identical(other.deletedBy, deletedBy) ||
+                other.deletedBy == deletedBy) &&
+            (identical(other.createdBy, createdBy) ||
+                other.createdBy == createdBy) &&
+            (identical(other.updatedBy, updatedBy) ||
+                other.updatedBy == updatedBy) &&
+            (identical(other.lastSyncedAt, lastSyncedAt) ||
+                other.lastSyncedAt == lastSyncedAt));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
-  int get hashCode => Object.hash(runtimeType, id, villaName, location,
-      villaNumber, notes, createdAt, updatedAt);
+  int get hashCode => Object.hash(
+      runtimeType,
+      id,
+      villaName,
+      location,
+      villaNumber,
+      notes,
+      createdAt,
+      updatedAt,
+      isDeleted,
+      syncStatus,
+      deletedAt,
+      deletedBy,
+      createdBy,
+      updatedBy,
+      lastSyncedAt);
 
   /// Create a copy of VillaModel
   /// with the given fields replaced by the non-null parameter values.
@@ -271,7 +413,14 @@ abstract class _VillaModel implements VillaModel {
       final String villaNumber,
       final String notes,
       required final DateTime createdAt,
-      final DateTime? updatedAt}) = _$VillaModelImpl;
+      final DateTime? updatedAt,
+      final bool isDeleted,
+      final String syncStatus,
+      final DateTime? deletedAt,
+      final String? deletedBy,
+      final String? createdBy,
+      final String? updatedBy,
+      final DateTime? lastSyncedAt}) = _$VillaModelImpl;
 
   factory _VillaModel.fromJson(Map<String, dynamic> json) =
       _$VillaModelImpl.fromJson;
@@ -292,6 +441,20 @@ abstract class _VillaModel implements VillaModel {
   DateTime get createdAt;
   @override
   DateTime? get updatedAt;
+  @override
+  bool get isDeleted;
+  @override
+  String get syncStatus;
+  @override
+  DateTime? get deletedAt;
+  @override
+  String? get deletedBy;
+  @override
+  String? get createdBy;
+  @override
+  String? get updatedBy;
+  @override
+  DateTime? get lastSyncedAt;
 
   /// Create a copy of VillaModel
   /// with the given fields replaced by the non-null parameter values.

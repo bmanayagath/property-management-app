@@ -16,6 +16,13 @@ class VillaModel with _$VillaModel {
     @Default('') String notes,
     required DateTime createdAt,
     DateTime? updatedAt,
+    @Default(false) bool isDeleted,
+    @Default('pending') String syncStatus,
+    DateTime? deletedAt,
+    String? deletedBy,
+    String? createdBy,
+    String? updatedBy,
+    DateTime? lastSyncedAt,
   }) = _VillaModel;
 
   factory VillaModel.fromJson(Map<String, dynamic> json) =>

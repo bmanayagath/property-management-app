@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../domain/models/villa_model.dart';
 import 'auth_provider.dart';
+import 'dashboard_provider.dart';
 import 'expense_provider.dart';
 import 'income_provider.dart';
 import 'repository_provider.dart';
@@ -13,6 +14,7 @@ final villasProvider = StreamProvider<List<VillaModel>>((ref) {
 });
 
 final villaListProvider = villasProvider;
+final activeVillaListProvider = villaListProvider;
 
 final villaByIdProvider =
     FutureProvider.family<VillaModel?, String>((ref, id) async {
@@ -33,6 +35,11 @@ final addVillaProvider =
     ref.read(syncRefreshProvider.notifier).state++;
   }
   ref.invalidate(villasProvider);
+  ref.invalidate(villaListProvider);
+  ref.invalidate(activeVillaListProvider);
+  ref.invalidate(roomListProvider);
+  ref.invalidate(activeRoomListProvider);
+  ref.invalidate(dashboardSummaryProvider);
   return id;
 });
 
@@ -49,9 +56,14 @@ final updateVillaProvider =
     ref.read(syncRefreshProvider.notifier).state++;
   }
   ref.invalidate(villasProvider);
+  ref.invalidate(villaListProvider);
+  ref.invalidate(activeVillaListProvider);
   ref.invalidate(allRoomsProvider);
+  ref.invalidate(roomListProvider);
+  ref.invalidate(activeRoomListProvider);
   ref.invalidate(incomeListProvider);
   ref.invalidate(expenseListProvider);
+  ref.invalidate(dashboardSummaryProvider);
 });
 
 final deleteVillaProvider =
@@ -69,7 +81,12 @@ final deleteVillaProvider =
     ref.read(syncRefreshProvider.notifier).state++;
   }
   ref.invalidate(villasProvider);
+  ref.invalidate(villaListProvider);
+  ref.invalidate(activeVillaListProvider);
   ref.invalidate(allRoomsProvider);
+  ref.invalidate(roomListProvider);
+  ref.invalidate(activeRoomListProvider);
   ref.invalidate(incomeListProvider);
   ref.invalidate(expenseListProvider);
+  ref.invalidate(dashboardSummaryProvider);
 });

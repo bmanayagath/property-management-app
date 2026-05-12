@@ -1,7 +1,9 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../domain/models/room.dart';
 import '../../domain/models/villa_model.dart';
+import 'active_data_helpers.dart';
 import 'auth_provider.dart';
+import 'dashboard_provider.dart';
 import 'expense_provider.dart';
 import 'income_provider.dart';
 import 'repository_provider.dart';
@@ -11,10 +13,7 @@ List<Room> activeRoomsOnly({
   required List<Room> rooms,
   required List<VillaModel> villas,
 }) {
-  final activeVillaIds = villas.map((villa) => villa.id).toSet();
-  return rooms
-      .where((room) => !room.isDeleted && activeVillaIds.contains(room.villaId))
-      .toList();
+  return activeRoomsForVillas(rooms: rooms, villas: villas);
 }
 
 final allRoomsProvider = StreamProvider<List<Room>>((ref) {
@@ -23,6 +22,7 @@ final allRoomsProvider = StreamProvider<List<Room>>((ref) {
 });
 
 final roomListProvider = allRoomsProvider;
+final activeRoomListProvider = roomListProvider;
 
 final roomByIdProvider = FutureProvider.family<Room?, String>((ref, id) async {
   final repository = ref.watch(roomRepositoryProvider);
@@ -74,8 +74,11 @@ final addRoomProvider = FutureProvider.family<String, Room>((ref, room) async {
     ref.read(syncRefreshProvider.notifier).state++;
   }
   ref.invalidate(allRoomsProvider);
+  ref.invalidate(roomListProvider);
+  ref.invalidate(activeRoomListProvider);
   ref.invalidate(roomsByVillaProvider(room.villaId));
   ref.invalidate(watchRoomsByVillaProvider(room.villaId));
+  ref.invalidate(dashboardSummaryProvider);
   ref.invalidate(occupiedRoomsProvider);
   ref.invalidate(vacantRoomsProvider);
   ref.invalidate(totalExpectedRentProvider);
@@ -94,8 +97,11 @@ final updateRoomProvider = FutureProvider.family<void, Room>((ref, room) async {
     ref.read(syncRefreshProvider.notifier).state++;
   }
   ref.invalidate(allRoomsProvider);
+  ref.invalidate(roomListProvider);
+  ref.invalidate(activeRoomListProvider);
   ref.invalidate(roomsByVillaProvider(room.villaId));
   ref.invalidate(watchRoomsByVillaProvider(room.villaId));
+  ref.invalidate(dashboardSummaryProvider);
   ref.invalidate(occupiedRoomsProvider);
   ref.invalidate(vacantRoomsProvider);
   ref.invalidate(totalExpectedRentProvider);
@@ -116,12 +122,15 @@ final deleteRoomProvider = FutureProvider.family<void, String>((ref, id) async {
     ref.read(syncRefreshProvider.notifier).state++;
   }
   ref.invalidate(allRoomsProvider);
+  ref.invalidate(roomListProvider);
+  ref.invalidate(activeRoomListProvider);
   if (room != null) {
     ref.invalidate(roomsByVillaProvider(room.villaId));
     ref.invalidate(watchRoomsByVillaProvider(room.villaId));
   }
   ref.invalidate(incomeListProvider);
   ref.invalidate(expenseListProvider);
+  ref.invalidate(dashboardSummaryProvider);
   ref.invalidate(occupiedRoomsProvider);
   ref.invalidate(vacantRoomsProvider);
   ref.invalidate(totalExpectedRentProvider);

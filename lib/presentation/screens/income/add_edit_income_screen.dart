@@ -11,6 +11,7 @@ import '../../../domain/models/income.dart';
 import '../../../domain/models/room.dart';
 import '../../../domain/models/villa_model.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/active_data_helpers.dart';
 import '../../providers/income_provider.dart';
 import '../../providers/notification_provider.dart';
 import '../../providers/villa_provider.dart';
@@ -70,11 +71,9 @@ class _AddEditIncomeScreenState extends ConsumerState<AddEditIncomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final villasAsync = ref.watch(villasProvider);
+    final villasAsync = ref.watch(villaListProvider);
+    final roomsAsync = ref.watch(roomListProvider);
     final controllerState = ref.watch(incomeControllerProvider);
-    final roomsAsync = _selectedVillaId != null
-        ? ref.watch(roomsByVillaProvider(_selectedVillaId!))
-        : null;
 
     return Scaffold(
       backgroundColor: const Color(0xFFFCFCFD),
@@ -83,216 +82,217 @@ class _AddEditIncomeScreenState extends ConsumerState<AddEditIncomeScreen> {
         elevation: 0,
       ),
       body: villasAsync.when(
-        data: (villas) {
-          final selectedVillaIsValid =
-              villas.any((villa) => villa.id == _selectedVillaId);
+        data: (villas) => roomsAsync.when(
+          data: (rooms) {
+            final activeVillas = activeVillasOnly(villas);
+            final activeRooms = activeRoomsForVillas(
+              rooms: rooms,
+              villas: activeVillas,
+            );
+            final roomsForSelectedVilla = activeRooms
+                .where((room) => room.villaId == _selectedVillaId)
+                .toList();
+            final selectableRooms = roomsForSelectedVilla
+                .where((room) => _selectedIncomeType == IncomeTypes.rent
+                    ? room.isOccupied
+                    : true)
+                .toList();
+            final selectedVillaIsValid =
+                activeVillas.any((villa) => villa.id == _selectedVillaId);
 
-          return Form(
-            key: _formKey,
-            child: ListView(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-              children: [
-                _FormPanel(
-                  children: [
-                    const _SectionTitle(
-                      title: 'Income Details',
-                      icon: Icons.payments_rounded,
-                    ),
-                    const SizedBox(height: 18),
-                    DropdownButtonFormField<String>(
-                      initialValue:
-                          selectedVillaIsValid ? _selectedVillaId : null,
-                      decoration: _decoration('Villa'),
-                      items: villas
-                          .map(
-                            (villa) => DropdownMenuItem(
-                              value: villa.id,
-                              child: Text(_villaLabel(villa)),
-                            ),
-                          )
-                          .toList(),
-                      validator: (value) => value == null || value.isEmpty
-                          ? 'Villa is required'
-                          : null,
-                      onChanged: (value) {
-                        setState(() {
-                          _selectedVillaId = value;
-                          _selectedRoomId = null; // Reset room selection
-                        });
-                      },
-                    ),
-                    if (villas.isEmpty) ...[
-                      const SizedBox(height: 8),
-                      const Text(
-                        'Income can only be added for villas with rooms.',
-                        style: TextStyle(
-                          color: Color(0xFFF04438),
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                        ),
+            return Form(
+              key: _formKey,
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+                children: [
+                  _FormPanel(
+                    children: [
+                      const _SectionTitle(
+                        title: 'Income Details',
+                        icon: Icons.payments_rounded,
                       ),
-                    ],
-                    // Room Selection
-                    if (_selectedVillaId != null && roomsAsync != null) ...[
-                      const SizedBox(height: 14),
-                      roomsAsync.when(
-                        data: (rooms) {
-                          final activeRooms = rooms
-                              .where((room) =>
-                                  room.villaId == _selectedVillaId &&
-                                  !room.isDeleted)
-                              .toList();
-                          final occupiedRooms = activeRooms
-                              .where((room) =>
-                                  _selectedIncomeType == IncomeTypes.rent
-                                      ? room.isOccupied
-                                      : true)
-                              .toList();
-                          final selectedRoomIsValid = occupiedRooms
-                              .any((room) => room.id == _selectedRoomId);
-
-                          return DropdownButtonFormField<String>(
-                            initialValue:
-                                selectedRoomIsValid ? _selectedRoomId : null,
-                            decoration: _decoration('Room'),
-                            items: occupiedRooms
-                                .map(
-                                  (room) => DropdownMenuItem(
-                                    value: room.id,
-                                    child: Text(room.displayName),
-                                  ),
-                                )
-                                .toList(),
-                            validator: (value) {
-                              if (_selectedIncomeType == IncomeTypes.rent &&
-                                  (value == null || value.isEmpty)) {
-                                return 'Room is required for rent';
-                              }
-                              return null;
-                            },
-                            onChanged: (value) {
-                              setState(() => _selectedRoomId = value);
-                            },
-                          );
+                      const SizedBox(height: 18),
+                      DropdownButtonFormField<String>(
+                        initialValue:
+                            selectedVillaIsValid ? _selectedVillaId : null,
+                        decoration: _decoration('Villa'),
+                        items: activeVillas
+                            .map(
+                              (villa) => DropdownMenuItem(
+                                value: villa.id,
+                                child: Text(_villaLabel(villa)),
+                              ),
+                            )
+                            .toList(),
+                        validator: (value) => value == null || value.isEmpty
+                            ? 'Villa is required'
+                            : null,
+                        onChanged: (value) {
+                          setState(() {
+                            _selectedVillaId = value;
+                            _selectedRoomId = null; // Reset room selection
+                          });
                         },
-                        loading: () => const CircularProgressIndicator(),
-                        error: (error, _) =>
-                            Text('Error loading rooms: $error'),
                       ),
-                    ],
-                    const SizedBox(height: 14),
-                    DropdownButtonFormField<String>(
-                      initialValue: _selectedIncomeType,
-                      decoration: _decoration('Income Type'),
-                      items: IncomeTypes.values
-                          .map(
-                            (type) => DropdownMenuItem(
-                              value: type,
-                              child: Text(type),
-                            ),
-                          )
-                          .toList(),
-                      validator: (value) => value == null || value.isEmpty
-                          ? 'Income type is required'
-                          : null,
-                      onChanged: (value) {
-                        if (value == null) return;
-                        setState(() => _selectedIncomeType = value);
-                      },
-                    ),
-                    const SizedBox(height: 14),
-                    TextFormField(
-                      controller: _amountController,
-                      keyboardType:
-                          const TextInputType.numberWithOptions(decimal: true),
-                      decoration: _decoration('Amount', prefixText: 'QAR '),
-                      validator: (value) {
-                        final amount = double.tryParse(value?.trim() ?? '');
-                        if (amount == null) return 'Amount is required';
-                        if (amount <= 0) return 'Amount must be greater than 0';
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 14),
-                    _DateField(
-                      label: 'Payment Date',
-                      value: _paymentDate,
-                      formatter: DateFormat('dd MMM yyyy'),
-                      onTap: () => _pickDate(
-                        initialDate: _paymentDate,
-                        onPicked: (date) => setState(() => _paymentDate = date),
+                      if (activeVillas.isEmpty) ...[
+                        const SizedBox(height: 8),
+                        const Text(
+                          'Income can only be added for villas with rooms.',
+                          style: TextStyle(
+                            color: Color(0xFFF04438),
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                      // Room Selection
+                      if (selectedVillaIsValid) ...[
+                        const SizedBox(height: 14),
+                        DropdownButtonFormField<String>(
+                          initialValue: selectableRooms
+                                  .any((room) => room.id == _selectedRoomId)
+                              ? _selectedRoomId
+                              : null,
+                          decoration: _decoration('Room'),
+                          items: selectableRooms
+                              .map(
+                                (room) => DropdownMenuItem(
+                                  value: room.id,
+                                  child: Text(room.displayName),
+                                ),
+                              )
+                              .toList(),
+                          validator: (value) {
+                            if (_selectedIncomeType == IncomeTypes.rent &&
+                                (value == null || value.isEmpty)) {
+                              return 'Room is required for rent';
+                            }
+                            return null;
+                          },
+                          onChanged: (value) {
+                            setState(() => _selectedRoomId = value);
+                          },
+                        ),
+                      ],
+                      const SizedBox(height: 14),
+                      DropdownButtonFormField<String>(
+                        initialValue: _selectedIncomeType,
+                        decoration: _decoration('Income Type'),
+                        items: IncomeTypes.values
+                            .map(
+                              (type) => DropdownMenuItem(
+                                value: type,
+                                child: Text(type),
+                              ),
+                            )
+                            .toList(),
+                        validator: (value) => value == null || value.isEmpty
+                            ? 'Income type is required'
+                            : null,
+                        onChanged: (value) {
+                          if (value == null) return;
+                          setState(() => _selectedIncomeType = value);
+                        },
                       ),
-                    ),
-                    const SizedBox(height: 14),
-                    DropdownButtonFormField<String>(
-                      initialValue: _selectedPaymentMethod,
-                      decoration: _decoration('Payment Method'),
-                      items: IncomePaymentMethods.values
-                          .map(
-                            (method) => DropdownMenuItem(
-                              value: method,
-                              child: Text(method),
-                            ),
-                          )
-                          .toList(),
-                      validator: (value) => value == null || value.isEmpty
-                          ? 'Payment method is required'
-                          : null,
-                      onChanged: (value) {
-                        if (value == null) return;
-                        setState(() => _selectedPaymentMethod = value);
-                      },
-                    ),
-                    const SizedBox(height: 14),
-                    _DateField(
-                      label: 'Month Covered',
-                      value: _monthCovered,
-                      formatter: DateFormat('MMMM yyyy'),
-                      onTap: () => _pickDate(
-                        initialDate: _monthCovered,
-                        onPicked: (date) => setState(
-                          () => _monthCovered =
-                              DateTime(date.year, date.month, 1),
+                      const SizedBox(height: 14),
+                      TextFormField(
+                        controller: _amountController,
+                        keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true),
+                        decoration: _decoration('Amount', prefixText: 'QAR '),
+                        validator: (value) {
+                          final amount = double.tryParse(value?.trim() ?? '');
+                          if (amount == null) return 'Amount is required';
+                          if (amount <= 0)
+                            return 'Amount must be greater than 0';
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 14),
+                      _DateField(
+                        label: 'Payment Date',
+                        value: _paymentDate,
+                        formatter: DateFormat('dd MMM yyyy'),
+                        onTap: () => _pickDate(
+                          initialDate: _paymentDate,
+                          onPicked: (date) =>
+                              setState(() => _paymentDate = date),
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 14),
-                    TextFormField(
-                      controller: _notesController,
-                      minLines: 3,
-                      maxLines: 5,
-                      decoration: _decoration('Notes'),
-                      validator: (value) => (value?.length ?? 0) > 500
-                          ? 'Notes should not exceed 500 characters'
-                          : null,
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 22),
-                FilledButton.icon(
-                  onPressed:
-                      controllerState.isLoading ? null : () => _save(villas),
-                  icon: controllerState.isLoading
-                      ? const SizedBox(
-                          height: 18,
-                          width: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.check_rounded),
-                  label: Text(_isEditing ? 'Update Income' : 'Save Income'),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: const Color(0xFF12B76A),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
+                      const SizedBox(height: 14),
+                      DropdownButtonFormField<String>(
+                        initialValue: _selectedPaymentMethod,
+                        decoration: _decoration('Payment Method'),
+                        items: IncomePaymentMethods.values
+                            .map(
+                              (method) => DropdownMenuItem(
+                                value: method,
+                                child: Text(method),
+                              ),
+                            )
+                            .toList(),
+                        validator: (value) => value == null || value.isEmpty
+                            ? 'Payment method is required'
+                            : null,
+                        onChanged: (value) {
+                          if (value == null) return;
+                          setState(() => _selectedPaymentMethod = value);
+                        },
+                      ),
+                      const SizedBox(height: 14),
+                      _DateField(
+                        label: 'Month Covered',
+                        value: _monthCovered,
+                        formatter: DateFormat('MMMM yyyy'),
+                        onTap: () => _pickDate(
+                          initialDate: _monthCovered,
+                          onPicked: (date) => setState(
+                            () => _monthCovered =
+                                DateTime(date.year, date.month, 1),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      TextFormField(
+                        controller: _notesController,
+                        minLines: 3,
+                        maxLines: 5,
+                        decoration: _decoration('Notes'),
+                        validator: (value) => (value?.length ?? 0) > 500
+                            ? 'Notes should not exceed 500 characters'
+                            : null,
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 22),
+                  FilledButton.icon(
+                    onPressed: controllerState.isLoading
+                        ? null
+                        : () => _save(activeVillas),
+                    icon: controllerState.isLoading
+                        ? const SizedBox(
+                            height: 18,
+                            width: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.check_rounded),
+                    label: Text(_isEditing ? 'Update Income' : 'Save Income'),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: const Color(0xFF12B76A),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
                     ),
                   ),
-                ),
-              ],
-            ),
-          );
-        },
+                ],
+              ),
+            );
+          },
+          error: (error, _) => Center(child: Text(error.toString())),
+          loading: () => const Center(child: CircularProgressIndicator()),
+        ),
         error: (error, _) => Center(child: Text(error.toString())),
         loading: () => const Center(child: CircularProgressIndicator()),
       ),
@@ -342,7 +342,7 @@ class _AddEditIncomeScreenState extends ConsumerState<AddEditIncomeScreen> {
     final selectedVilla =
         villas.where((villa) => villa.id == _selectedVillaId).firstOrNull;
     if (selectedVilla == null) return;
-    final allRooms = ref.read(allRoomsProvider).valueOrNull ?? const <Room>[];
+    final allRooms = ref.read(roomListProvider).valueOrNull ?? const <Room>[];
     final existingIncomes =
         ref.read(incomeListProvider).valueOrNull ?? const <Income>[];
 
@@ -354,8 +354,7 @@ class _AddEditIncomeScreenState extends ConsumerState<AddEditIncomeScreen> {
 
     String roomName = '';
     if (_selectedRoomId != null) {
-      final rooms =
-          ref.read(roomsByVillaProvider(selectedVilla.id)).valueOrNull;
+      final rooms = ref.read(roomListProvider).valueOrNull;
       var selectedRoomName = _selectedRoomId!;
       if (rooms != null) {
         for (final room in rooms.where((room) => !room.isDeleted)) {

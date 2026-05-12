@@ -806,6 +806,13 @@ class FirebaseSyncService {
       'notes': villa.notes,
       'createdAt': villa.createdAt.toIso8601String(),
       'updatedAt': villa.updatedAt?.toIso8601String(),
+      'isDeleted': villa.isDeleted,
+      'syncStatus': villa.syncStatus,
+      'deletedAt': villa.deletedAt?.toIso8601String(),
+      'deletedBy': villa.deletedBy,
+      'createdBy': villa.createdBy,
+      'updatedBy': villa.updatedBy,
+      'lastSyncedAt': villa.lastSyncedAt?.toIso8601String(),
     };
   }
 
@@ -905,6 +912,13 @@ class FirebaseSyncService {
       notes: json['notes'] as String? ?? '',
       createdAt: _readDateTime(json['createdAt']),
       updatedAt: _readDateTime(json['updatedAt']),
+      isDeleted: _isDeleted(json),
+      syncStatus: json['syncStatus'] as String? ?? 'synced',
+      deletedAt: _readNullableDateTime(json['deletedAt']),
+      deletedBy: json['deletedBy'] as String?,
+      createdBy: json['createdBy'] as String?,
+      updatedBy: json['updatedBy'] as String?,
+      lastSyncedAt: _readNullableDateTime(json['lastSyncedAt']),
     );
   }
 
