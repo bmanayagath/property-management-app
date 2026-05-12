@@ -7,6 +7,7 @@ import '../../core/utils/currency_formatter.dart';
 import '../../domain/models/income.dart';
 import '../providers/auth_provider.dart';
 import '../providers/dashboard_provider.dart';
+import '../providers/database_provider.dart';
 import '../providers/income_provider.dart';
 import '../providers/villa_provider.dart';
 import '../providers/room_provider.dart';
@@ -236,7 +237,9 @@ class VillaDetailScreen extends ConsumerWidget {
 
     return roomsAsync.when(
       data: (rooms) {
-        final activeRooms = rooms.where((room) => !room.isDeleted).toList();
+        final activeRooms = rooms
+            .where((room) => room.villaId == villaId && !room.isDeleted)
+            .toList();
         final occupiedCount = activeRooms.where((r) => r.isOccupied).length;
         final vacantCount = activeRooms.where((r) => r.isVacant).length;
         final occupancyRate = activeRooms.isEmpty
@@ -415,7 +418,11 @@ class VillaDetailScreen extends ConsumerWidget {
         const SizedBox(height: 12),
         roomsAsync.when(
           data: (rooms) {
-            if (rooms.isEmpty) {
+            final activeRooms = rooms
+                .where((room) => room.villaId == villaId && !room.isDeleted)
+                .toList();
+
+            if (activeRooms.isEmpty) {
               return Container(
                 padding: const EdgeInsets.all(32),
                 decoration: BoxDecoration(
@@ -463,9 +470,9 @@ class VillaDetailScreen extends ConsumerWidget {
             return ListView.builder(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
-              itemCount: rooms.length,
+              itemCount: activeRooms.length,
               itemBuilder: (context, index) {
-                final room = rooms[index];
+                final room = activeRooms[index];
                 final received = rentReceivedByRoom[room.id] ?? 0;
                 final pending = room.isOccupied
                     ? (room.monthlyRent - received)
@@ -509,8 +516,14 @@ class VillaDetailScreen extends ConsumerWidget {
                                     await ref.read(
                                         deleteRoomProvider(room.id).future);
                                     ref.invalidate(villasProvider);
-                                    ref.invalidate(allRoomsProvider);
+                                    ref.invalidate(roomListProvider);
+                                    ref.invalidate(
+                                        roomsByVillaProvider(villaId));
+                                    ref.invalidate(
+                                        watchRoomsByVillaProvider(villaId));
                                     ref.invalidate(dashboardSummaryProvider);
+                                    await _logRoomDeleteCounts(
+                                        ref, villaId, room.id);
                                     if (!context.mounted) return;
                                     Navigator.pop(context);
                                   },
@@ -532,6 +545,21 @@ class VillaDetailScreen extends ConsumerWidget {
           error: (error, stack) => Text('Error loading rooms: $error'),
         ),
       ],
+    );
+  }
+
+  Future<void> _logRoomDeleteCounts(
+    WidgetRef ref,
+    String villaId,
+    String roomId,
+  ) async {
+    final database = ref.read(databaseProvider);
+    final activeCount = await database.getActiveRoomCountForVilla(villaId);
+    final rawCount = await database.getRawRoomCountForVilla(villaId);
+    debugPrint(
+      '[VillaDetailScreen] deleted room id=$roomId, '
+      'active rooms for villa=$activeCount, '
+      'raw rooms for villa=$rawCount',
     );
   }
 

@@ -353,6 +353,29 @@ class AppDatabase extends _$AppDatabase {
     return row.read<int>('count');
   }
 
+  Future<int> getRawRoomCountForVilla(String villaId) async {
+    final row = await customSelect(
+      'SELECT COUNT(*) AS count FROM rooms WHERE villa_id = ?',
+      variables: [Variable<String>(villaId)],
+      readsFrom: {rooms},
+    ).getSingle();
+    return row.read<int>('count');
+  }
+
+  Future<int> getActiveRoomCountForVilla(String villaId) async {
+    final row = await customSelect(
+      '''
+      SELECT COUNT(*) AS count
+      FROM rooms
+      WHERE villa_id = ?
+        AND is_deleted = 0
+      ''',
+      variables: [Variable<String>(villaId)],
+      readsFrom: {rooms},
+    ).getSingle();
+    return row.read<int>('count');
+  }
+
   Future<List<Room>> getAllRooms() {
     final query = select(rooms).join([
       innerJoin(villas, villas.id.equalsExp(rooms.villaId)),
@@ -481,6 +504,14 @@ class AppDatabase extends _$AppDatabase {
               ),
         ))
       .watch();
+
+  Stream<List<Room>> watchActiveRoomsByVilla(String villaId) {
+    return (select(rooms)
+          ..where(
+            (tbl) => tbl.villaId.equals(villaId) & tbl.isDeleted.equals(0),
+          ))
+        .watch();
+  }
 
   Future<int> insertRoom(RoomsCompanion room) => into(rooms).insert(room);
 
@@ -668,6 +699,20 @@ class AppDatabase extends _$AppDatabase {
     required DateTime now,
     required String? deletedBy,
   }) {
+    late final Set<ResultSetImplementation<dynamic, dynamic>> updatedTables;
+    switch (tableName) {
+      case 'villas':
+        updatedTables = {villas};
+      case 'rooms':
+        updatedTables = {rooms};
+      case 'incomes':
+        updatedTables = {incomes};
+      case 'expenses':
+        updatedTables = {expenses};
+      default:
+        throw ArgumentError('Unknown table: $tableName');
+    }
+
     return customUpdate(
       '''
       UPDATE $tableName
@@ -686,6 +731,7 @@ class AppDatabase extends _$AppDatabase {
         Variable<String>(deletedBy),
         ...whereArgs,
       ],
+      updates: updatedTables,
     );
   }
 

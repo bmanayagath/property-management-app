@@ -137,7 +137,12 @@ class _AddEditIncomeScreenState extends ConsumerState<AddEditIncomeScreen> {
                       const SizedBox(height: 14),
                       roomsAsync.when(
                         data: (rooms) {
-                          final occupiedRooms = rooms
+                          final activeRooms = rooms
+                              .where((room) =>
+                                  room.villaId == _selectedVillaId &&
+                                  !room.isDeleted)
+                              .toList();
+                          final occupiedRooms = activeRooms
                               .where((room) =>
                                   _selectedIncomeType == IncomeTypes.rent
                                       ? room.isOccupied
@@ -151,7 +156,6 @@ class _AddEditIncomeScreenState extends ConsumerState<AddEditIncomeScreen> {
                                 selectedRoomIsValid ? _selectedRoomId : null,
                             decoration: _decoration('Room'),
                             items: occupiedRooms
-                                .where((room) => !room.isDeleted)
                                 .map(
                                   (room) => DropdownMenuItem(
                                     value: room.id,
@@ -354,7 +358,7 @@ class _AddEditIncomeScreenState extends ConsumerState<AddEditIncomeScreen> {
           ref.read(roomsByVillaProvider(selectedVilla.id)).valueOrNull;
       var selectedRoomName = _selectedRoomId!;
       if (rooms != null) {
-        for (final room in rooms) {
+        for (final room in rooms.where((room) => !room.isDeleted)) {
           if (room.id == _selectedRoomId) {
             selectedRoomName = room.displayName;
             break;

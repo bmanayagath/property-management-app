@@ -142,8 +142,13 @@ class _AddEditExpenseScreenState extends ConsumerState<AddEditExpenseScreen> {
                     const SizedBox(height: 14),
                     roomsAsync.when(
                       data: (rooms) {
-                        final selectedRoomIsValid =
-                            rooms.any((room) => room.id == _selectedRoomId);
+                        final activeRooms = rooms
+                            .where((room) =>
+                                room.villaId == _selectedVillaId &&
+                                !room.isDeleted)
+                            .toList();
+                        final selectedRoomIsValid = activeRooms
+                            .any((room) => room.id == _selectedRoomId);
 
                         return DropdownButtonFormField<String?>(
                           initialValue:
@@ -154,7 +159,7 @@ class _AddEditExpenseScreenState extends ConsumerState<AddEditExpenseScreen> {
                               value: null,
                               child: Text('Villa-level expense'),
                             ),
-                            ...rooms.map(
+                            ...activeRooms.map(
                               (room) => DropdownMenuItem(
                                 value: room.id,
                                 child: Text(room.displayName),
@@ -336,7 +341,9 @@ class _AddEditExpenseScreenState extends ConsumerState<AddEditExpenseScreen> {
     final allRooms = ref.read(allRoomsProvider).valueOrNull ?? const <Room>[];
     final selectedRoom = _selectedRoomId == null
         ? null
-        : allRooms.where((room) => room.id == _selectedRoomId).firstOrNull;
+        : allRooms
+            .where((room) => room.id == _selectedRoomId && !room.isDeleted)
+            .firstOrNull;
     final List<Expense> existingExpenses =
         ref.read(expenseListProvider).valueOrNull ?? ref.read(expenseProvider);
 

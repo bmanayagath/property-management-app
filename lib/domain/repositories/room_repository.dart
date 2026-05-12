@@ -8,6 +8,7 @@ abstract class RoomRepository {
   Future<Room?> getRoomById(String id);
   Future<List<Room>> getRoomsByVillaId(String villaId);
   Stream<List<Room>> watchRoomsByVillaId(String villaId);
+  Stream<List<Room>> watchActiveRoomsByVilla(String villaId);
   Future<List<Room>> getOccupiedRooms();
   Future<List<Room>> getVacantRooms();
   Future<String> addRoom(Room room);

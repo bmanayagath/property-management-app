@@ -600,6 +600,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
 
   List<Room> _filteredRooms(List<Room> rooms) {
     return rooms.where((room) {
+      if (room.isDeleted) return false;
       if (_selectedVillaId != null && room.villaId != _selectedVillaId) {
         return false;
       }
@@ -696,9 +697,10 @@ class _Filters extends StatelessWidget {
   Widget build(BuildContext context) {
     final now = DateTime.now();
     final years = List.generate(8, (index) => now.year - 5 + index);
+    final activeRooms = rooms.where((room) => !room.isDeleted).toList();
     final filteredRooms = selectedVillaId == null
-        ? rooms
-        : rooms.where((room) => room.villaId == selectedVillaId).toList();
+        ? activeRooms
+        : activeRooms.where((room) => room.villaId == selectedVillaId).toList();
 
     return Container(
       padding: const EdgeInsets.all(14),

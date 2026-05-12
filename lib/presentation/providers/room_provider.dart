@@ -38,7 +38,7 @@ final roomsByVillaProvider =
 final watchRoomsByVillaProvider =
     StreamProvider.family<List<Room>, String>((ref, villaId) {
   final repository = ref.watch(roomRepositoryProvider);
-  return repository.watchRoomsByVillaId(villaId);
+  return repository.watchActiveRoomsByVilla(villaId);
 });
 
 final occupiedRoomsProvider = FutureProvider<List<Room>>((ref) async {
@@ -75,6 +75,7 @@ final addRoomProvider = FutureProvider.family<String, Room>((ref, room) async {
   }
   ref.invalidate(allRoomsProvider);
   ref.invalidate(roomsByVillaProvider(room.villaId));
+  ref.invalidate(watchRoomsByVillaProvider(room.villaId));
   ref.invalidate(occupiedRoomsProvider);
   ref.invalidate(vacantRoomsProvider);
   ref.invalidate(totalExpectedRentProvider);
@@ -94,6 +95,7 @@ final updateRoomProvider = FutureProvider.family<void, Room>((ref, room) async {
   }
   ref.invalidate(allRoomsProvider);
   ref.invalidate(roomsByVillaProvider(room.villaId));
+  ref.invalidate(watchRoomsByVillaProvider(room.villaId));
   ref.invalidate(occupiedRoomsProvider);
   ref.invalidate(vacantRoomsProvider);
   ref.invalidate(totalExpectedRentProvider);
@@ -116,6 +118,7 @@ final deleteRoomProvider = FutureProvider.family<void, String>((ref, id) async {
   ref.invalidate(allRoomsProvider);
   if (room != null) {
     ref.invalidate(roomsByVillaProvider(room.villaId));
+    ref.invalidate(watchRoomsByVillaProvider(room.villaId));
   }
   ref.invalidate(incomeListProvider);
   ref.invalidate(expenseListProvider);

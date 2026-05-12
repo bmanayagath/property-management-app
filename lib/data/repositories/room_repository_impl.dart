@@ -47,6 +47,12 @@ class RoomRepositoryImpl implements RoomRepository {
           );
 
   @override
+  Stream<List<Room>> watchActiveRoomsByVilla(String villaId) =>
+      database.watchActiveRoomsByVilla(villaId).map(
+            (rooms) => rooms.map(_mapToModel).toList(),
+          );
+
+  @override
   Future<List<Room>> getOccupiedRooms() async {
     final allRooms = await getAllRooms();
     return allRooms.where((room) => room.isOccupied).toList();
