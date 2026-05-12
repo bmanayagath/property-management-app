@@ -16,11 +16,14 @@ class RoomRepositoryImpl implements RoomRepository {
   }
 
   @override
-  Stream<List<Room>> watchAllRooms() {
+  Stream<List<Room>> watchRooms() {
     return database.watchAllRooms().map(
           (rooms) => rooms.map(_mapToModel).toList(),
         );
   }
+
+  @override
+  Stream<List<Room>> watchAllRooms() => watchRooms();
 
   @override
   Future<Room?> getRoomById(String id) async {
@@ -146,6 +149,13 @@ class RoomRepositoryImpl implements RoomRepository {
       status: room.status,
       createdAt: room.createdAt,
       updatedAt: room.updatedAt,
+      isDeleted: room.isDeleted == 1,
+      syncStatus: room.syncStatus,
+      deletedAt: room.deletedAt,
+      deletedBy: room.deletedBy,
+      createdBy: room.createdBy,
+      updatedBy: room.updatedBy,
+      lastSyncedAt: room.lastSyncedAt,
     );
   }
 }

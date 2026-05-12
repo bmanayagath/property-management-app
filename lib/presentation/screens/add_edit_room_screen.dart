@@ -4,6 +4,7 @@ import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_styles.dart';
 import '../../domain/models/room.dart';
 import '../../domain/models/villa_model.dart';
+import '../providers/dashboard_provider.dart';
 import '../providers/room_provider.dart';
 import '../providers/villa_provider.dart';
 import '../widgets/app_text_field.dart';
@@ -137,6 +138,9 @@ class _AddEditRoomScreenState extends ConsumerState<AddEditRoomScreen> {
           const SnackBar(content: Text('Room updated successfully!')),
         );
       }
+      ref.invalidate(allRoomsProvider);
+      ref.invalidate(villasProvider);
+      ref.invalidate(dashboardSummaryProvider);
       Navigator.pop(context);
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(

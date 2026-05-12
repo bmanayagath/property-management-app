@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'dart:math' as math;
 
+import '../../data/services/profit_calculation_service.dart';
 import '../../domain/models/expense.dart';
 import '../../domain/models/income.dart';
 import '../../domain/models/room.dart';
@@ -15,40 +16,24 @@ final selectedMonthProvider = StateProvider<DateTime>((ref) {
   return DateTime(DateTime.now().year, DateTime.now().month, 1);
 });
 
-final dashboardSummaryProvider = Provider<AsyncValue<DashboardSummary>>((ref) {
-  final selectedMonth = ref.watch(selectedMonthProvider);
-  final villasAsync = ref.watch(villasProvider);
-  final roomsAsync = ref.watch(allRoomsProvider);
+final dashboardSummaryProvider = Provider<DashboardSummary>((ref) {
+  final villasAsync = ref.watch(villaListProvider);
+  final roomsAsync = ref.watch(roomListProvider);
   final incomesAsync = ref.watch(incomeListProvider);
   final expensesAsync = ref.watch(expenseListProvider);
+  final selectedMonth = ref.watch(selectedMonthProvider);
 
-  final error = _firstError([
-    villasAsync,
-    roomsAsync,
-    incomesAsync,
-    expensesAsync,
-  ]);
-  if (error != null) {
-    return AsyncError(error.error, error.stackTrace);
-  }
+  final villas = villasAsync.valueOrNull ?? const <VillaModel>[];
+  final rooms = roomsAsync.valueOrNull ?? const <Room>[];
+  final incomes = incomesAsync.valueOrNull ?? const <Income>[];
+  final expenses = expensesAsync.valueOrNull ?? const <Expense>[];
 
-  final villas = villasAsync.valueOrNull;
-  final rooms = roomsAsync.valueOrNull;
-  final incomes = incomesAsync.valueOrNull;
-  final expenses = expensesAsync.valueOrNull;
-
-  if (villas == null || rooms == null || incomes == null || expenses == null) {
-    return const AsyncLoading();
-  }
-
-  return AsyncData(
-    DashboardSummary.fromLiveData(
-      selectedMonth: selectedMonth,
-      villas: villas,
-      rooms: rooms,
-      incomes: incomes,
-      expenses: expenses,
-    ),
+  return DashboardSummary.fromLiveData(
+    selectedMonth: selectedMonth,
+    villas: villas,
+    rooms: rooms.where((room) => !room.isDeleted).toList(),
+    incomes: incomes.where((income) => !income.isDeleted).toList(),
+    expenses: expenses.where((expense) => !expense.isDeleted).toList(),
   );
 });
 
@@ -84,6 +69,14 @@ class DashboardSummary {
     required List<Income> incomes,
     required List<Expense> expenses,
   }) {
+    final monthlySummary =
+        const ProfitCalculationService().calculateMonthlySummary(
+      villas: villas,
+      rooms: rooms,
+      incomes: incomes,
+      expenses: expenses,
+      month: selectedMonth,
+    );
     final activeVillaIds = villas.map((villa) => villa.id).toSet();
     final activeRooms = rooms
         .where(
@@ -114,14 +107,6 @@ class DashboardSummary {
       expenses: activeExpenses,
       month: selectedMonth,
     );
-    final totalIncome = activeIncomes
-        .where((income) => _isSameMonth(income.paymentDate, selectedMonth))
-        .fold<double>(0, (sum, income) => sum + income.amount);
-    final totalExpense = expensesByCategory.values.fold<double>(
-      0,
-      (sum, value) => sum + value,
-    );
-
     return DashboardSummary(
       selectedMonth: selectedMonth,
       villas: villas,
@@ -130,12 +115,17 @@ class DashboardSummary {
       expenses: activeExpenses,
       rentReceivedByRoom: rentReceivedByRoom,
       expensesByCategory: expensesByCategory,
-      metrics: DashboardRoomMetrics.fromRooms(
+      metrics: DashboardRoomMetrics.fromSummary(
         rooms: activeRooms,
         rentReceivedByRoom: rentReceivedByRoom,
+        totalRoomRent: monthlySummary.totalRoomRent,
+        expectedRent: monthlySummary.expectedRent,
+        pendingRent: monthlySummary.pendingRent,
+        vacancyLoss: monthlySummary.vacancyLoss,
+        rentReceived: monthlySummary.rentReceived,
       ),
-      totalIncome: totalIncome,
-      totalExpense: totalExpense,
+      totalIncome: monthlySummary.actualIncome,
+      totalExpense: monthlySummary.expensesPaid,
     );
   }
 }
@@ -168,33 +158,29 @@ class DashboardRoomMetrics {
   double get rentCollectionProgress =>
       expectedRent == 0 ? 0 : (rentReceived / expectedRent).clamp(0.0, 1.0);
 
-  static DashboardRoomMetrics fromRooms({
+  static DashboardRoomMetrics fromSummary({
     required List<Room> rooms,
     required Map<String, double> rentReceivedByRoom,
+    required double totalRoomRent,
+    required double expectedRent,
+    required double pendingRent,
+    required double vacancyLoss,
+    required double rentReceived,
   }) {
     var occupiedRooms = 0;
     var vacantRooms = 0;
     var paidRooms = 0;
     var pendingRooms = 0;
-    var rentReceived = 0.0;
-    var totalRoomRent = 0.0;
-    var expectedRent = 0.0;
-    var pendingRent = 0.0;
-    var vacancyLoss = 0.0;
 
     for (final room in rooms) {
       final received = rentReceivedByRoom[room.id] ?? 0;
-      totalRoomRent += room.monthlyRent;
 
       if (room.isOccupied) {
         occupiedRooms++;
-        rentReceived += received;
-        expectedRent += room.monthlyRent;
         final pending = _calculatePendingRent(
           expectedRent: room.monthlyRent,
           rentReceived: received,
         );
-        pendingRent += pending;
         if (pending <= 0 && room.monthlyRent > 0) {
           paidRooms++;
         } else if (pending > 0) {
@@ -202,7 +188,6 @@ class DashboardRoomMetrics {
         }
       } else if (room.isVacant) {
         vacantRooms++;
-        vacancyLoss += room.monthlyRent;
       }
     }
 
@@ -219,20 +204,6 @@ class DashboardRoomMetrics {
       vacancyLoss: vacancyLoss,
     );
   }
-}
-
-({Object error, StackTrace stackTrace})? _firstError(
-  List<AsyncValue<Object?>> values,
-) {
-  for (final value in values) {
-    if (value.hasError) {
-      return (
-        error: value.error!,
-        stackTrace: value.stackTrace ?? StackTrace.current,
-      );
-    }
-  }
-  return null;
 }
 
 double _calculatePendingRent({

@@ -16,11 +16,14 @@ class VillaRepositoryImpl implements VillaRepository {
   }
 
   @override
-  Stream<List<VillaModel>> watchAllVillas() {
+  Stream<List<VillaModel>> watchVillas() {
     return database.watchAllVillas().map(
           (villas) => villas.map(_mapToModel).toList(),
         );
   }
+
+  @override
+  Stream<List<VillaModel>> watchAllVillas() => watchVillas();
 
   @override
   Future<VillaModel?> getVillaById(String id) async {

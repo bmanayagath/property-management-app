@@ -6,6 +6,7 @@ import '../../core/constants/app_permissions.dart';
 import '../../core/utils/currency_formatter.dart';
 import '../../domain/models/income.dart';
 import '../providers/auth_provider.dart';
+import '../providers/dashboard_provider.dart';
 import '../providers/income_provider.dart';
 import '../providers/villa_provider.dart';
 import '../providers/room_provider.dart';
@@ -34,8 +35,12 @@ class VillaDetailScreen extends ConsumerWidget {
               child: const Text('Cancel'),
             ),
             TextButton(
-              onPressed: () {
-                ref.read(deleteVillaProvider(villaId));
+              onPressed: () async {
+                await ref.read(deleteVillaProvider(villaId).future);
+                ref.invalidate(villasProvider);
+                ref.invalidate(allRoomsProvider);
+                ref.invalidate(dashboardSummaryProvider);
+                if (!context.mounted) return;
                 Navigator.pop(context);
                 Navigator.pop(context);
               },
@@ -500,8 +505,13 @@ class VillaDetailScreen extends ConsumerWidget {
                                   child: const Text('Cancel'),
                                 ),
                                 TextButton(
-                                  onPressed: () {
-                                    ref.read(deleteRoomProvider(room.id));
+                                  onPressed: () async {
+                                    await ref.read(
+                                        deleteRoomProvider(room.id).future);
+                                    ref.invalidate(villasProvider);
+                                    ref.invalidate(allRoomsProvider);
+                                    ref.invalidate(dashboardSummaryProvider);
+                                    if (!context.mounted) return;
                                     Navigator.pop(context);
                                   },
                                   child: const Text(

@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
-import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_permissions.dart';
 import '../../core/utils/currency_formatter.dart';
 import '../../domain/models/room.dart';
@@ -25,8 +24,9 @@ class DashboardScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final selectedMonth = ref.watch(selectedMonthProvider);
-    final summaryAsync = ref.watch(dashboardSummaryProvider);
+    final summary = ref.watch(dashboardSummaryProvider);
+    final selectedMonth = summary.selectedMonth;
+    final dashboard = summary.metrics;
     final authState = ref.watch(authProvider);
     final canManageIncome =
         authState.hasPermission(AppPermissions.manageIncome);
@@ -41,107 +41,63 @@ class DashboardScreen extends ConsumerWidget {
         bottom: false,
         child: RefreshIndicator(
           onRefresh: () async {
-            ref.invalidate(villasProvider);
-            ref.invalidate(allRoomsProvider);
+            ref.invalidate(villaListProvider);
+            ref.invalidate(roomListProvider);
             ref.invalidate(incomeListProvider);
             ref.invalidate(expenseListProvider);
             ref.invalidate(dashboardSummaryProvider);
           },
-          child: summaryAsync.when(
-            data: (summary) {
-              final dashboard = summary.metrics;
-              return ListView(
-                padding: const EdgeInsets.fromLTRB(18, 8, 18, 112),
-                children: [
-                  const _DashboardHeader(),
-                  const SizedBox(height: 24),
-                  _MonthFilter(
-                    selectedMonth: selectedMonth,
-                    onTap: () => _showMonthFilter(context, ref, selectedMonth),
-                  ),
-                  const SizedBox(height: 14),
-                  _MetricGrid(
-                    totalRooms: dashboard.totalRooms,
-                    occupiedRooms: dashboard.occupiedRooms,
-                    vacantRooms: dashboard.vacantRooms,
-                    totalIncome: summary.totalIncome,
-                    actualNetProfit: summary.totalIncome - summary.totalExpense,
-                    pendingRent: dashboard.pendingRent,
-                    pendingRooms: dashboard.pendingRooms,
-                    vacancyLoss: dashboard.vacancyLoss,
-                  ),
-                  const SizedBox(height: 12),
-                  _QuickActions(
-                    onAddIncome: canManageIncome
-                        ? () => ref.read(selectedTabProvider.notifier).state = 2
-                        : null,
-                    onAddExpense: canManageExpenses
-                        ? () => ref.read(selectedTabProvider.notifier).state = 3
-                        : null,
-                    onAddVilla: canManageVillas
-                        ? () => ref.read(selectedTabProvider.notifier).state = 1
-                        : null,
-                  ),
-                  const SizedBox(height: 16),
-                  _RentCollectionCard(
-                    totalRoomRent: dashboard.totalRoomRent,
-                    expectedRent: dashboard.expectedRent,
-                    collected: dashboard.rentReceived,
-                    pending: dashboard.pendingRent,
-                    paidRooms: dashboard.paidRooms,
-                    totalOccupiedRooms: dashboard.occupiedRooms,
-                    progress: dashboard.rentCollectionProgress,
-                  ),
-                  const SizedBox(height: 22),
-                  _VillaSummary(
-                    villas: summary.villas,
-                    rooms: summary.rooms,
-                    rentReceivedByRoom: summary.rentReceivedByRoom,
-                    onViewAll: () =>
-                        ref.read(selectedTabProvider.notifier).state = 1,
-                  ),
-                ],
-              );
-            },
-            error: (error, _) => ListView(
-              padding: const EdgeInsets.all(24),
-              children: [
-                const _DashboardHeader(),
-                const SizedBox(height: 96),
-                Icon(
-                  Icons.error_outline,
-                  color: AppColors.error,
-                  size: 48,
-                ),
-                const SizedBox(height: 16),
-                const Center(
-                  child: Text(
-                    'Could not load dashboard',
-                    style: TextStyle(
-                      color: Color(0xFF060B26),
-                      fontSize: 20,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Center(
-                  child: Text(
-                    error.toString(),
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(color: Color(0xFF656B7B)),
-                  ),
-                ),
-              ],
-            ),
-            loading: () => ListView(
-              padding: const EdgeInsets.fromLTRB(18, 8, 18, 112),
-              children: const [
-                _DashboardHeader(),
-                SizedBox(height: 140),
-                Center(child: CircularProgressIndicator()),
-              ],
-            ),
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(18, 8, 18, 112),
+            children: [
+              const _DashboardHeader(),
+              const SizedBox(height: 24),
+              _MonthFilter(
+                selectedMonth: selectedMonth,
+                onTap: () => _showMonthFilter(context, ref, selectedMonth),
+              ),
+              const SizedBox(height: 14),
+              _MetricGrid(
+                totalRooms: dashboard.totalRooms,
+                occupiedRooms: dashboard.occupiedRooms,
+                vacantRooms: dashboard.vacantRooms,
+                totalIncome: summary.totalIncome,
+                actualNetProfit: summary.totalIncome - summary.totalExpense,
+                pendingRent: dashboard.pendingRent,
+                pendingRooms: dashboard.pendingRooms,
+                vacancyLoss: dashboard.vacancyLoss,
+              ),
+              const SizedBox(height: 12),
+              _QuickActions(
+                onAddIncome: canManageIncome
+                    ? () => ref.read(selectedTabProvider.notifier).state = 2
+                    : null,
+                onAddExpense: canManageExpenses
+                    ? () => ref.read(selectedTabProvider.notifier).state = 3
+                    : null,
+                onAddVilla: canManageVillas
+                    ? () => ref.read(selectedTabProvider.notifier).state = 1
+                    : null,
+              ),
+              const SizedBox(height: 16),
+              _RentCollectionCard(
+                totalRoomRent: dashboard.totalRoomRent,
+                expectedRent: dashboard.expectedRent,
+                collected: dashboard.rentReceived,
+                pending: dashboard.pendingRent,
+                paidRooms: dashboard.paidRooms,
+                totalOccupiedRooms: dashboard.occupiedRooms,
+                progress: dashboard.rentCollectionProgress,
+              ),
+              const SizedBox(height: 22),
+              _VillaSummary(
+                villas: summary.villas,
+                rooms: summary.rooms,
+                rentReceivedByRoom: summary.rentReceivedByRoom,
+                onViewAll: () =>
+                    ref.read(selectedTabProvider.notifier).state = 1,
+              ),
+            ],
           ),
         ),
       ),

@@ -6,8 +6,10 @@ import 'sync_provider.dart';
 
 final allRoomsProvider = StreamProvider<List<Room>>((ref) {
   final repository = ref.watch(roomRepositoryProvider);
-  return repository.watchAllRooms();
+  return repository.watchRooms();
 });
+
+final roomListProvider = allRoomsProvider;
 
 final roomByIdProvider = FutureProvider.family<Room?, String>((ref, id) async {
   final repository = ref.watch(roomRepositoryProvider);

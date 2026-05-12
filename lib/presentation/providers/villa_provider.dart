@@ -6,8 +6,10 @@ import 'sync_provider.dart';
 
 final villasProvider = StreamProvider<List<VillaModel>>((ref) {
   final repository = ref.watch(villaRepositoryProvider);
-  return repository.watchAllVillas();
+  return repository.watchVillas();
 });
+
+final villaListProvider = villasProvider;
 
 final villaByIdProvider =
     FutureProvider.family<VillaModel?, String>((ref, id) async {

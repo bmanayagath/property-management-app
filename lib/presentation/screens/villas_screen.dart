@@ -8,6 +8,7 @@ import '../../domain/models/income.dart';
 import '../../domain/models/room.dart';
 import '../../domain/models/villa_model.dart';
 import '../providers/auth_provider.dart';
+import '../providers/dashboard_provider.dart';
 import '../providers/income_provider.dart';
 import '../providers/room_provider.dart';
 import '../providers/villa_provider.dart';
@@ -311,8 +312,12 @@ class _VillasScreenState extends ConsumerState<VillasScreen> {
               child: const Text('Cancel'),
             ),
             TextButton(
-              onPressed: () {
-                ref.read(deleteVillaProvider(villaId));
+              onPressed: () async {
+                await ref.read(deleteVillaProvider(villaId).future);
+                ref.invalidate(villasProvider);
+                ref.invalidate(allRoomsProvider);
+                ref.invalidate(dashboardSummaryProvider);
+                if (!context.mounted) return;
                 Navigator.pop(context);
               },
               child: Text(
