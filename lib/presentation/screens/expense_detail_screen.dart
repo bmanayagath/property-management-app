@@ -6,6 +6,7 @@ import '../../core/constants/app_permissions.dart';
 import '../../core/utils/currency_formatter.dart';
 import '../../domain/models/expense.dart';
 import '../providers/auth_provider.dart';
+import '../providers/dashboard_provider.dart';
 import '../providers/expense_provider.dart';
 import 'add_edit_expense_screen.dart';
 
@@ -193,6 +194,8 @@ class ExpenseDetailScreen extends ConsumerWidget {
               await ref
                   .read(expenseProvider.notifier)
                   .deleteExpense(expense.id);
+              ref.invalidate(expenseListProvider);
+              ref.invalidate(dashboardSummaryProvider);
               if (!context.mounted) return;
               Navigator.pop(dialogContext);
               Navigator.pop(context);

@@ -112,6 +112,7 @@ class ExpenseCategories {
   static const insurance = 'Insurance';
   static const governmentFee = 'Government Fee';
   static const loan = 'Loan';
+  static const ownerRent = 'Owner Rent';
   static const other = 'Other';
 
   static const values = [
@@ -124,6 +125,7 @@ class ExpenseCategories {
     insurance,
     governmentFee,
     loan,
+    ownerRent,
     other,
   ];
 }

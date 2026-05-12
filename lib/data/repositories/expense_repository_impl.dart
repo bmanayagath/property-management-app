@@ -110,8 +110,9 @@ class ExpenseRepositoryImpl implements ExpenseRepository {
   }
 
   ExpenseCategory _parseExpenseCategory(String category) {
+    final normalized = _normalize(category);
     return ExpenseCategory.values.firstWhere(
-      (e) => e.name == category,
+      (e) => e.name == category || _normalize(e.displayName) == normalized,
       orElse: () => ExpenseCategory.other,
     );
   }
@@ -121,5 +122,9 @@ class ExpenseRepositoryImpl implements ExpenseRepository {
       (e) => e.name == method,
       orElse: () => PaymentMethod.other,
     );
+  }
+
+  String _normalize(String value) {
+    return value.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '');
   }
 }

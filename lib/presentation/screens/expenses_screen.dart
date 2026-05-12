@@ -237,6 +237,8 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
               await ref
                   .read(expenseProvider.notifier)
                   .deleteExpense(expense.id);
+              ref.invalidate(expenseListProvider);
+              ref.invalidate(dashboardSummaryProvider);
               if (!mounted) return;
               Navigator.pop(dialogContext);
             },

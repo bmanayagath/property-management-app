@@ -11,6 +11,7 @@ import '../../domain/models/expense.dart';
 import '../../domain/models/room.dart';
 import '../../domain/models/villa_model.dart';
 import '../providers/auth_provider.dart';
+import '../providers/dashboard_provider.dart';
 import '../providers/expense_provider.dart';
 import '../providers/notification_provider.dart';
 import '../providers/villa_provider.dart';
@@ -47,6 +48,8 @@ class _AddEditExpenseScreenState extends ConsumerState<AddEditExpenseScreen> {
 
   bool get _isEditing => widget.expense != null;
 
+  bool get _isOwnerRent => _selectedCategory == ExpenseCategories.ownerRent;
+
   @override
   void initState() {
     super.initState();
@@ -74,10 +77,11 @@ class _AddEditExpenseScreenState extends ConsumerState<AddEditExpenseScreen> {
   @override
   Widget build(BuildContext context) {
     final villasAsync = ref.watch(villasProvider);
-    final roomsAsync =
-        _selectedVillaId != _generalExpenseId && _selectedVillaId.isNotEmpty
-            ? ref.watch(roomsByVillaProvider(_selectedVillaId))
-            : null;
+    final roomsAsync = !_isOwnerRent &&
+            _selectedVillaId != _generalExpenseId &&
+            _selectedVillaId.isNotEmpty
+        ? ref.watch(roomsByVillaProvider(_selectedVillaId))
+        : null;
 
     return Scaffold(
       backgroundColor: const Color(0xFFFCFCFD),
@@ -100,11 +104,14 @@ class _AddEditExpenseScreenState extends ConsumerState<AddEditExpenseScreen> {
                   const SizedBox(height: 18),
                   DropdownButtonFormField<String>(
                     initialValue: _selectedVillaId,
-                    decoration: _decoration('Expense Scope'),
+                    decoration: _decoration(
+                      _isOwnerRent ? 'Villa' : 'Expense Scope',
+                    ),
                     items: [
-                      const DropdownMenuItem(
+                      DropdownMenuItem(
                         value: _generalExpenseId,
-                        child: Text('General Expense'),
+                        child: Text(
+                            _isOwnerRent ? 'Select Villa' : 'General Expense'),
                       ),
                       ...villas.map(
                         (villa) => DropdownMenuItem(
@@ -120,9 +127,17 @@ class _AddEditExpenseScreenState extends ConsumerState<AddEditExpenseScreen> {
                         _selectedRoomId = null; // Reset room selection
                       });
                     },
+                    validator: (value) {
+                      if (_isOwnerRent &&
+                          (value == null || value == _generalExpenseId)) {
+                        return 'Villa is required for Owner Rent';
+                      }
+                      return null;
+                    },
                   ),
                   // Room Selection (if villa is selected, not general)
-                  if (_selectedVillaId != _generalExpenseId &&
+                  if (!_isOwnerRent &&
+                      _selectedVillaId != _generalExpenseId &&
                       roomsAsync != null) ...[
                     const SizedBox(height: 14),
                     roomsAsync.when(
@@ -172,7 +187,12 @@ class _AddEditExpenseScreenState extends ConsumerState<AddEditExpenseScreen> {
                         : null,
                     onChanged: (value) {
                       if (value == null) return;
-                      setState(() => _selectedCategory = value);
+                      setState(() {
+                        _selectedCategory = value;
+                        if (_selectedCategory == ExpenseCategories.ownerRent) {
+                          _selectedRoomId = null;
+                        }
+                      });
                     },
                   ),
                   const SizedBox(height: 14),
@@ -211,7 +231,9 @@ class _AddEditExpenseScreenState extends ConsumerState<AddEditExpenseScreen> {
                   const SizedBox(height: 14),
                   TextFormField(
                     controller: _paidToController,
-                    decoration: _decoration('Paid To'),
+                    decoration: _decoration(
+                      _isOwnerRent ? 'Paid To / Owner Name' : 'Paid To',
+                    ),
                     validator: (value) => (value?.length ?? 0) > 100
                         ? 'Paid To should not exceed 100 characters'
                         : null,
@@ -323,8 +345,8 @@ class _AddEditExpenseScreenState extends ConsumerState<AddEditExpenseScreen> {
       villaId: selectedVilla?.id,
       villaName:
           selectedVilla == null ? 'General Expense' : selectedVilla.villaName,
-      roomId: _selectedRoomId,
-      roomName: selectedRoom?.displayName ?? '',
+      roomId: _isOwnerRent ? null : _selectedRoomId,
+      roomName: _isOwnerRent ? null : selectedRoom?.displayName ?? '',
       category: _selectedCategory,
       amount: double.parse(_amountController.text.trim()),
       expenseDate: _selectedDate,
@@ -352,6 +374,8 @@ class _AddEditExpenseScreenState extends ConsumerState<AddEditExpenseScreen> {
       await notifier.addExpense(expense);
       await _createExpenseAddedNotification(expense);
     }
+    ref.invalidate(expenseListProvider);
+    ref.invalidate(dashboardSummaryProvider);
 
     if (!mounted) return;
     Navigator.pop(context);

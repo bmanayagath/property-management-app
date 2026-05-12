@@ -224,6 +224,20 @@ class BusinessValidationService {
         : villas.where((v) => v.id == villaId).firstOrNull;
     final selectedRoom =
         roomId.isEmpty ? null : rooms.where((r) => r.id == roomId).firstOrNull;
+    final isOwnerRent = _isOwnerRentExpense(expense);
+
+    if (isOwnerRent) {
+      if (villaId.isEmpty || selectedVilla == null) {
+        return const ValidationResult.invalid(
+          'Please select a villa for owner rent.',
+        );
+      }
+      if (roomId.isNotEmpty) {
+        return const ValidationResult.invalid(
+          'Owner Rent should be linked to a villa, not a room.',
+        );
+      }
+    }
 
     if (roomId.isNotEmpty) {
       if (villaId.isEmpty || selectedVilla == null) {
@@ -290,6 +304,24 @@ class BusinessValidationService {
     required List<Expense> existingExpenses,
     Expense? originalExpense,
   }) {
+    if (_isOwnerRentExpense(expense)) {
+      final hasOwnerRentForMonth = existingExpenses.any(
+        (existing) =>
+            existing.id != originalExpense?.id &&
+            !existing.isDeleted &&
+            _isOwnerRentExpense(existing) &&
+            existing.villaId == expense.villaId &&
+            _isSameMonth(existing.expenseDate, expense.expenseDate),
+      );
+
+      if (hasOwnerRentForMonth) {
+        return const ValidationResult.confirmation(
+          'Owner rent for this villa already exists for this month. Do you still want to save?',
+          confirmationTitle: 'Duplicate owner rent',
+        );
+      }
+    }
+
     final hasDuplicate = existingExpenses.any(
       (existing) =>
           existing.id != originalExpense?.id &&
@@ -366,6 +398,11 @@ class BusinessValidationService {
 
   bool _isDepositIncome(Income income) {
     return income.incomeType.toLowerCase() == IncomeTypes.deposit.toLowerCase();
+  }
+
+  bool _isOwnerRentExpense(Expense expense) {
+    return _normalize(expense.category) ==
+        _normalize(ExpenseCategories.ownerRent);
   }
 
   bool _isOccupiedVilla(VillaModel villa) {

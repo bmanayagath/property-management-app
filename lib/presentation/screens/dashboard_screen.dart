@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 
 import '../../core/constants/app_permissions.dart';
 import '../../core/utils/currency_formatter.dart';
+import '../../domain/models/expense.dart';
 import '../../domain/models/room.dart';
 import '../../domain/models/villa_model.dart';
 import '../providers/auth_provider.dart';
@@ -93,7 +94,9 @@ class DashboardScreen extends ConsumerWidget {
               _VillaSummary(
                 villas: summary.villas,
                 rooms: summary.rooms,
+                expenses: summary.expenses,
                 rentReceivedByRoom: summary.rentReceivedByRoom,
+                selectedMonth: summary.selectedMonth,
                 onViewAll: () =>
                     ref.read(selectedTabProvider.notifier).state = 1,
               ),
@@ -1059,13 +1062,17 @@ class _CollectionAmount extends StatelessWidget {
 class _VillaSummary extends StatelessWidget {
   final List<VillaModel> villas;
   final List<Room> rooms;
+  final List<Expense> expenses;
   final Map<String, double> rentReceivedByRoom;
+  final DateTime selectedMonth;
   final VoidCallback onViewAll;
 
   const _VillaSummary({
     required this.villas,
     required this.rooms,
+    required this.expenses,
     required this.rentReceivedByRoom,
+    required this.selectedMonth,
     required this.onViewAll,
   });
 
@@ -1120,9 +1127,11 @@ class _VillaSummary extends StatelessWidget {
               : Column(
                   children: List.generate(visibleVillas.length, (index) {
                     final villa = visibleVillas[index];
-                    final summary = _VillaRoomSummary.fromRooms(
+                    final summary = _VillaRoomSummary.fromData(
                       rooms.where((room) => room.villaId == villa.id),
                       rentReceivedByRoom,
+                      expenses.where((expense) => expense.villaId == villa.id),
+                      selectedMonth,
                     );
 
                     return Column(
@@ -1270,6 +1279,48 @@ class _VillaRow extends StatelessWidget {
                           ),
                         ],
                       ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Expanded(
+                            flex: 4,
+                            child: _VillaAmount(
+                              label: 'Expenses',
+                              value:
+                                  DashboardScreen.money(summary.totalExpenses),
+                              color: summary.totalExpenses > 0
+                                  ? const Color(0xFFF04438)
+                                  : const Color(0xFF596070),
+                            ),
+                          ),
+                          _SmallDivider(),
+                          Expanded(
+                            flex: 4,
+                            child: _VillaAmount(
+                              label: 'Actual Profit',
+                              value: DashboardScreen.money(
+                                summary.actualNetProfit,
+                              ),
+                              color: summary.actualNetProfit >= 0
+                                  ? const Color(0xFF2EA043)
+                                  : const Color(0xFFF04438),
+                            ),
+                          ),
+                          _SmallDivider(),
+                          Expanded(
+                            flex: 4,
+                            child: _VillaAmount(
+                              label: 'Expected Profit',
+                              value: DashboardScreen.money(
+                                summary.expectedNetProfit,
+                              ),
+                              color: summary.expectedNetProfit >= 0
+                                  ? const Color(0xFF2563EB)
+                                  : const Color(0xFFF04438),
+                            ),
+                          ),
+                        ],
+                      ),
                     ],
                   ),
                 ),
@@ -1352,6 +1403,9 @@ class _VillaRoomSummary {
   final double rentReceived;
   final double pendingRent;
   final double vacancyLoss;
+  final double totalExpenses;
+  final double actualNetProfit;
+  final double expectedNetProfit;
 
   const _VillaRoomSummary({
     required this.totalRooms,
@@ -1361,14 +1415,19 @@ class _VillaRoomSummary {
     required this.rentReceived,
     required this.pendingRent,
     required this.vacancyLoss,
+    required this.totalExpenses,
+    required this.actualNetProfit,
+    required this.expectedNetProfit,
   });
 
   double get occupancyProgress =>
       totalRooms == 0 ? 0 : occupiedRooms / totalRooms;
 
-  static _VillaRoomSummary fromRooms(
+  static _VillaRoomSummary fromData(
     Iterable<Room> rooms,
     Map<String, double> rentReceivedByRoom,
+    Iterable<Expense> expenses,
+    DateTime selectedMonth,
   ) {
     var totalRooms = 0;
     var occupiedRooms = 0;
@@ -1377,6 +1436,13 @@ class _VillaRoomSummary {
     var rentReceived = 0.0;
     var pendingRent = 0.0;
     var vacancyLoss = 0.0;
+    final totalExpenses = expenses
+        .where(
+          (expense) =>
+              expense.expenseDate.year == selectedMonth.year &&
+              expense.expenseDate.month == selectedMonth.month,
+        )
+        .fold<double>(0, (sum, expense) => sum + expense.amount);
 
     for (final room in rooms.where((room) => !room.isDeleted)) {
       totalRooms++;
@@ -1403,6 +1469,9 @@ class _VillaRoomSummary {
       rentReceived: rentReceived,
       pendingRent: pendingRent,
       vacancyLoss: vacancyLoss,
+      totalExpenses: totalExpenses,
+      actualNetProfit: rentReceived - totalExpenses,
+      expectedNetProfit: expectedRent - totalExpenses,
     );
   }
 }

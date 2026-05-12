@@ -318,11 +318,15 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
 
     final yearlyItems = List.generate(12, (index) {
       final month = DateTime(_selectedYear, index + 1, 1);
-      final income = incomes
-          .where((item) => _isSameMonth(item.paymentDate, month))
+      final income = activeIncomes
+          .where((item) =>
+              _isSameMonth(item.paymentDate, month) &&
+              _matchesIncomeFilters(item))
           .fold<double>(0, (sum, item) => sum + item.amount);
-      final expense = expenses
-          .where((item) => _isSameMonth(item.expenseDate, month))
+      final expense = activeExpenses
+          .where((item) =>
+              _isSameMonth(item.expenseDate, month) &&
+              _matchesExpenseFilters(item))
           .fold<double>(0, (sum, item) => sum + item.amount);
 
       return YearlySummaryReportItem(
