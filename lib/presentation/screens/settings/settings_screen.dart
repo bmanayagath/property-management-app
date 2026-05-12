@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/constants/app_permissions.dart';
 import '../../../core/constants/app_roles.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/sync_provider.dart';
 import 'sync_status_widget.dart';
 import 'users_screen.dart';
 
@@ -96,6 +97,13 @@ class SettingsScreen extends ConsumerWidget {
           ),
           const SizedBox(height: 10),
           const SyncStatusWidget(),
+          const SizedBox(height: 10),
+          _SettingsActionTile(
+            icon: Icons.cleaning_services_outlined,
+            title: 'Cleanup Orphan Records',
+            subtitle: 'Soft delete rooms without an active villa',
+            onTap: () => _cleanupOrphanRecords(context, ref),
+          ),
           if (authState.hasPermission(AppPermissions.manageUsers)) ...[
             const SizedBox(height: 10),
             _SettingsActionTile(
@@ -129,6 +137,28 @@ class SettingsScreen extends ConsumerWidget {
         ],
       ),
     );
+  }
+
+  Future<void> _cleanupOrphanRecords(
+    BuildContext context,
+    WidgetRef ref,
+  ) async {
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final count =
+          await ref.read(syncControllerProvider).cleanupOrphanRecords();
+      if (!context.mounted) return;
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text('Cleanup complete: $count orphan room(s) deleted.'),
+        ),
+      );
+    } catch (error) {
+      if (!context.mounted) return;
+      messenger.showSnackBar(
+        SnackBar(content: Text('Cleanup failed: $error')),
+      );
+    }
   }
 }
 

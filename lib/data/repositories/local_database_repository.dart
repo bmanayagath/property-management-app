@@ -258,6 +258,10 @@ class LocalDatabaseRepository {
   Future<void> deleteExpense(String id, {String? deletedBy}) =>
       database.deleteExpense(id, deletedBy: deletedBy);
 
+  Future<int> cleanupOrphanRecords({String? deletedBy}) {
+    return database.cleanupOrphanRecords(deletedBy: deletedBy);
+  }
+
   Future<db.Income?> _getIncomeById(String id) {
     return (database.select(database.incomes)
           ..where((table) => table.id.equals(id)))

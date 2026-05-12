@@ -21,7 +21,8 @@ class VillaCard extends StatelessWidget {
     this.onDelete,
   }) : super(key: key);
 
-  Iterable<Room> get _activeRooms => rooms.where((room) => !room.isDeleted);
+  Iterable<Room> get _activeRooms =>
+      rooms.where((room) => !room.isDeleted && room.villaId == villa.id);
 
   int get _occupiedRooms =>
       _activeRooms.where((room) => room.isOccupied).length;

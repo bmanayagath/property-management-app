@@ -1,12 +1,25 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../domain/models/room.dart';
+import '../../domain/models/villa_model.dart';
 import 'auth_provider.dart';
+import 'expense_provider.dart';
+import 'income_provider.dart';
 import 'repository_provider.dart';
 import 'sync_provider.dart';
 
+List<Room> activeRoomsOnly({
+  required List<Room> rooms,
+  required List<VillaModel> villas,
+}) {
+  final activeVillaIds = villas.map((villa) => villa.id).toSet();
+  return rooms
+      .where((room) => !room.isDeleted && activeVillaIds.contains(room.villaId))
+      .toList();
+}
+
 final allRoomsProvider = StreamProvider<List<Room>>((ref) {
   final repository = ref.watch(roomRepositoryProvider);
-  return repository.watchRooms();
+  return repository.watchActiveRooms();
 });
 
 final roomListProvider = allRoomsProvider;
@@ -104,6 +117,8 @@ final deleteRoomProvider = FutureProvider.family<void, String>((ref, id) async {
   if (room != null) {
     ref.invalidate(roomsByVillaProvider(room.villaId));
   }
+  ref.invalidate(incomeListProvider);
+  ref.invalidate(expenseListProvider);
   ref.invalidate(occupiedRoomsProvider);
   ref.invalidate(vacantRoomsProvider);
   ref.invalidate(totalExpectedRentProvider);

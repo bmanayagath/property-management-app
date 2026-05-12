@@ -238,6 +238,19 @@ class AppDatabase extends _$AppDatabase {
   }
 
   // Villa Queries
+  Future<int> getRawVillaCount() async {
+    final row =
+        await customSelect('SELECT COUNT(*) AS count FROM villas').getSingle();
+    return row.read<int>('count');
+  }
+
+  Future<int> getActiveVillaCount() async {
+    final row = await customSelect(
+      'SELECT COUNT(*) AS count FROM villas WHERE is_deleted = 0',
+    ).getSingle();
+    return row.read<int>('count');
+  }
+
   Future<List<Villa>> getAllVillas() =>
       (select(villas)..where((tbl) => tbl.isDeleted.equals(0))).get();
 
@@ -290,24 +303,182 @@ class AppDatabase extends _$AppDatabase {
   }
 
   // Room Queries
-  Future<List<Room>> getAllRooms() =>
-      (select(rooms)..where((tbl) => tbl.isDeleted.equals(0))).get();
+  Future<int> getRawRoomCount() async {
+    final row =
+        await customSelect('SELECT COUNT(*) AS count FROM rooms').getSingle();
+    return row.read<int>('count');
+  }
 
-  Stream<List<Room>> watchAllRooms() =>
-      (select(rooms)..where((tbl) => tbl.isDeleted.equals(0))).watch();
+  Future<int> getActiveRoomCount() async {
+    final row = await customSelect(
+      '''
+      SELECT COUNT(*) AS count
+      FROM rooms r
+      WHERE r.is_deleted = 0
+        AND EXISTS (
+          SELECT 1
+          FROM villas v
+          WHERE v.id = r.villa_id
+            AND v.is_deleted = 0
+        )
+      ''',
+      readsFrom: {rooms, villas},
+    ).getSingle();
+    return row.read<int>('count');
+  }
+
+  Future<int> getOrphanRoomCount() async {
+    final row = await customSelect(
+      '''
+      SELECT COUNT(*) AS count
+      FROM rooms r
+      WHERE r.is_deleted = 0
+        AND NOT EXISTS (
+          SELECT 1
+          FROM villas v
+          WHERE v.id = r.villa_id
+            AND v.is_deleted = 0
+        )
+      ''',
+      readsFrom: {rooms, villas},
+    ).getSingle();
+    return row.read<int>('count');
+  }
+
+  Future<int> getDeletedRoomCount() async {
+    final row = await customSelect(
+      'SELECT COUNT(*) AS count FROM rooms WHERE is_deleted = 1',
+      readsFrom: {rooms},
+    ).getSingle();
+    return row.read<int>('count');
+  }
+
+  Future<List<Room>> getAllRooms() {
+    final query = select(rooms).join([
+      innerJoin(villas, villas.id.equalsExp(rooms.villaId)),
+    ])
+      ..where(rooms.isDeleted.equals(0) & villas.isDeleted.equals(0));
+    return query.map((row) => row.readTable(rooms)).get();
+  }
+
+  Stream<List<Room>> watchAllRooms() {
+    final query = select(rooms).join([
+      innerJoin(villas, villas.id.equalsExp(rooms.villaId)),
+    ])
+      ..where(rooms.isDeleted.equals(0) & villas.isDeleted.equals(0));
+    return query.map((row) => row.readTable(rooms)).watch();
+  }
+
+  Future<int> cleanupOrphanRecords({String? deletedBy}) {
+    return transaction(() async {
+      final now = DateTime.now();
+      final orphanRoomIds = await customSelect(
+        '''
+        SELECT r.id
+        FROM rooms r
+        WHERE r.is_deleted = 0
+          AND NOT EXISTS (
+            SELECT 1
+            FROM villas v
+            WHERE v.id = r.villa_id
+              AND v.is_deleted = 0
+          )
+        ''',
+        readsFrom: {rooms, villas},
+      ).map((row) => row.read<String>('id')).get();
+
+      if (orphanRoomIds.isEmpty) return 0;
+
+      final placeholders = orphanRoomIds.map((_) => '?').join(', ');
+      final variables = [
+        Variable<DateTime>(now),
+        Variable<String>(deletedBy),
+        Variable<DateTime>(now),
+        Variable<String>(deletedBy),
+        for (final roomId in orphanRoomIds) Variable<String>(roomId),
+      ];
+
+      await customUpdate(
+        '''
+        UPDATE rooms
+        SET is_deleted = 1,
+            sync_status = 'pending',
+            deleted_at = ?,
+            deleted_by = ?,
+            updated_at = ?,
+            updated_by = ?
+        WHERE id IN ($placeholders)
+        ''',
+        variables: variables,
+        updates: {rooms},
+      );
+
+      await customUpdate(
+        '''
+        UPDATE incomes
+        SET is_deleted = 1,
+            sync_status = 'pending',
+            deleted_at = ?,
+            deleted_by = ?,
+            updated_at = ?,
+            updated_by = ?
+        WHERE is_deleted = 0
+          AND room_id IN ($placeholders)
+        ''',
+        variables: variables,
+        updates: {incomes},
+      );
+
+      await customUpdate(
+        '''
+        UPDATE expenses
+        SET is_deleted = 1,
+            sync_status = 'pending',
+            deleted_at = ?,
+            deleted_by = ?,
+            updated_at = ?,
+            updated_by = ?
+        WHERE is_deleted = 0
+          AND room_id IN ($placeholders)
+        ''',
+        variables: variables,
+        updates: {expenses},
+      );
+
+      return orphanRoomIds.length;
+    });
+  }
 
   Future<Room?> getRoomById(String id) =>
       (select(rooms)..where((tbl) => tbl.id.equals(id))).getSingleOrNull();
 
   Future<List<Room>> getRoomsByVillaId(String villaId) => (select(rooms)
         ..where(
-          (tbl) => tbl.villaId.equals(villaId) & tbl.isDeleted.equals(0),
+          (tbl) =>
+              tbl.villaId.equals(villaId) &
+              tbl.isDeleted.equals(0) &
+              existsQuery(
+                selectOnly(villas)
+                  ..addColumns([villas.id])
+                  ..where(
+                    villas.id.equals(villaId) & villas.isDeleted.equals(0),
+                  ),
+              ),
         ))
       .get();
 
   Stream<List<Room>> watchRoomsByVillaId(String villaId) => (select(rooms)
         ..where(
-          (tbl) => tbl.villaId.equals(villaId) & tbl.isDeleted.equals(0),
+          (tbl) =>
+              tbl.villaId.equals(villaId) &
+              tbl.isDeleted.equals(0) &
+              existsQuery(
+                selectOnly(villas)
+                  ..addColumns([villas.id])
+                  ..where(
+                    villas.id.equals(villaId) & villas.isDeleted.equals(0),
+                  ),
+              ),
         ))
       .watch();
 

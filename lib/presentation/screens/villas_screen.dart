@@ -9,6 +9,7 @@ import '../../domain/models/room.dart';
 import '../../domain/models/villa_model.dart';
 import '../providers/auth_provider.dart';
 import '../providers/dashboard_provider.dart';
+import '../providers/database_provider.dart';
 import '../providers/income_provider.dart';
 import '../providers/room_provider.dart';
 import '../providers/villa_provider.dart';
@@ -27,6 +28,7 @@ class VillasScreen extends ConsumerStatefulWidget {
 
 class _VillasScreenState extends ConsumerState<VillasScreen> {
   String _searchQuery = '';
+  bool _hasLoggedRoomSummary = false;
 
   @override
   Widget build(BuildContext context) {
@@ -58,16 +60,27 @@ class _VillasScreenState extends ConsumerState<VillasScreen> {
       body: villasAsync.when(
         data: (villas) => roomsAsync.when(
           data: (rooms) {
+            final activeVillas = villas;
+            final activeRooms = activeRoomsOnly(
+              rooms: rooms,
+              villas: activeVillas,
+            );
+            _logRoomSummaryOnce(
+              rawRoomsFromProvider: rooms,
+              activeRooms: activeRooms,
+              activeVillas: activeVillas,
+            );
             final rentReceivedByRoom = _rentReceivedByRoom(
               incomesAsync.valueOrNull ?? const <Income>[],
               DateTime.now(),
+              activeRoomIds: activeRooms.map((room) => room.id).toSet(),
             );
             final roomsByVilla = <String, List<Room>>{};
-            for (final room in rooms) {
+            for (final room in activeRooms) {
               roomsByVilla.putIfAbsent(room.villaId, () => []).add(room);
             }
 
-            final filteredVillas = villas
+            final filteredVillas = activeVillas
                 .where((villa) =>
                     villa.villaName
                         .toLowerCase()
@@ -83,7 +96,6 @@ class _VillasScreenState extends ConsumerState<VillasScreen> {
                     ))
                 .toList();
 
-            final activeRooms = rooms.where((room) => !room.isDeleted).toList();
             final occupiedRooms =
                 activeRooms.where((room) => room.isOccupied).length;
             final vacantRooms =
@@ -105,7 +117,7 @@ class _VillasScreenState extends ConsumerState<VillasScreen> {
                         Expanded(
                           child: SummaryCard(
                             title: 'Total Villas',
-                            value: villas.length.toString(),
+                            value: activeVillas.length.toString(),
                             color: AppColors.primary,
                             icon: Icons.home,
                           ),
@@ -281,12 +293,17 @@ class _VillasScreenState extends ConsumerState<VillasScreen> {
   }
 
   Map<String, double> _rentReceivedByRoom(
-      List<Income> incomes, DateTime month) {
+    List<Income> incomes,
+    DateTime month, {
+    required Set<String> activeRoomIds,
+  }) {
     final totals = <String, double>{};
     for (final income in incomes.where(
       (income) =>
+          !income.isDeleted &&
           income.incomeType.toLowerCase() == IncomeTypes.rent.toLowerCase() &&
           income.roomId.trim().isNotEmpty &&
+          activeRoomIds.contains(income.roomId) &&
           income.monthCovered.year == month.year &&
           income.monthCovered.month == month.month,
     )) {
@@ -297,6 +314,37 @@ class _VillasScreenState extends ConsumerState<VillasScreen> {
       );
     }
     return totals;
+  }
+
+  void _logRoomSummaryOnce({
+    required List<Room> rawRoomsFromProvider,
+    required List<Room> activeRooms,
+    required List<VillaModel> activeVillas,
+  }) {
+    if (_hasLoggedRoomSummary) return;
+    _hasLoggedRoomSummary = true;
+
+    Future.microtask(() async {
+      final database = ref.read(databaseProvider);
+      final rawVillaCount = await database.getRawVillaCount();
+      final activeVillaCount = await database.getActiveVillaCount();
+      final rawRoomCount = await database.getRawRoomCount();
+      final activeRoomCount = await database.getActiveRoomCount();
+      final orphanRoomCount = await database.getOrphanRoomCount();
+      final deletedRoomCount = await database.getDeletedRoomCount();
+
+      debugPrint('[VillasScreen] total villas raw=$rawVillaCount');
+      debugPrint('[VillasScreen] active villas=$activeVillaCount');
+      debugPrint('[VillasScreen] total rooms raw=$rawRoomCount');
+      debugPrint('[VillasScreen] active rooms=$activeRoomCount');
+      debugPrint('[VillasScreen] orphan rooms count=$orphanRoomCount');
+      debugPrint('[VillasScreen] deleted rooms count=$deletedRoomCount');
+      debugPrint(
+        '[VillasScreen] provider active villas=${activeVillas.length}, '
+        'provider rooms=${rawRoomsFromProvider.length}, '
+        'ui active rooms=${activeRooms.length}',
+      );
+    });
   }
 
   void _showDeleteConfirmation(BuildContext context, String villaId) {

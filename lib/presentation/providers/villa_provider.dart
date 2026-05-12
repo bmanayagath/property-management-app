@@ -1,12 +1,15 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../domain/models/villa_model.dart';
 import 'auth_provider.dart';
+import 'expense_provider.dart';
+import 'income_provider.dart';
 import 'repository_provider.dart';
+import 'room_provider.dart';
 import 'sync_provider.dart';
 
 final villasProvider = StreamProvider<List<VillaModel>>((ref) {
   final repository = ref.watch(villaRepositoryProvider);
-  return repository.watchVillas();
+  return repository.watchActiveVillas();
 });
 
 final villaListProvider = villasProvider;
@@ -46,6 +49,9 @@ final updateVillaProvider =
     ref.read(syncRefreshProvider.notifier).state++;
   }
   ref.invalidate(villasProvider);
+  ref.invalidate(allRoomsProvider);
+  ref.invalidate(incomeListProvider);
+  ref.invalidate(expenseListProvider);
 });
 
 final deleteVillaProvider =
@@ -63,4 +69,7 @@ final deleteVillaProvider =
     ref.read(syncRefreshProvider.notifier).state++;
   }
   ref.invalidate(villasProvider);
+  ref.invalidate(allRoomsProvider);
+  ref.invalidate(incomeListProvider);
+  ref.invalidate(expenseListProvider);
 });

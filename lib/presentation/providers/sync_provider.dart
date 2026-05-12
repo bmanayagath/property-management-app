@@ -102,6 +102,20 @@ class SyncController {
     _refresh();
   }
 
+  Future<int> cleanupOrphanRecords() async {
+    final currentUser = _ref.read(authProvider).currentUser;
+    final count = await _ref
+        .read(localDatabaseRepositoryProvider)
+        .cleanupOrphanRecords(deletedBy: currentUser?.id);
+    await _ref.read(firebaseSyncServiceProvider).syncPendingDeletes();
+    _ref.invalidate(villasProvider);
+    _ref.invalidate(allRoomsProvider);
+    _ref.invalidate(incomeListProvider);
+    _ref.invalidate(expenseListProvider);
+    _refresh();
+    return count;
+  }
+
   void _refresh() {
     _ref.read(syncRefreshProvider.notifier).state++;
   }

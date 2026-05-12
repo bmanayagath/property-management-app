@@ -72,16 +72,13 @@ class DashboardSummary {
     final monthlySummary =
         const ProfitCalculationService().calculateMonthlySummary(
       villas: villas,
-      rooms: rooms,
+      rooms: activeRoomsOnly(rooms: rooms, villas: villas),
       incomes: incomes,
       expenses: expenses,
       month: selectedMonth,
     );
     final activeVillaIds = villas.map((villa) => villa.id).toSet();
-    final activeRooms = rooms
-        .where(
-            (room) => !room.isDeleted && activeVillaIds.contains(room.villaId))
-        .toList();
+    final activeRooms = activeRoomsOnly(rooms: rooms, villas: villas);
     final activeRoomIds = activeRooms.map((room) => room.id).toSet();
     final activeIncomes = incomes.where((income) {
       if (income.isDeleted) return false;

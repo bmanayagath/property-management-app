@@ -3,6 +3,7 @@ import '../models/room.dart';
 abstract class RoomRepository {
   Future<List<Room>> getAllRooms();
   Stream<List<Room>> watchRooms();
+  Stream<List<Room>> watchActiveRooms();
   Stream<List<Room>> watchAllRooms();
   Future<Room?> getRoomById(String id);
   Future<List<Room>> getRoomsByVillaId(String villaId);

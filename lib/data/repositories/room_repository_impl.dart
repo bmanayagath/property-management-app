@@ -23,6 +23,9 @@ class RoomRepositoryImpl implements RoomRepository {
   }
 
   @override
+  Stream<List<Room>> watchActiveRooms() => watchRooms();
+
+  @override
   Stream<List<Room>> watchAllRooms() => watchRooms();
 
   @override

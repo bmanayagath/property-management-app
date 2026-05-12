@@ -23,6 +23,9 @@ class VillaRepositoryImpl implements VillaRepository {
   }
 
   @override
+  Stream<List<VillaModel>> watchActiveVillas() => watchVillas();
+
+  @override
   Stream<List<VillaModel>> watchAllVillas() => watchVillas();
 
   @override
