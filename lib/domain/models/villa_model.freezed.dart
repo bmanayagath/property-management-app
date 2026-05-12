@@ -22,8 +22,10 @@ VillaModel _$VillaModelFromJson(Map<String, dynamic> json) {
 mixin _$VillaModel {
   String get id => throw _privateConstructorUsedError;
   String get villaName => throw _privateConstructorUsedError;
+  String get location =>
+      throw _privateConstructorUsedError; // Legacy compatibility field for old local/Firebase records.
+// New UI and validation use villaName for identification.
   String get villaNumber => throw _privateConstructorUsedError;
-  String get location => throw _privateConstructorUsedError;
   String get notes => throw _privateConstructorUsedError;
   DateTime get createdAt => throw _privateConstructorUsedError;
   DateTime? get updatedAt => throw _privateConstructorUsedError;
@@ -47,8 +49,8 @@ abstract class $VillaModelCopyWith<$Res> {
   $Res call(
       {String id,
       String villaName,
-      String villaNumber,
       String location,
+      String villaNumber,
       String notes,
       DateTime createdAt,
       DateTime? updatedAt});
@@ -71,8 +73,8 @@ class _$VillaModelCopyWithImpl<$Res, $Val extends VillaModel>
   $Res call({
     Object? id = null,
     Object? villaName = null,
-    Object? villaNumber = null,
     Object? location = null,
+    Object? villaNumber = null,
     Object? notes = null,
     Object? createdAt = null,
     Object? updatedAt = freezed,
@@ -86,13 +88,13 @@ class _$VillaModelCopyWithImpl<$Res, $Val extends VillaModel>
           ? _value.villaName
           : villaName // ignore: cast_nullable_to_non_nullable
               as String,
-      villaNumber: null == villaNumber
-          ? _value.villaNumber
-          : villaNumber // ignore: cast_nullable_to_non_nullable
-              as String,
       location: null == location
           ? _value.location
           : location // ignore: cast_nullable_to_non_nullable
+              as String,
+      villaNumber: null == villaNumber
+          ? _value.villaNumber
+          : villaNumber // ignore: cast_nullable_to_non_nullable
               as String,
       notes: null == notes
           ? _value.notes
@@ -121,8 +123,8 @@ abstract class _$$VillaModelImplCopyWith<$Res>
   $Res call(
       {String id,
       String villaName,
-      String villaNumber,
       String location,
+      String villaNumber,
       String notes,
       DateTime createdAt,
       DateTime? updatedAt});
@@ -143,8 +145,8 @@ class __$$VillaModelImplCopyWithImpl<$Res>
   $Res call({
     Object? id = null,
     Object? villaName = null,
-    Object? villaNumber = null,
     Object? location = null,
+    Object? villaNumber = null,
     Object? notes = null,
     Object? createdAt = null,
     Object? updatedAt = freezed,
@@ -158,13 +160,13 @@ class __$$VillaModelImplCopyWithImpl<$Res>
           ? _value.villaName
           : villaName // ignore: cast_nullable_to_non_nullable
               as String,
-      villaNumber: null == villaNumber
-          ? _value.villaNumber
-          : villaNumber // ignore: cast_nullable_to_non_nullable
-              as String,
       location: null == location
           ? _value.location
           : location // ignore: cast_nullable_to_non_nullable
+              as String,
+      villaNumber: null == villaNumber
+          ? _value.villaNumber
+          : villaNumber // ignore: cast_nullable_to_non_nullable
               as String,
       notes: null == notes
           ? _value.notes
@@ -202,10 +204,12 @@ class _$VillaModelImpl implements _VillaModel {
   @override
   final String villaName;
   @override
+  final String location;
+// Legacy compatibility field for old local/Firebase records.
+// New UI and validation use villaName for identification.
+  @override
   @JsonKey()
   final String villaNumber;
-  @override
-  final String location;
   @override
   @JsonKey()
   final String notes;
@@ -216,7 +220,7 @@ class _$VillaModelImpl implements _VillaModel {
 
   @override
   String toString() {
-    return 'VillaModel(id: $id, villaName: $villaName, villaNumber: $villaNumber, location: $location, notes: $notes, createdAt: $createdAt, updatedAt: $updatedAt)';
+    return 'VillaModel(id: $id, villaName: $villaName, location: $location, villaNumber: $villaNumber, notes: $notes, createdAt: $createdAt, updatedAt: $updatedAt)';
   }
 
   @override
@@ -227,10 +231,10 @@ class _$VillaModelImpl implements _VillaModel {
             (identical(other.id, id) || other.id == id) &&
             (identical(other.villaName, villaName) ||
                 other.villaName == villaName) &&
-            (identical(other.villaNumber, villaNumber) ||
-                other.villaNumber == villaNumber) &&
             (identical(other.location, location) ||
                 other.location == location) &&
+            (identical(other.villaNumber, villaNumber) ||
+                other.villaNumber == villaNumber) &&
             (identical(other.notes, notes) || other.notes == notes) &&
             (identical(other.createdAt, createdAt) ||
                 other.createdAt == createdAt) &&
@@ -240,8 +244,8 @@ class _$VillaModelImpl implements _VillaModel {
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
-  int get hashCode => Object.hash(runtimeType, id, villaName, villaNumber,
-      location, notes, createdAt, updatedAt);
+  int get hashCode => Object.hash(runtimeType, id, villaName, location,
+      villaNumber, notes, createdAt, updatedAt);
 
   /// Create a copy of VillaModel
   /// with the given fields replaced by the non-null parameter values.
@@ -277,9 +281,11 @@ abstract class _VillaModel implements VillaModel {
   @override
   String get villaName;
   @override
-  String get villaNumber;
+  String
+      get location; // Legacy compatibility field for old local/Firebase records.
+// New UI and validation use villaName for identification.
   @override
-  String get location;
+  String get villaNumber;
   @override
   String get notes;
   @override

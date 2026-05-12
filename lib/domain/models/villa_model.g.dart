@@ -23,8 +23,8 @@ Map<String, dynamic> _$$VillaModelImplToJson(_$VillaModelImpl instance) =>
     <String, dynamic>{
       'id': instance.id,
       'villaName': instance.villaName,
-      'villaNumber': instance.villaNumber,
       'location': instance.location,
+      'villaNumber': instance.villaNumber,
       'notes': instance.notes,
       'createdAt': instance.createdAt.toIso8601String(),
       'updatedAt': instance.updatedAt?.toIso8601String(),
