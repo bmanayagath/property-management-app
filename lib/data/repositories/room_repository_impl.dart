@@ -125,6 +125,10 @@ class RoomRepositoryImpl implements RoomRepository {
       database.deleteRoom(id, deletedBy: deletedBy);
 
   @override
+  Future<void> deleteRoomCascade(String roomId, String currentUserId) =>
+      database.deleteRoomCascade(roomId, currentUserId);
+
+  @override
   Future<double> getTotalExpectedRentForVilla(String villaId) async {
     final rooms = await database.getRoomsByVillaId(villaId);
     return rooms

@@ -70,13 +70,12 @@ final deleteVillaProvider =
     FutureProvider.family<void, String>((ref, id) async {
   final repository = ref.watch(villaRepositoryProvider);
   final currentUser = ref.read(authProvider).currentUser;
-  await repository.deleteVilla(id, deletedBy: currentUser?.id);
+  if (currentUser == null) {
+    await repository.deleteVilla(id);
+  } else {
+    await repository.deleteVillaCascade(id, currentUser.id);
+  }
   if (currentUser != null) {
-    await ref.read(firebaseSyncServiceProvider).queueDelete(
-          collection: 'villas',
-          id: id,
-          userId: currentUser.id,
-        );
     await ref.read(firebaseSyncServiceProvider).syncPendingDeletes();
     ref.read(syncRefreshProvider.notifier).state++;
   }
@@ -88,5 +87,9 @@ final deleteVillaProvider =
   ref.invalidate(activeRoomListProvider);
   ref.invalidate(incomeListProvider);
   ref.invalidate(expenseListProvider);
+  ref.invalidate(expenseProvider);
   ref.invalidate(dashboardSummaryProvider);
+  ref.invalidate(occupiedRoomsProvider);
+  ref.invalidate(vacantRoomsProvider);
+  ref.invalidate(totalExpectedRentProvider);
 });

@@ -9,4 +9,5 @@ abstract class VillaRepository {
   Future<String> addVilla(VillaModel villa);
   Future<void> updateVilla(VillaModel villa);
   Future<void> deleteVilla(String id, {String? deletedBy});
+  Future<void> deleteVillaCascade(String villaId, String currentUserId);
 }

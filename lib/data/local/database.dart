@@ -291,6 +291,10 @@ class AppDatabase extends _$AppDatabase {
     });
   }
 
+  Future<void> deleteVillaCascade(String villaId, String currentUserId) {
+    return deleteVilla(villaId, deletedBy: currentUserId);
+  }
+
   Future<int> softDeleteVilla(String id, {String? deletedBy}) {
     final now = DateTime.now();
     return _softDeleteWhere(
@@ -527,6 +531,10 @@ class AppDatabase extends _$AppDatabase {
       await softDeleteIncomesForRoom(id, deletedBy: deletedBy);
       await softDeleteExpensesForRoom(id, deletedBy: deletedBy);
     });
+  }
+
+  Future<void> deleteRoomCascade(String roomId, String currentUserId) {
+    return deleteRoom(roomId, deletedBy: currentUserId);
   }
 
   Future<int> softDeleteRoom(String id, {String? deletedBy}) {

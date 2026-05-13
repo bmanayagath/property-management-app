@@ -14,6 +14,7 @@ abstract class RoomRepository {
   Future<String> addRoom(Room room);
   Future<void> updateRoom(Room room);
   Future<void> deleteRoom(String id, {String? deletedBy});
+  Future<void> deleteRoomCascade(String roomId, String currentUserId);
   Future<double> getTotalExpectedRentForVilla(String villaId);
   Future<double> getTotalExpectedRentForAllVillas();
 }

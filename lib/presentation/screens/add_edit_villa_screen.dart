@@ -144,8 +144,35 @@ class _AddEditVillaScreenState extends ConsumerState<AddEditVillaScreen> {
     });
   }
 
-  void _deleteRoom(int index) {
+  Future<void> _deleteRoom(int index) async {
     final room = _rooms[index];
+    if (_existingRoomIds.contains(room.id)) {
+      final shouldDelete = await showDialog<bool>(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: const Text('Delete Room?'),
+              content: const Text(
+                'Deleting this room will also remove related income and expenses from active records. Continue?',
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context, false),
+                  child: const Text('Cancel'),
+                ),
+                TextButton(
+                  onPressed: () => Navigator.pop(context, true),
+                  child: const Text(
+                    'Delete',
+                    style: TextStyle(color: Colors.red),
+                  ),
+                ),
+              ],
+            ),
+          ) ??
+          false;
+      if (!shouldDelete) return;
+    }
+
     setState(() {
       if (_existingRoomIds.contains(room.id)) {
         _deletedRoomIds.add(room.id);

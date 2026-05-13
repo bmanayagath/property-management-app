@@ -278,6 +278,10 @@ class LocalDatabaseRepository {
       database.deleteVilla(id, deletedBy: deletedBy);
   Future<void> deleteRoom(String id, {String? deletedBy}) =>
       database.deleteRoom(id, deletedBy: deletedBy);
+  Future<void> deleteVillaCascade(String villaId, String currentUserId) =>
+      database.deleteVillaCascade(villaId, currentUserId);
+  Future<void> deleteRoomCascade(String roomId, String currentUserId) =>
+      database.deleteRoomCascade(roomId, currentUserId);
   Future<void> deleteIncome(String id, {String? deletedBy}) =>
       database.deleteIncome(id, deletedBy: deletedBy);
   Future<void> deleteExpense(String id, {String? deletedBy}) =>

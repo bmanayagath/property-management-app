@@ -29,7 +29,9 @@ class VillaDetailScreen extends ConsumerWidget {
       builder: (BuildContext context) {
         return AlertDialog(
           title: const Text('Delete Villa?'),
-          content: const Text('This action cannot be undone.'),
+          content: const Text(
+            'Deleting this villa will also remove all its rooms, income, and expenses from active records. Continue?',
+          ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
@@ -504,8 +506,9 @@ class VillaDetailScreen extends ConsumerWidget {
                             context: context,
                             builder: (context) => AlertDialog(
                               title: const Text('Delete Room?'),
-                              content:
-                                  const Text('This action cannot be undone.'),
+                              content: const Text(
+                                'Deleting this room will also remove related income and expenses from active records. Continue?',
+                              ),
                               actions: [
                                 TextButton(
                                   onPressed: () => Navigator.pop(context),

@@ -111,13 +111,12 @@ final deleteRoomProvider = FutureProvider.family<void, String>((ref, id) async {
   final repository = ref.watch(roomRepositoryProvider);
   final room = await repository.getRoomById(id);
   final currentUser = ref.read(authProvider).currentUser;
-  await repository.deleteRoom(id, deletedBy: currentUser?.id);
+  if (currentUser == null) {
+    await repository.deleteRoom(id);
+  } else {
+    await repository.deleteRoomCascade(id, currentUser.id);
+  }
   if (currentUser != null) {
-    await ref.read(firebaseSyncServiceProvider).queueDelete(
-          collection: 'rooms',
-          id: id,
-          userId: currentUser.id,
-        );
     await ref.read(firebaseSyncServiceProvider).syncPendingDeletes();
     ref.read(syncRefreshProvider.notifier).state++;
   }
@@ -130,6 +129,7 @@ final deleteRoomProvider = FutureProvider.family<void, String>((ref, id) async {
   }
   ref.invalidate(incomeListProvider);
   ref.invalidate(expenseListProvider);
+  ref.invalidate(expenseProvider);
   ref.invalidate(dashboardSummaryProvider);
   ref.invalidate(occupiedRoomsProvider);
   ref.invalidate(vacantRoomsProvider);

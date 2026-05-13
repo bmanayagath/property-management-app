@@ -353,7 +353,9 @@ class _VillasScreenState extends ConsumerState<VillasScreen> {
       builder: (BuildContext context) {
         return AlertDialog(
           title: const Text('Delete Villa?'),
-          content: const Text('This action cannot be undone.'),
+          content: const Text(
+            'Deleting this villa will also remove all its rooms, income, and expenses from active records. Continue?',
+          ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),

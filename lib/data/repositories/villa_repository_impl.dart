@@ -81,6 +81,14 @@ class VillaRepositoryImpl implements VillaRepository {
     await database.deleteVilla(id, deletedBy: deletedBy);
   }
 
+  @override
+  Future<void> deleteVillaCascade(
+    String villaId,
+    String currentUserId,
+  ) async {
+    await database.deleteVillaCascade(villaId, currentUserId);
+  }
+
   VillaModel _mapToModel(Villa villa) {
     return VillaModel(
       id: villa.id,

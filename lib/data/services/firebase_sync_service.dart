@@ -200,14 +200,22 @@ class FirebaseSyncService {
 
       try {
         if (_usesRestSync) {
-          await _setDocumentWithRest(record.collection, record.id, payload);
+          await _setDocumentWithRest(
+            record.collection,
+            record.id,
+            payload,
+            serverDeletedAt: true,
+          );
         } else {
           final firestore = _safeFirestore;
           if (firestore == null) return;
-          await firestore
-              .collection(record.collection)
-              .doc(record.id)
-              .set(payload, SetOptions(merge: true));
+          await firestore.collection(record.collection).doc(record.id).set(
+            {
+              ...payload,
+              'deletedAt': FieldValue.serverTimestamp(),
+            },
+            SetOptions(merge: true),
+          );
         }
         await localRepository.markSyncRecordSynced(
           collection: record.collection,
@@ -659,6 +667,8 @@ class FirebaseSyncService {
           ...record.data,
           'syncStatus': 'synced',
           'lastSyncedAt': now.toIso8601String(),
+          if (record.data['isDeleted'] == true)
+            'deletedAt': FieldValue.serverTimestamp(),
         };
         await firestore
             .collection(record.collection)
@@ -705,7 +715,12 @@ class FirebaseSyncService {
           'syncStatus': 'synced',
           'lastSyncedAt': now.toIso8601String(),
         };
-        await _setDocumentWithRest(record.collection, record.id, payload);
+        await _setDocumentWithRest(
+          record.collection,
+          record.id,
+          payload,
+          serverDeletedAt: record.data['isDeleted'] == true,
+        );
         debugPrint(
           '[FirebaseSync] REST synced ${record.collection}/${record.id}',
         );
@@ -724,9 +739,15 @@ class FirebaseSyncService {
   Future<void> _setDocumentWithRest(
     String collection,
     String id,
-    Map<String, dynamic> data,
-  ) async {
+    Map<String, dynamic> data, {
+    bool serverDeletedAt = false,
+  }) async {
     final appOptions = Firebase.app().options;
+    if (serverDeletedAt) {
+      await _setDeletedDocumentWithRest(collection, id, data);
+      return;
+    }
+
     final encodedCollection = Uri.encodeComponent(collection);
     final encodedId = Uri.encodeComponent(id);
     final uri = Uri.https(
@@ -743,6 +764,53 @@ class FirebaseSyncService {
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw StateError(
         'Firestore REST write failed with HTTP ${response.statusCode}: ${response.body}',
+      );
+    }
+  }
+
+  Future<void> _setDeletedDocumentWithRest(
+    String collection,
+    String id,
+    Map<String, dynamic> data,
+  ) async {
+    final appOptions = Firebase.app().options;
+    final documentPath =
+        '${Uri.encodeComponent(collection)}/${Uri.encodeComponent(id)}';
+    final documentName =
+        'projects/${appOptions.projectId}/databases/(default)/documents/$documentPath';
+    final fields = Map<String, dynamic>.from(data)..remove('deletedAt');
+    final uri = Uri.https(
+      'firestore.googleapis.com',
+      '/v1/projects/${appOptions.projectId}/databases/(default)/documents:commit',
+      {'key': appOptions.apiKey},
+    );
+    final response = await http.post(
+      uri,
+      headers: {'content-type': 'application/json'},
+      body: jsonEncode({
+        'writes': [
+          {
+            'update': {
+              'name': documentName,
+              'fields': _toFirestoreFields(fields),
+            },
+            'updateMask': {
+              'fieldPaths': fields.keys.toList(),
+            },
+            'updateTransforms': [
+              {
+                'fieldPath': 'deletedAt',
+                'setToServerValue': 'REQUEST_TIME',
+              },
+            ],
+          },
+        ],
+      }),
+    );
+
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw StateError(
+        'Firestore REST delete write failed with HTTP ${response.statusCode}: ${response.body}',
       );
     }
   }
