@@ -355,13 +355,13 @@ class AuthNotifier extends StateNotifier<AuthState> {
         role: AppRoles.reader,
         createdAt: now,
       );
-      await _saveCloudUser(user);
+      await _tryRepairCloudUserProfile(user);
       return user;
     }
 
     final user = _appUserFromCloud(firebaseUser.uid, data);
     if (data['isDeleted'] == true || data['isActive'] == false) {
-      await _reactivateOwnCloudUser(user);
+      await _tryRepairCloudUserProfile(user);
     }
 
     return user;
@@ -434,6 +434,20 @@ class AuthNotifier extends StateNotifier<AuthState> {
       },
       SetOptions(merge: true),
     );
+  }
+
+  Future<void> _tryRepairCloudUserProfile(AppUser user) async {
+    try {
+      await _reactivateOwnCloudUser(user);
+    } on FirebaseException catch (error, stackTrace) {
+      debugPrint(
+        '[Auth] Profile repair skipped for ${user.id}: ${error.code}',
+      );
+      debugPrintStack(stackTrace: stackTrace);
+    } catch (error, stackTrace) {
+      debugPrint('[Auth] Profile repair skipped for ${user.id}: $error');
+      debugPrintStack(stackTrace: stackTrace);
+    }
   }
 
   Future<void> _softDeleteCloudUser(AppUser user) async {

@@ -48,12 +48,12 @@ service cloud.firestore {
     match /users/{userId} {
       allow read: if signedIn() && (request.auth.uid == userId || isAdmin());
       allow create: if signedIn() && (
-        isAdmin() ||
         (
           request.auth.uid == userId &&
           !exists(/databases/$(database)/documents/users/$(userId)) &&
           request.resource.data.role == 'Reader'
-        )
+        ) ||
+        isAdmin()
       );
       allow update: if signedIn() && (
         isAdmin() ||
