@@ -1,0 +1,95 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function userProfile(uid) {
+      return get(/databases/$(database)/documents/users/$(uid));
+    }
+
+    function role() {
+      return signedIn() && userProfile(request.auth.uid).data.isActive == true
+        && userProfile(request.auth.uid).data.isDeleted != true
+        ? userProfile(request.auth.uid).data.role
+        : 'Reader';
+    }
+
+    function isAdmin() {
+      return role() == 'Admin';
+    }
+
+    function isContributor() {
+      return role() == 'Contributor';
+    }
+
+    function isReader() {
+      return role() == 'Reader';
+    }
+
+    function isSoftDelete() {
+      return request.resource.data.isDeleted == true;
+    }
+
+    function noHardDelete() {
+      return false;
+    }
+
+    match /users/{userId} {
+      allow read: if signedIn() && (request.auth.uid == userId || isAdmin());
+      allow create: if signedIn() && (
+        isAdmin() ||
+        (
+          request.auth.uid == userId &&
+          !exists(/databases/$(database)/documents/users/$(userId)) &&
+          request.resource.data.role == 'Reader'
+        )
+      );
+      allow update: if signedIn() && (
+        isAdmin() ||
+        (
+          request.auth.uid == userId &&
+          request.resource.data.role == resource.data.role &&
+          request.resource.data.isDeleted != true
+        )
+      );
+      allow delete: if noHardDelete();
+    }
+
+    match /villas/{villaId} {
+      allow read: if signedIn();
+      allow create, update: if signedIn() && isAdmin();
+      allow delete: if noHardDelete();
+    }
+
+    match /rooms/{roomId} {
+      allow read: if signedIn();
+      allow create, update: if signedIn() && isAdmin();
+      allow delete: if noHardDelete();
+    }
+
+    match /incomes/{incomeId} {
+      allow read: if signedIn();
+      allow create, update: if signedIn() && (isAdmin() || isContributor());
+      allow delete: if noHardDelete();
+    }
+
+    match /expenses/{expenseId} {
+      allow read: if signedIn();
+      allow create, update: if signedIn() && (isAdmin() || isContributor());
+      allow delete: if noHardDelete();
+    }
+
+    match /notifications/{notificationId} {
+      allow read: if signedIn();
+      allow create, update: if signedIn() && (isAdmin() || isContributor());
+      allow delete: if noHardDelete();
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

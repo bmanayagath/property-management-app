@@ -13,14 +13,14 @@ class LoginScreen extends ConsumerStatefulWidget {
 
 class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _usernameController = TextEditingController();
+  final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _obscurePassword = true;
   bool _isSubmitting = false;
 
   @override
   void dispose() {
-    _usernameController.dispose();
+    _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
@@ -92,20 +92,23 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     ),
                     const SizedBox(height: 28),
                     TextFormField(
-                      controller: _usernameController,
+                      controller: _emailController,
+                      keyboardType: TextInputType.emailAddress,
+                      autofillHints: const [AutofillHints.email],
                       decoration: _inputDecoration(
-                        label: 'Username',
+                        label: 'Email',
                         icon: Icons.person_outline_rounded,
                       ),
                       validator: (value) =>
                           value == null || value.trim().isEmpty
-                              ? 'Username is required'
+                              ? 'Email is required'
                               : null,
                     ),
                     const SizedBox(height: 14),
                     TextFormField(
                       controller: _passwordController,
                       obscureText: _obscurePassword,
+                      autofillHints: const [AutofillHints.password],
                       decoration: _inputDecoration(
                         label: 'Password',
                         icon: Icons.lock_outline_rounded,
@@ -157,18 +160,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                               ),
                             )
                           : const Text(
-                              'Login',
+                              'Sign In',
                               style: TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w900,
                               ),
                             ),
-                    ),
-                    const SizedBox(height: 12),
-                    TextButton.icon(
-                      onPressed: _isSubmitting ? null : _resetLocalAuth,
-                      icon: const Icon(Icons.restart_alt_rounded, size: 18),
-                      label: const Text('Reset local admin'),
                     ),
                   ],
                 ),
@@ -211,7 +208,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
     setState(() => _isSubmitting = true);
     final didLogin = await ref.read(authProvider.notifier).login(
-          _usernameController.text,
+          _emailController.text,
           _passwordController.text,
         );
     if (didLogin) {
@@ -222,20 +219,5 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     if (mounted) {
       setState(() => _isSubmitting = false);
     }
-  }
-
-  Future<void> _resetLocalAuth() async {
-    setState(() => _isSubmitting = true);
-    await ref.read(authProvider.notifier).resetLocalAuthForDevelopment();
-    if (!mounted) return;
-
-    _usernameController.text = 'admin';
-    _passwordController.text = 'admin';
-    setState(() => _isSubmitting = false);
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Local auth reset. Default admin/admin recreated.'),
-      ),
-    );
   }
 }

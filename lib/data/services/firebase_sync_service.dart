@@ -13,6 +13,7 @@ import 'package:flutter/foundation.dart'
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../core/constants/app_roles.dart';
 import '../../domain/models/app_notification.dart';
 import '../../domain/models/app_user.dart';
 import '../../domain/models/expense.dart';
@@ -964,8 +965,10 @@ class FirebaseSyncService {
     return {
       'id': user.id,
       'username': user.username,
+      'email': user.username,
       'role': user.role,
       'isActive': true,
+      'isDeleted': false,
       'createdAt': user.createdAt.toIso8601String(),
       'updatedAt': user.updatedAt?.toIso8601String(),
     };
@@ -1072,9 +1075,8 @@ class FirebaseSyncService {
     final createdAt = _readDateTime(json['createdAt']);
     return AppUser(
       id: json['id'] as String,
-      username: json['username'] as String? ?? '',
-      password: json['password'] as String? ?? '',
-      role: json['role'] as String? ?? 'viewer',
+      username: json['username'] as String? ?? json['email'] as String? ?? '',
+      role: json['role'] as String? ?? AppRoles.reader,
       createdAt: createdAt,
       updatedAt: _readNullableDateTime(json['updatedAt']),
     );

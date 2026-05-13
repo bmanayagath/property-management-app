@@ -398,7 +398,6 @@ class AppDatabase extends _$AppDatabase {
 
   Future<int> cleanupOrphanRecords({String? deletedBy}) {
     return transaction(() async {
-      final now = DateTime.now();
       final orphanRoomIds = await customSelect(
         '''
         SELECT r.id
@@ -416,64 +415,125 @@ class AppDatabase extends _$AppDatabase {
 
       if (orphanRoomIds.isEmpty) return 0;
 
-      final placeholders = orphanRoomIds.map((_) => '?').join(', ');
-      final variables = [
-        Variable<DateTime>(now),
-        Variable<String>(deletedBy),
-        Variable<DateTime>(now),
-        Variable<String>(deletedBy),
-        for (final roomId in orphanRoomIds) Variable<String>(roomId),
-      ];
-
-      await customUpdate(
-        '''
-        UPDATE rooms
-        SET is_deleted = 1,
-            sync_status = 'pending',
-            deleted_at = ?,
-            deleted_by = ?,
-            updated_at = ?,
-            updated_by = ?
-        WHERE id IN ($placeholders)
-        ''',
-        variables: variables,
-        updates: {rooms},
-      );
-
-      await customUpdate(
-        '''
-        UPDATE incomes
-        SET is_deleted = 1,
-            sync_status = 'pending',
-            deleted_at = ?,
-            deleted_by = ?,
-            updated_at = ?,
-            updated_by = ?
-        WHERE is_deleted = 0
-          AND room_id IN ($placeholders)
-        ''',
-        variables: variables,
-        updates: {incomes},
-      );
-
-      await customUpdate(
-        '''
-        UPDATE expenses
-        SET is_deleted = 1,
-            sync_status = 'pending',
-            deleted_at = ?,
-            deleted_by = ?,
-            updated_at = ?,
-            updated_by = ?
-        WHERE is_deleted = 0
-          AND room_id IN ($placeholders)
-        ''',
-        variables: variables,
-        updates: {expenses},
-      );
-
+      await cleanupOrphanRooms(deletedBy: deletedBy);
+      await cleanupOrphanIncome(deletedBy: deletedBy);
+      await cleanupOrphanExpenses(deletedBy: deletedBy);
       return orphanRoomIds.length;
     });
+  }
+
+  Future<int> cleanupOrphanRooms({String? deletedBy}) async {
+    final now = DateTime.now();
+    return customUpdate(
+      '''
+      UPDATE rooms
+      SET is_deleted = 1,
+          sync_status = 'pending',
+          deleted_at = ?,
+          deleted_by = ?,
+          updated_at = ?,
+          updated_by = ?
+      WHERE is_deleted = 0
+        AND NOT EXISTS (
+          SELECT 1
+          FROM villas v
+          WHERE v.id = rooms.villa_id
+            AND v.is_deleted = 0
+        )
+      ''',
+      variables: [
+        Variable<DateTime>(now),
+        Variable<String>(deletedBy),
+        Variable<DateTime>(now),
+        Variable<String>(deletedBy),
+      ],
+      updates: {rooms},
+    );
+  }
+
+  Future<int> cleanupOrphanIncome({String? deletedBy}) async {
+    final now = DateTime.now();
+    return customUpdate(
+      '''
+      UPDATE incomes
+      SET is_deleted = 1,
+          sync_status = 'pending',
+          deleted_at = ?,
+          deleted_by = ?,
+          updated_at = ?,
+          updated_by = ?
+      WHERE is_deleted = 0
+        AND (
+          NOT EXISTS (
+            SELECT 1
+            FROM villas v
+            WHERE v.id = incomes.villa_id
+              AND v.is_deleted = 0
+          )
+          OR (
+            room_id <> ''
+            AND NOT EXISTS (
+              SELECT 1
+              FROM rooms r
+              WHERE r.id = incomes.room_id
+                AND r.is_deleted = 0
+            )
+          )
+        )
+      ''',
+      variables: [
+        Variable<DateTime>(now),
+        Variable<String>(deletedBy),
+        Variable<DateTime>(now),
+        Variable<String>(deletedBy),
+      ],
+      updates: {incomes},
+    );
+  }
+
+  Future<int> cleanupOrphanExpenses({String? deletedBy}) async {
+    final now = DateTime.now();
+    return customUpdate(
+      '''
+      UPDATE expenses
+      SET is_deleted = 1,
+          sync_status = 'pending',
+          deleted_at = ?,
+          deleted_by = ?,
+          updated_at = ?,
+          updated_by = ?
+      WHERE is_deleted = 0
+        AND (
+          (
+            villa_id IS NOT NULL
+            AND villa_id <> ''
+            AND NOT EXISTS (
+              SELECT 1
+              FROM villas v
+              WHERE v.id = expenses.villa_id
+                AND v.is_deleted = 0
+            )
+          )
+          OR (
+            room_id IS NOT NULL
+            AND room_id <> ''
+            AND NOT EXISTS (
+              SELECT 1
+              FROM rooms r
+              WHERE r.id = expenses.room_id
+                AND r.is_deleted = 0
+            )
+          )
+        )
+      ''',
+      variables: [
+        Variable<DateTime>(now),
+        Variable<String>(deletedBy),
+        Variable<DateTime>(now),
+        Variable<String>(deletedBy),
+      ],
+      updates: {expenses},
+    );
   }
 
   Future<int> cleanupDeletedAndOrphanRooms({String? deletedBy}) {

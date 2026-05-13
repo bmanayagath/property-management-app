@@ -9,7 +9,7 @@ class AppUser {
   const AppUser({
     required this.id,
     required this.username,
-    required this.password,
+    this.password = '',
     required this.role,
     required this.createdAt,
     this.updatedAt,
@@ -18,13 +18,14 @@ class AppUser {
   factory AppUser.fromJson(Map<String, dynamic> json) {
     return AppUser(
       id: json['id'] as String,
-      username: json['username'] as String,
-      password: json['password'] as String,
-      role: json['role'] as String,
-      createdAt: DateTime.parse(json['createdAt'] as String),
+      username: json['username'] as String? ?? json['email'] as String? ?? '',
+      password: json['password'] as String? ?? '',
+      role: json['role'] as String? ?? 'Reader',
+      createdAt: DateTime.tryParse(json['createdAt'] as String? ?? '') ??
+          DateTime.now(),
       updatedAt: json['updatedAt'] == null
           ? null
-          : DateTime.parse(json['updatedAt'] as String),
+          : DateTime.tryParse(json['updatedAt'] as String),
     );
   }
 
@@ -32,7 +33,6 @@ class AppUser {
     return {
       'id': id,
       'username': username,
-      'password': password,
       'role': role,
       'createdAt': createdAt.toIso8601String(),
       'updatedAt': updatedAt?.toIso8601String(),

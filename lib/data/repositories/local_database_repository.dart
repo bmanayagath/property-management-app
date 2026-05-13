@@ -192,6 +192,15 @@ class LocalDatabaseRepository {
 
   Future<void> upsertIncome(domain.Income income) async {
     final existing = await _getIncomeById(income.id);
+    final remoteUpdatedAt = income.updatedAt ?? income.createdAt;
+    if (_hasPendingLocalChange(
+      syncStatus: existing?.syncStatus,
+      localUpdatedAt: existing?.updatedAt,
+      remoteUpdatedAt: remoteUpdatedAt,
+    )) {
+      return;
+    }
+
     final companion = db.IncomesCompanion(
       id: Value(income.id),
       villaId: Value(income.villaId),
@@ -204,8 +213,15 @@ class LocalDatabaseRepository {
       paymentMethod: Value(income.paymentMethod),
       monthCovered: Value(income.monthCovered),
       notes: Value(income.notes),
-      createdAt: Value(existing?.createdAt ?? DateTime.now()),
-      updatedAt: Value(DateTime.now()),
+      createdAt: Value(income.createdAt),
+      updatedAt: Value(income.updatedAt),
+      isDeleted: Value(income.isDeleted ? 1 : 0),
+      syncStatus: Value(income.syncStatus == 'pending' ? 'pending' : 'synced'),
+      deletedAt: Value(income.deletedAt),
+      deletedBy: Value(income.deletedBy),
+      createdBy: Value(income.createdBy),
+      updatedBy: Value(income.updatedBy),
+      lastSyncedAt: Value(DateTime.now()),
     );
 
     if (existing == null) {
@@ -217,6 +233,15 @@ class LocalDatabaseRepository {
 
   Future<void> upsertExpense(domain.Expense expense) async {
     final existing = await _getExpenseById(expense.id);
+    final remoteUpdatedAt = expense.updatedAt ?? expense.createdAt;
+    if (_hasPendingLocalChange(
+      syncStatus: existing?.syncStatus,
+      localUpdatedAt: existing?.updatedAt,
+      remoteUpdatedAt: remoteUpdatedAt,
+    )) {
+      return;
+    }
+
     final companion = db.ExpensesCompanion(
       id: Value(expense.id),
       villaId: Value(expense.villaId),
@@ -229,7 +254,15 @@ class LocalDatabaseRepository {
       paidTo: Value(expense.paidTo),
       paymentMethod: Value(expense.paymentMethod),
       notes: Value(expense.notes),
-      createdAt: Value(existing?.createdAt ?? DateTime.now()),
+      createdAt: Value(expense.createdAt),
+      updatedAt: Value(expense.updatedAt),
+      isDeleted: Value(expense.isDeleted ? 1 : 0),
+      syncStatus: Value(expense.syncStatus == 'pending' ? 'pending' : 'synced'),
+      deletedAt: Value(expense.deletedAt),
+      deletedBy: Value(expense.deletedBy),
+      createdBy: Value(expense.createdBy),
+      updatedBy: Value(expense.updatedBy),
+      lastSyncedAt: Value(DateTime.now()),
     );
 
     if (existing == null) {
@@ -289,6 +322,18 @@ class LocalDatabaseRepository {
 
   Future<int> cleanupOrphanRecords({String? deletedBy}) {
     return database.cleanupOrphanRecords(deletedBy: deletedBy);
+  }
+
+  Future<int> cleanupOrphanRooms({String? deletedBy}) {
+    return database.cleanupOrphanRooms(deletedBy: deletedBy);
+  }
+
+  Future<int> cleanupOrphanIncome({String? deletedBy}) {
+    return database.cleanupOrphanIncome(deletedBy: deletedBy);
+  }
+
+  Future<int> cleanupOrphanExpenses({String? deletedBy}) {
+    return database.cleanupOrphanExpenses(deletedBy: deletedBy);
   }
 
   Future<int> cleanupDeletedAndOrphanRooms({String? deletedBy}) {

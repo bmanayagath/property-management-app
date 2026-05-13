@@ -5,6 +5,7 @@ import '../../../core/constants/app_permissions.dart';
 import '../../../core/constants/app_roles.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/sync_provider.dart';
+import 'legal_screen.dart';
 import 'sync_status_widget.dart';
 import 'users_screen.dart';
 
@@ -109,7 +110,7 @@ class SettingsScreen extends ConsumerWidget {
             _SettingsActionTile(
               icon: Icons.group_rounded,
               title: 'Manage Users',
-              subtitle: 'Add, edit, and delete local users',
+              subtitle: 'Manage Firebase role profiles',
               onTap: () {
                 Navigator.push(
                   context,
@@ -120,6 +121,20 @@ class SettingsScreen extends ConsumerWidget {
               },
             ),
           ],
+          const SizedBox(height: 10),
+          _SettingsActionTile(
+            icon: Icons.privacy_tip_outlined,
+            title: 'Terms & Privacy',
+            subtitle: 'Review app terms and privacy information',
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const LegalScreen(),
+                ),
+              );
+            },
+          ),
           const SizedBox(height: 22),
           FilledButton.icon(
             onPressed: () => ref.read(authProvider.notifier).logout(),

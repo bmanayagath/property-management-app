@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:uuid/uuid.dart';
 
 import '../../../core/constants/app_roles.dart';
 import '../../../domain/models/app_user.dart';
@@ -20,8 +19,8 @@ class AddEditUserScreen extends ConsumerStatefulWidget {
 
 class _AddEditUserScreenState extends ConsumerState<AddEditUserScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _usernameController = TextEditingController();
-  final _passwordController = TextEditingController();
+  final _uidController = TextEditingController();
+  final _emailController = TextEditingController();
   late String _selectedRole;
 
   bool get _isEditing => widget.user != null;
@@ -30,14 +29,15 @@ class _AddEditUserScreenState extends ConsumerState<AddEditUserScreen> {
   void initState() {
     super.initState();
     final user = widget.user;
-    _usernameController.text = user?.username ?? '';
+    _uidController.text = user?.id ?? '';
+    _emailController.text = user?.username ?? '';
     _selectedRole = user?.role ?? AppRoles.reader;
   }
 
   @override
   void dispose() {
-    _usernameController.dispose();
-    _passwordController.dispose();
+    _uidController.dispose();
+    _emailController.dispose();
     super.dispose();
   }
 
@@ -66,34 +66,37 @@ class _AddEditUserScreenState extends ConsumerState<AddEditUserScreen> {
               child: Column(
                 children: [
                   TextFormField(
-                    controller: _usernameController,
-                    decoration: _inputDecoration('Username'),
+                    controller: _uidController,
+                    enabled: !_isEditing,
+                    decoration: _inputDecoration('Firebase Auth UID'),
                     validator: (value) {
-                      final username = value?.trim() ?? '';
-                      if (username.isEmpty) return 'Username is required';
+                      final uid = value?.trim() ?? '';
+                      if (uid.isEmpty) return 'Firebase Auth UID is required';
                       final duplicate = users.any(
-                        (user) =>
-                            user.username.toLowerCase() ==
-                                username.toLowerCase() &&
-                            user.id != widget.user?.id,
+                        (user) => user.id == uid && user.id != widget.user?.id,
                       );
-                      if (duplicate) return 'Username already exists';
+                      if (duplicate) return 'UID already has a profile';
                       return null;
                     },
                   ),
                   const SizedBox(height: 14),
                   TextFormField(
-                    controller: _passwordController,
-                    obscureText: true,
-                    decoration: _inputDecoration(
-                      _isEditing
-                          ? 'Password (leave blank to keep)'
-                          : 'Password',
-                    ),
+                    controller: _emailController,
+                    keyboardType: TextInputType.emailAddress,
+                    decoration: _inputDecoration('Email'),
                     validator: (value) {
-                      if (!_isEditing && (value == null || value.isEmpty)) {
-                        return 'Password is required';
+                      final email = value?.trim() ?? '';
+                      if (email.isEmpty) return 'Email is required';
+                      if (!email.contains('@')) {
+                        return 'Enter a valid email address';
                       }
+                      final duplicate = users.any(
+                        (user) =>
+                            user.username.toLowerCase() ==
+                                email.toLowerCase() &&
+                            user.id != widget.user?.id,
+                      );
+                      if (duplicate) return 'Email already exists';
                       return null;
                     },
                   ),
@@ -124,7 +127,7 @@ class _AddEditUserScreenState extends ConsumerState<AddEditUserScreen> {
             FilledButton.icon(
               onPressed: _save,
               icon: const Icon(Icons.check_rounded),
-              label: Text(_isEditing ? 'Update User' : 'Create User'),
+              label: Text(_isEditing ? 'Update Profile' : 'Create Profile'),
               style: FilledButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 15),
                 shape: RoundedRectangleBorder(
@@ -173,13 +176,9 @@ class _AddEditUserScreenState extends ConsumerState<AddEditUserScreen> {
       return;
     }
 
-    final password = _passwordController.text.isEmpty
-        ? existing?.password ?? ''
-        : _passwordController.text;
     final user = AppUser(
-      id: existing?.id ?? const Uuid().v4(),
-      username: _usernameController.text.trim(),
-      password: password,
+      id: existing?.id ?? _uidController.text.trim(),
+      username: _emailController.text.trim(),
       role: _selectedRole,
       createdAt: existing?.createdAt ?? DateTime.now(),
       updatedAt: existing == null ? null : DateTime.now(),

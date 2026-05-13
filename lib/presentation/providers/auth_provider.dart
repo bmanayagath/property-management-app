@@ -1,5 +1,8 @@
 import 'dart:convert';
 
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -7,10 +10,11 @@ import 'package:uuid/uuid.dart';
 
 import '../../core/constants/app_permissions.dart';
 import '../../core/constants/app_roles.dart';
+import '../../core/startup/startup_status.dart';
 import '../../domain/models/app_user.dart';
 
 final authProvider = StateNotifierProvider<AuthNotifier, AuthState>((ref) {
-  return AuthNotifier();
+  return AuthNotifier(ref.watch(startupStatusProvider));
 });
 
 class AuthState {
@@ -53,46 +57,55 @@ class AuthState {
 }
 
 class AuthNotifier extends StateNotifier<AuthState> {
-  AuthNotifier() : super(const AuthState.loading()) {
+  AuthNotifier(this._startupStatus) : super(const AuthState.loading()) {
     loadSession();
   }
 
+  final StartupStatus _startupStatus;
   static const usersKey = 'villabooks_users';
   static const loggedInUserIdKey = 'villabooks_logged_in_user_id';
 
-  Future<bool> login(String username, String password) async {
+  Future<bool> login(String email, String password) async {
     try {
-      final normalizedUsername = username.trim().toLowerCase();
-      final users = state.users.isEmpty ? await loadUsers() : state.users;
-      debugPrint(
-        '[Auth] Login attempt username="$normalizedUsername", users=${users.length}, usernames=${_usernamesForLog(users)}',
-      );
-      final matchedUser = users.where((user) {
-        return _normalizeUsername(user.username) == normalizedUsername &&
-            user.password == password;
-      }).firstOrNull;
-
-      if (matchedUser == null) {
-        final usernameExists = users.any(
-          (user) => _normalizeUsername(user.username) == normalizedUsername,
-        );
-        debugPrint(
-          usernameExists
-              ? '[Auth] Login failed: password mismatch for "$normalizedUsername".'
-              : '[Auth] Login failed: username "$normalizedUsername" not found.',
-        );
+      final normalizedEmail = email.trim().toLowerCase();
+      if (normalizedEmail.isEmpty || password.isEmpty) {
         state = AuthState.ready(
-          users: users,
-          errorMessage: 'Invalid username or password',
+          users: state.users,
+          errorMessage: 'Enter your email and password.',
         );
         return false;
       }
 
-      final preferences = await SharedPreferences.getInstance();
-      await preferences.setString(loggedInUserIdKey, matchedUser.id);
-      debugPrint('[Auth] Login succeeded for "${matchedUser.username}".');
-      state = AuthState.ready(users: users, currentUser: matchedUser);
+      final auth = _firebaseAuth;
+      if (auth == null) {
+        return _loginWithCachedUser(normalizedEmail, password);
+      }
+
+      final credential = await auth.signInWithEmailAndPassword(
+        email: normalizedEmail,
+        password: password,
+      );
+      final firebaseUser = credential.user;
+      if (firebaseUser == null) {
+        state = AuthState.ready(
+          users: state.users,
+          errorMessage: 'Unable to sign in. Please try again.',
+        );
+        return false;
+      }
+
+      final appUser = await _loadCloudUserProfile(firebaseUser);
+      final users = await _mergeAndSaveUser(appUser);
+      debugPrint('[Auth] Firebase login succeeded for "${appUser.username}".');
+      state = AuthState.ready(users: users, currentUser: appUser);
       return true;
+    } on firebase_auth.FirebaseAuthException catch (error) {
+      debugPrint('[Auth] Firebase login failed: ${error.code}');
+      state = AuthState.ready(
+        users: state.users,
+        errorMessage: _friendlyAuthMessage(error),
+      );
+      return false;
     } catch (error, stackTrace) {
       debugPrint('[Auth] Login failed: $error');
       debugPrintStack(stackTrace: stackTrace);
@@ -106,6 +119,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
   Future<void> logout() async {
     try {
+      await _firebaseAuth?.signOut();
       final preferences = await SharedPreferences.getInstance();
       await preferences.remove(loggedInUserIdKey);
     } catch (error, stackTrace) {
@@ -120,21 +134,32 @@ class AuthNotifier extends StateNotifier<AuthState> {
     try {
       debugPrint('[Auth] Loading saved session.');
       final users = await loadUsers();
-      final preferences = await SharedPreferences.getInstance();
-      final loggedInUserId = preferences.getString(loggedInUserIdKey);
-      final currentUser = loggedInUserId == null
-          ? null
-          : users.where((user) => user.id == loggedInUserId).firstOrNull;
+      AppUser? currentUser;
+
+      final firebaseUser = _firebaseAuth?.currentUser;
+      if (firebaseUser != null) {
+        currentUser = await _loadCloudUserProfile(firebaseUser);
+        await _mergeAndSaveUser(currentUser);
+      } else {
+        final preferences = await SharedPreferences.getInstance();
+        final loggedInUserId = preferences.getString(loggedInUserIdKey);
+        currentUser = loggedInUserId == null
+            ? null
+            : users.where((user) => user.id == loggedInUserId).firstOrNull;
+      }
 
       debugPrint(
         '[Auth] Session loaded. users=${users.length}, loggedIn=${currentUser != null}',
       );
-      state = AuthState.ready(users: users, currentUser: currentUser);
+      state = AuthState.ready(
+        users: currentUser == null ? users : await loadUsers(),
+        currentUser: currentUser,
+      );
     } catch (error, stackTrace) {
       debugPrint('[Auth] Failed to load session: $error');
       debugPrintStack(stackTrace: stackTrace);
       state = AuthState.ready(
-        users: [_defaultAdminUser()],
+        users: const [],
         errorMessage: 'Local session could not be loaded.',
       );
     }
@@ -142,13 +167,11 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
   Future<List<AppUser>> loadUsers() async {
     try {
-      var users = await _loadUsersFromPrefs();
-      if (users.isEmpty) {
-        users = [_defaultAdminUser()];
-        await _saveUsers(users);
-        debugPrint('[Auth] Default admin user created.');
-      } else {
-        debugPrint('[Auth] Default admin user not created: users exist.');
+      final cachedUsers = await _loadUsersFromPrefs();
+      final cloudUsers = await _loadCloudUsers();
+      final users = cloudUsers.isEmpty ? cachedUsers : cloudUsers;
+      if (cloudUsers.isNotEmpty) {
+        await _saveUsers(cloudUsers);
       }
       debugPrint(
         '[Auth] Users ready. count=${users.length}, usernames=${_usernamesForLog(users)}',
@@ -157,10 +180,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
     } catch (error, stackTrace) {
       debugPrint('[Auth] Failed to load users: $error');
       debugPrintStack(stackTrace: stackTrace);
-      final users = [_defaultAdminUser()];
-      await _saveUsers(users);
-      debugPrint('[Auth] Default admin user created after load failure.');
-      return users;
+      return _loadUsersFromPrefs();
     }
   }
 
@@ -175,13 +195,13 @@ class AuthNotifier extends StateNotifier<AuthState> {
   }
 
   Future<void> addUser(AppUser user) async {
-    final users = [
-      ...state.users,
-      user.copyWith(
-        id: user.id.isEmpty ? const Uuid().v4() : user.id,
-        createdAt: user.createdAt,
-      ),
-    ];
+    final savedUser = user.copyWith(
+      id: user.id.isEmpty ? const Uuid().v4() : user.id,
+      password: '',
+      createdAt: user.createdAt,
+    );
+    await _saveCloudUser(savedUser);
+    final users = [...state.users, savedUser];
     await _saveAndSetUsers(users);
   }
 
@@ -196,12 +216,11 @@ class AuthNotifier extends StateNotifier<AuthState> {
       if (adminCount <= 1) return;
     }
 
+    final updatedUser = user.copyWith(password: '', updatedAt: DateTime.now());
+    await _saveCloudUser(updatedUser);
     final users = [
       for (final existing in state.users)
-        if (existing.id == user.id)
-          user.copyWith(updatedAt: DateTime.now())
-        else
-          existing,
+        if (existing.id == user.id) updatedUser else existing,
     ];
     await _saveAndSetUsers(users);
   }
@@ -217,6 +236,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
       if (adminCount <= 1) return;
     }
 
+    await _softDeleteCloudUser(target);
     final users = state.users.where((user) => user.id != id).toList();
     await _saveAndSetUsers(users);
   }
@@ -268,22 +288,169 @@ class AuthNotifier extends StateNotifier<AuthState> {
     );
   }
 
-  AppUser _defaultAdminUser() {
-    return AppUser(
-      id: const Uuid().v4(),
-      username: 'admin',
-      password: 'admin',
-      role: AppRoles.admin,
-      createdAt: DateTime.now(),
-    );
-  }
-
   String _usernamesForLog(List<AppUser> users) {
     return users.map((user) => user.username).join(', ');
   }
 
-  String _normalizeUsername(String username) {
-    return username.trim().toLowerCase();
+  firebase_auth.FirebaseAuth? get _firebaseAuth {
+    if (!_startupStatus.firebaseInitialized || Firebase.apps.isEmpty) {
+      return null;
+    }
+    try {
+      return firebase_auth.FirebaseAuth.instance;
+    } catch (error, stackTrace) {
+      debugPrint('[Auth] Firebase Auth unavailable: $error');
+      debugPrintStack(stackTrace: stackTrace);
+      return null;
+    }
+  }
+
+  FirebaseFirestore? get _firestore {
+    if (!_startupStatus.firebaseInitialized || Firebase.apps.isEmpty) {
+      return null;
+    }
+    try {
+      return FirebaseFirestore.instance;
+    } catch (error, stackTrace) {
+      debugPrint('[Auth] Firestore unavailable: $error');
+      debugPrintStack(stackTrace: stackTrace);
+      return null;
+    }
+  }
+
+  Future<bool> _loginWithCachedUser(String email, String password) async {
+    final users = state.users.isEmpty ? await loadUsers() : state.users;
+    debugPrint(
+      '[Auth] Firebase Auth unavailable for "$email"; local password login is disabled.',
+    );
+    state = AuthState.ready(
+      users: users,
+      errorMessage: _startupStatus.hasFirebaseError
+          ? 'Firebase is unavailable. Connect to Firebase to sign in.'
+          : 'Firebase Auth is required to sign in.',
+    );
+    return false;
+  }
+
+  Future<AppUser> _loadCloudUserProfile(
+    firebase_auth.User firebaseUser,
+  ) async {
+    final firestore = _firestore;
+    final now = DateTime.now();
+    if (firestore == null) {
+      return AppUser(
+        id: firebaseUser.uid,
+        username: firebaseUser.email ?? firebaseUser.uid,
+        role: AppRoles.reader,
+        createdAt: now,
+      );
+    }
+
+    final doc = await firestore.collection('users').doc(firebaseUser.uid).get();
+    final data = doc.data();
+    if (data == null ||
+        data['isDeleted'] == true ||
+        data['isActive'] == false) {
+      final user = AppUser(
+        id: firebaseUser.uid,
+        username: firebaseUser.email ?? firebaseUser.uid,
+        role: AppRoles.reader,
+        createdAt: now,
+      );
+      await _saveCloudUser(user);
+      return user;
+    }
+
+    return _appUserFromCloud(firebaseUser.uid, data);
+  }
+
+  Future<List<AppUser>> _loadCloudUsers() async {
+    final firestore = _firestore;
+    final currentUser = _firebaseAuth?.currentUser;
+    if (firestore == null || currentUser == null) return const [];
+
+    final snapshot = await firestore
+        .collection('users')
+        .where('isDeleted', isEqualTo: false)
+        .get();
+    return snapshot.docs
+        .map((doc) => _appUserFromCloud(doc.id, doc.data()))
+        .toList();
+  }
+
+  AppUser _appUserFromCloud(String id, Map<String, dynamic> data) {
+    return AppUser(
+      id: id,
+      username: data['username'] as String? ?? data['email'] as String? ?? '',
+      role: data['role'] as String? ?? AppRoles.reader,
+      createdAt: _readCloudDate(data['createdAt']) ?? DateTime.now(),
+      updatedAt: _readCloudDate(data['updatedAt']),
+    );
+  }
+
+  Future<List<AppUser>> _mergeAndSaveUser(AppUser user) async {
+    final users = [
+      for (final existing in await _loadUsersFromPrefs())
+        if (existing.id == user.id) user else existing,
+    ];
+    if (!users.any((existing) => existing.id == user.id)) users.add(user);
+    await _saveUsers(users);
+    return users;
+  }
+
+  Future<void> _saveCloudUser(AppUser user) async {
+    final firestore = _firestore;
+    if (firestore == null) return;
+    await firestore.collection('users').doc(user.id).set(
+      {
+        'id': user.id,
+        'username': user.username,
+        'email': user.username,
+        'role': user.role,
+        'isActive': true,
+        'isDeleted': false,
+        'updatedAt': FieldValue.serverTimestamp(),
+        'createdAt': user.createdAt.toIso8601String(),
+      },
+      SetOptions(merge: true),
+    );
+  }
+
+  Future<void> _softDeleteCloudUser(AppUser user) async {
+    final firestore = _firestore;
+    if (firestore == null) return;
+    await firestore.collection('users').doc(user.id).set(
+      {
+        'isActive': false,
+        'isDeleted': true,
+        'updatedAt': FieldValue.serverTimestamp(),
+      },
+      SetOptions(merge: true),
+    );
+  }
+
+  DateTime? _readCloudDate(Object? value) {
+    if (value is Timestamp) return value.toDate();
+    if (value is String) return DateTime.tryParse(value);
+    if (value is DateTime) return value;
+    return null;
+  }
+
+  String _friendlyAuthMessage(firebase_auth.FirebaseAuthException error) {
+    switch (error.code) {
+      case 'invalid-email':
+        return 'Enter a valid email address.';
+      case 'user-disabled':
+        return 'This account has been disabled.';
+      case 'user-not-found':
+      case 'wrong-password':
+      case 'invalid-credential':
+        return 'Invalid email or password.';
+      case 'network-request-failed':
+        return 'No internet connection. Try again when you are online.';
+      default:
+        return 'Unable to sign in. Please try again.';
+    }
   }
 }
 
