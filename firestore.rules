@@ -37,6 +37,14 @@ service cloud.firestore {
       return false;
     }
 
+    function reactivatesOwnProfile(userId) {
+      return request.auth.uid == userId
+        && resource.data.isDeleted == true
+        && request.resource.data.role == resource.data.role
+        && request.resource.data.isDeleted == false
+        && request.resource.data.isActive == true;
+    }
+
     match /users/{userId} {
       allow read: if signedIn() && (request.auth.uid == userId || isAdmin());
       allow create: if signedIn() && (
@@ -49,6 +57,7 @@ service cloud.firestore {
       );
       allow update: if signedIn() && (
         isAdmin() ||
+        reactivatesOwnProfile(userId) ||
         (
           request.auth.uid == userId &&
           request.resource.data.role == resource.data.role &&

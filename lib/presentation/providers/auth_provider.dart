@@ -348,9 +348,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
     final doc = await firestore.collection('users').doc(firebaseUser.uid).get();
     final data = doc.data();
-    if (data == null ||
-        data['isDeleted'] == true ||
-        data['isActive'] == false) {
+    if (data == null) {
       final user = AppUser(
         id: firebaseUser.uid,
         username: firebaseUser.email ?? firebaseUser.uid,
@@ -361,7 +359,12 @@ class AuthNotifier extends StateNotifier<AuthState> {
       return user;
     }
 
-    return _appUserFromCloud(firebaseUser.uid, data);
+    final user = _appUserFromCloud(firebaseUser.uid, data);
+    if (data['isDeleted'] == true || data['isActive'] == false) {
+      await _reactivateOwnCloudUser(user);
+    }
+
+    return user;
   }
 
   Future<List<AppUser>> _loadCloudUsers() async {
@@ -411,6 +414,23 @@ class AuthNotifier extends StateNotifier<AuthState> {
         'isDeleted': false,
         'updatedAt': FieldValue.serverTimestamp(),
         'createdAt': user.createdAt.toIso8601String(),
+      },
+      SetOptions(merge: true),
+    );
+  }
+
+  Future<void> _reactivateOwnCloudUser(AppUser user) async {
+    final firestore = _firestore;
+    if (firestore == null) return;
+    await firestore.collection('users').doc(user.id).set(
+      {
+        'id': user.id,
+        'username': user.username,
+        'email': user.username,
+        'role': user.role,
+        'isActive': true,
+        'isDeleted': false,
+        'updatedAt': FieldValue.serverTimestamp(),
       },
       SetOptions(merge: true),
     );
