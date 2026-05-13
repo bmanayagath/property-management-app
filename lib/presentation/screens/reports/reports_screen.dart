@@ -119,69 +119,71 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
           ),
         ],
       ),
-      body: villasAsync.when(
-        data: (villas) => roomsAsync.when(
-          data: (rooms) => incomesAsync.when(
-            data: (incomes) {
-              final reportData =
-                  _buildReportData(villas, rooms, incomes, expenses);
+      body: SafeArea(
+        child: villasAsync.when(
+          data: (villas) => roomsAsync.when(
+            data: (rooms) => incomesAsync.when(
+              data: (incomes) {
+                final reportData =
+                    _buildReportData(villas, rooms, incomes, expenses);
 
-              return ListView(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 116),
-                children: [
-                  _Filters(
-                    selectedMonth: _selectedMonth,
-                    selectedYear: _selectedYear,
-                    selectedReportType: _selectedReportType,
-                    villas: villas,
-                    rooms: rooms,
-                    selectedVillaId: _selectedVillaId,
-                    selectedRoomId: _selectedRoomId,
-                    selectedStatus: _selectedStatus,
-                    onPreviousMonth: () => _changeMonth(-1),
-                    onNextMonth: () => _changeMonth(1),
-                    onYearChanged: (year) {
-                      if (year == null) return;
-                      setState(() => _selectedYear = year);
-                    },
-                    onReportTypeChanged: (type) {
-                      if (type == null) return;
-                      setState(() => _selectedReportType = type);
-                    },
-                    onVillaChanged: (villaId) {
-                      setState(() {
-                        _selectedVillaId = villaId;
-                        _selectedRoomId = null;
-                      });
-                    },
-                    onRoomChanged: (roomId) {
-                      setState(() => _selectedRoomId = roomId);
-                    },
-                    onStatusChanged: (status) {
-                      if (status == null) return;
-                      setState(() => _selectedStatus = status);
-                    },
-                  ),
-                  const SizedBox(height: 16),
-                  _ReportHeader(
-                    title: _selectedReportType.label,
-                    subtitle: _selectedReportType == ReportType.yearlySummary
-                        ? '$_selectedYear'
-                        : _monthFormat.format(_selectedMonth),
-                  ),
-                  const SizedBox(height: 14),
-                  _buildReportView(reportData),
-                ],
-              );
-            },
+                return ListView(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 150),
+                  children: [
+                    _Filters(
+                      selectedMonth: _selectedMonth,
+                      selectedYear: _selectedYear,
+                      selectedReportType: _selectedReportType,
+                      villas: villas,
+                      rooms: rooms,
+                      selectedVillaId: _selectedVillaId,
+                      selectedRoomId: _selectedRoomId,
+                      selectedStatus: _selectedStatus,
+                      onPreviousMonth: () => _changeMonth(-1),
+                      onNextMonth: () => _changeMonth(1),
+                      onYearChanged: (year) {
+                        if (year == null) return;
+                        setState(() => _selectedYear = year);
+                      },
+                      onReportTypeChanged: (type) {
+                        if (type == null) return;
+                        setState(() => _selectedReportType = type);
+                      },
+                      onVillaChanged: (villaId) {
+                        setState(() {
+                          _selectedVillaId = villaId;
+                          _selectedRoomId = null;
+                        });
+                      },
+                      onRoomChanged: (roomId) {
+                        setState(() => _selectedRoomId = roomId);
+                      },
+                      onStatusChanged: (status) {
+                        if (status == null) return;
+                        setState(() => _selectedStatus = status);
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    _ReportHeader(
+                      title: _selectedReportType.label,
+                      subtitle: _selectedReportType == ReportType.yearlySummary
+                          ? '$_selectedYear'
+                          : _monthFormat.format(_selectedMonth),
+                    ),
+                    const SizedBox(height: 14),
+                    _buildReportView(reportData),
+                  ],
+                );
+              },
+              error: (error, _) => Center(child: Text(error.toString())),
+              loading: () => const Center(child: CircularProgressIndicator()),
+            ),
             error: (error, _) => Center(child: Text(error.toString())),
             loading: () => const Center(child: CircularProgressIndicator()),
           ),
           error: (error, _) => Center(child: Text(error.toString())),
           loading: () => const Center(child: CircularProgressIndicator()),
         ),
-        error: (error, _) => Center(child: Text(error.toString())),
-        loading: () => const Center(child: CircularProgressIndicator()),
       ),
     );
   }

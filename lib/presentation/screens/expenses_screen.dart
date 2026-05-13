@@ -71,104 +71,106 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
             ),
         ],
       ),
-      body: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 116),
-        children: [
-          _MonthSelector(
-            month: selectedMonth,
-            onPrevious: () => _changeMonth(selectedMonth, -1),
-            onNext: () => _changeMonth(selectedMonth, 1),
-          ),
-          const SizedBox(height: 14),
-          _SummaryCard(total: total, month: selectedMonth),
-          const SizedBox(height: 16),
-          TextField(
-            onChanged: (value) => setState(() => _searchQuery = value),
-            decoration: InputDecoration(
-              hintText: 'Search expenses...',
-              prefixIcon: const Icon(Icons.search_rounded),
-              filled: true,
-              fillColor: Colors.white,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(16),
-                borderSide: const BorderSide(color: Color(0xFFE8EAF0)),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(16),
-                borderSide: const BorderSide(color: Color(0xFFE8EAF0)),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(16),
-                borderSide:
-                    const BorderSide(color: Color(0xFFF04438), width: 1.5),
-              ),
+      body: SafeArea(
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 150),
+          children: [
+            _MonthSelector(
+              month: selectedMonth,
+              onPrevious: () => _changeMonth(selectedMonth, -1),
+              onNext: () => _changeMonth(selectedMonth, 1),
             ),
-          ),
-          const SizedBox(height: 12),
-          DropdownButtonFormField<String>(
-            initialValue: _selectedCategory,
-            decoration: InputDecoration(
-              labelText: 'Category',
-              filled: true,
-              fillColor: Colors.white,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(16),
-                borderSide: const BorderSide(color: Color(0xFFE8EAF0)),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(16),
-                borderSide: const BorderSide(color: Color(0xFFE8EAF0)),
-              ),
-            ),
-            items: [
-              const DropdownMenuItem(
-                  value: 'All', child: Text('All Categories')),
-              ...ExpenseCategories.values.map(
-                (category) => DropdownMenuItem(
-                  value: category,
-                  child: Text(category),
+            const SizedBox(height: 14),
+            _SummaryCard(total: total, month: selectedMonth),
+            const SizedBox(height: 16),
+            TextField(
+              onChanged: (value) => setState(() => _searchQuery = value),
+              decoration: InputDecoration(
+                hintText: 'Search expenses...',
+                prefixIcon: const Icon(Icons.search_rounded),
+                filled: true,
+                fillColor: Colors.white,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: const BorderSide(color: Color(0xFFE8EAF0)),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: const BorderSide(color: Color(0xFFE8EAF0)),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide:
+                      const BorderSide(color: Color(0xFFF04438), width: 1.5),
                 ),
               ),
-            ],
-            onChanged: (value) {
-              if (value == null) return;
-              setState(() => _selectedCategory = value);
-            },
-          ),
-          const SizedBox(height: 18),
-          if (filteredExpenses.isEmpty)
-            const _EmptyExpenses()
-          else
-            LayoutBuilder(
-              builder: (context, constraints) {
-                return GridView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: filteredExpenses.length,
-                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 1,
-                    crossAxisSpacing: 12,
-                    mainAxisSpacing: 12,
-                    mainAxisExtent: 76,
+            ),
+            const SizedBox(height: 12),
+            DropdownButtonFormField<String>(
+              initialValue: _selectedCategory,
+              decoration: InputDecoration(
+                labelText: 'Category',
+                filled: true,
+                fillColor: Colors.white,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: const BorderSide(color: Color(0xFFE8EAF0)),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: const BorderSide(color: Color(0xFFE8EAF0)),
+                ),
+              ),
+              items: [
+                const DropdownMenuItem(
+                    value: 'All', child: Text('All Categories')),
+                ...ExpenseCategories.values.map(
+                  (category) => DropdownMenuItem(
+                    value: category,
+                    child: Text(category),
                   ),
-                  itemBuilder: (context, index) {
-                    final expense = filteredExpenses[index];
-
-                    return ExpenseCard(
-                      expense: expense,
-                      onTap: () => _openDetail(expense),
-                      onEdit: canManageExpenses
-                          ? () => _openEditExpense(expense)
-                          : null,
-                      onDelete: canManageExpenses
-                          ? () => _confirmDelete(expense)
-                          : null,
-                    );
-                  },
-                );
+                ),
+              ],
+              onChanged: (value) {
+                if (value == null) return;
+                setState(() => _selectedCategory = value);
               },
             ),
-        ],
+            const SizedBox(height: 18),
+            if (filteredExpenses.isEmpty)
+              const _EmptyExpenses()
+            else
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  return GridView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: filteredExpenses.length,
+                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 1,
+                      crossAxisSpacing: 12,
+                      mainAxisSpacing: 12,
+                      mainAxisExtent: 76,
+                    ),
+                    itemBuilder: (context, index) {
+                      final expense = filteredExpenses[index];
+
+                      return ExpenseCard(
+                        expense: expense,
+                        onTap: () => _openDetail(expense),
+                        onEdit: canManageExpenses
+                            ? () => _openEditExpense(expense)
+                            : null,
+                        onDelete: canManageExpenses
+                            ? () => _confirmDelete(expense)
+                            : null,
+                      );
+                    },
+                  );
+                },
+              ),
+          ],
+        ),
       ),
       floatingActionButton: canManageExpenses
           ? Padding(

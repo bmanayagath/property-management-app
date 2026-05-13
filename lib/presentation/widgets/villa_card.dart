@@ -54,7 +54,7 @@ class VillaCard extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
         decoration: BoxDecoration(
           color: AppColors.surface,
           borderRadius: BorderRadius.circular(12),
@@ -72,7 +72,7 @@ class VillaCard extends StatelessWidget {
             Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.all(10),
+                  padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
                     color: AppColors.primary.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(8),
@@ -83,7 +83,7 @@ class VillaCard extends StatelessWidget {
                     size: 20,
                   ),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: 10),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -98,7 +98,7 @@ class VillaCard extends StatelessWidget {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
-                      const SizedBox(height: 4),
+                      const SizedBox(height: 2),
                       Text(
                         villa.location,
                         style: const TextStyle(
@@ -147,17 +147,17 @@ class VillaCard extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 8),
             Row(
               children: [
                 _RoomChip(label: 'Total', value: _activeRooms.length),
-                const SizedBox(width: 8),
+                const SizedBox(width: 6),
                 _RoomChip(
                   label: 'Occupied',
                   value: _occupiedRooms,
                   color: AppColors.success,
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 6),
                 _RoomChip(
                   label: 'Vacant',
                   value: _vacantRooms,
@@ -165,7 +165,7 @@ class VillaCard extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 7),
             Row(
               children: [
                 Expanded(
@@ -183,7 +183,7 @@ class VillaCard extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 6),
             Row(
               children: [
                 Expanded(
@@ -231,7 +231,7 @@ class _RoomChip extends StatelessWidget {
   Widget build(BuildContext context) {
     return Expanded(
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
+        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 5),
         decoration: BoxDecoration(
           color: color.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(8),
@@ -247,7 +247,7 @@ class _RoomChip extends StatelessWidget {
                 fontWeight: FontWeight.w900,
               ),
             ),
-            const SizedBox(width: 5),
+            const SizedBox(width: 4),
             Flexible(
               child: Text(
                 label,
@@ -255,7 +255,7 @@ class _RoomChip extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
                   color: color,
-                  fontSize: 11,
+                  fontSize: 10,
                   fontWeight: FontWeight.w800,
                 ),
               ),
@@ -283,23 +283,31 @@ class _FinancialValue extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          label,
-          style: const TextStyle(
-            color: Color(0xFF9CA3AF),
-            fontSize: 10,
-            fontWeight: FontWeight.w700,
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: Alignment.centerLeft,
+          child: Text(
+            label,
+            maxLines: 1,
+            style: const TextStyle(
+              color: Color(0xFF9CA3AF),
+              fontSize: 9,
+              fontWeight: FontWeight.w700,
+            ),
           ),
         ),
-        const SizedBox(height: 3),
-        Text(
-          value,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: TextStyle(
-            color: color,
-            fontSize: 13,
-            fontWeight: FontWeight.w900,
+        const SizedBox(height: 2),
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: Alignment.centerLeft,
+          child: Text(
+            value,
+            maxLines: 1,
+            style: TextStyle(
+              color: color,
+              fontSize: 12,
+              fontWeight: FontWeight.w900,
+            ),
           ),
         ),
       ],

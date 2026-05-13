@@ -49,7 +49,7 @@ class DashboardScreen extends ConsumerWidget {
             ref.invalidate(dashboardSummaryProvider);
           },
           child: ListView(
-            padding: const EdgeInsets.fromLTRB(18, 8, 18, 112),
+            padding: const EdgeInsets.fromLTRB(18, 8, 18, 150),
             children: [
               const _DashboardHeader(),
               const SizedBox(height: 24),
