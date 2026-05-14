@@ -10,6 +10,10 @@ service cloud.firestore {
       return get(/databases/$(database)/documents/users/$(uid));
     }
 
+    function firstAdminNotCreated() {
+      return !exists(/databases/$(database)/documents/appConfig/auth);
+    }
+
     function role() {
       return signedIn() && userProfile(request.auth.uid).data.isActive == true
         && userProfile(request.auth.uid).data.isDeleted != true
@@ -37,6 +41,15 @@ service cloud.firestore {
       return false;
     }
 
+    function createsActiveRecord() {
+      return request.resource.data.isDeleted != true;
+    }
+
+    function updatesActiveRecord() {
+      return resource.data.isDeleted != true
+        && request.resource.data.isDeleted != true;
+    }
+
     function reactivatesOwnProfile(userId) {
       return request.auth.uid == userId
         && resource.data.isDeleted == true
@@ -46,8 +59,15 @@ service cloud.firestore {
     }
 
     match /users/{userId} {
-      allow read: if signedIn() && (request.auth.uid == userId || isAdmin());
+      allow read: if signedIn()
+        && (firstAdminNotCreated() || request.auth.uid == userId || isAdmin());
       allow create: if signedIn() && (
+        (
+          firstAdminNotCreated() &&
+          request.auth.uid == userId &&
+          request.resource.data.role == 'Admin' &&
+          request.resource.data.isActive == true
+        ) ||
         (
           request.auth.uid == userId &&
           !exists(/databases/$(database)/documents/users/$(userId)) &&
@@ -67,6 +87,14 @@ service cloud.firestore {
       allow delete: if noHardDelete();
     }
 
+    match /appConfig/auth {
+      allow read: if signedIn();
+      allow create: if signedIn()
+        && firstAdminNotCreated()
+        && request.resource.data.firstAdminUid == request.auth.uid;
+      allow update, delete: if isAdmin();
+    }
+
     match /villas/{villaId} {
       allow read: if signedIn();
       allow create, update: if signedIn() && isAdmin();
@@ -81,19 +109,28 @@ service cloud.firestore {
 
     match /incomes/{incomeId} {
       allow read: if signedIn();
-      allow create, update: if signedIn() && (isAdmin() || isContributor());
+      allow create: if signedIn()
+        && (isAdmin() || (isContributor() && createsActiveRecord()));
+      allow update: if signedIn()
+        && (isAdmin() || (isContributor() && updatesActiveRecord()));
       allow delete: if noHardDelete();
     }
 
     match /expenses/{expenseId} {
       allow read: if signedIn();
-      allow create, update: if signedIn() && (isAdmin() || isContributor());
+      allow create: if signedIn()
+        && (isAdmin() || (isContributor() && createsActiveRecord()));
+      allow update: if signedIn()
+        && (isAdmin() || (isContributor() && updatesActiveRecord()));
       allow delete: if noHardDelete();
     }
 
     match /notifications/{notificationId} {
       allow read: if signedIn();
-      allow create, update: if signedIn() && (isAdmin() || isContributor());
+      allow create: if signedIn()
+        && (isAdmin() || (isContributor() && createsActiveRecord()));
+      allow update: if signedIn()
+        && (isAdmin() || (isContributor() && updatesActiveRecord()));
       allow delete: if noHardDelete();
     }
 

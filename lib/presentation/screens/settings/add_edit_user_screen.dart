@@ -21,6 +21,7 @@ class _AddEditUserScreenState extends ConsumerState<AddEditUserScreen> {
   final _formKey = GlobalKey<FormState>();
   final _uidController = TextEditingController();
   final _emailController = TextEditingController();
+  final _displayNameController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
   late String _selectedRole;
@@ -33,6 +34,7 @@ class _AddEditUserScreenState extends ConsumerState<AddEditUserScreen> {
     final user = widget.user;
     _uidController.text = user?.id ?? '';
     _emailController.text = user?.username ?? '';
+    _displayNameController.text = user?.displayName ?? '';
     _selectedRole = user?.role ?? AppRoles.reader;
   }
 
@@ -40,6 +42,7 @@ class _AddEditUserScreenState extends ConsumerState<AddEditUserScreen> {
   void dispose() {
     _uidController.dispose();
     _emailController.dispose();
+    _displayNameController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
     super.dispose();
@@ -96,6 +99,12 @@ class _AddEditUserScreenState extends ConsumerState<AddEditUserScreen> {
                       if (duplicate) return 'Email already exists';
                       return null;
                     },
+                  ),
+                  const SizedBox(height: 14),
+                  TextFormField(
+                    controller: _displayNameController,
+                    textCapitalization: TextCapitalization.words,
+                    decoration: _inputDecoration('Display Name'),
                   ),
                   if (!_isEditing) ...[
                     const SizedBox(height: 14),
@@ -206,8 +215,10 @@ class _AddEditUserScreenState extends ConsumerState<AddEditUserScreen> {
 
     final user = AppUser(
       id: existing?.id ?? '',
-      username: _emailController.text.trim(),
+      username: _emailController.text.trim().toLowerCase(),
+      displayName: _displayNameController.text.trim(),
       role: _selectedRole,
+      isActive: existing?.isActive ?? true,
       createdAt: existing?.createdAt ?? DateTime.now(),
       updatedAt: existing == null ? null : DateTime.now(),
     );

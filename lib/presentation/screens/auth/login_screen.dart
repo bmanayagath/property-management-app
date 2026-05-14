@@ -97,12 +97,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       autofillHints: const [AutofillHints.email],
                       decoration: _inputDecoration(
                         label: 'Email',
-                        icon: Icons.person_outline_rounded,
+                        icon: Icons.mail_outline_rounded,
                       ),
-                      validator: (value) =>
-                          value == null || value.trim().isEmpty
-                              ? 'Email is required'
-                              : null,
+                      validator: (value) {
+                        final email = value?.trim() ?? '';
+                        if (email.isEmpty) return 'Email is required';
+                        if (!RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$')
+                            .hasMatch(email)) {
+                          return 'Enter a valid email address';
+                        }
+                        return null;
+                      },
                     ),
                     const SizedBox(height: 14),
                     TextFormField(
@@ -141,7 +146,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     ],
                     const SizedBox(height: 24),
                     FilledButton(
-                      onPressed: _isSubmitting ? null : _login,
+                      onPressed:
+                          _isSubmitting || authState.isLoading ? null : _login,
                       style: FilledButton.styleFrom(
                         backgroundColor: const Color(0xFF2563EB),
                         foregroundColor: Colors.white,
@@ -150,7 +156,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           borderRadius: BorderRadius.circular(16),
                         ),
                       ),
-                      child: _isSubmitting
+                      child: _isSubmitting || authState.isLoading
                           ? const SizedBox(
                               height: 20,
                               width: 20,

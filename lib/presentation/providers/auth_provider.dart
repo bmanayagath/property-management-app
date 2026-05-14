@@ -1,20 +1,28 @@
-import 'dart:convert';
+import 'dart:async';
 
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'package:uuid/uuid.dart';
 
 import '../../core/constants/app_permissions.dart';
 import '../../core/constants/app_roles.dart';
 import '../../core/startup/startup_status.dart';
+import '../../data/services/auth_service.dart';
 import '../../domain/models/app_user.dart';
 
+final authServiceProvider = Provider<AuthService?>((ref) {
+  final startupStatus = ref.watch(startupStatusProvider);
+  if (!startupStatus.firebaseInitialized || Firebase.apps.isEmpty) {
+    return null;
+  }
+  return AuthService();
+});
+
 final authProvider = StateNotifierProvider<AuthNotifier, AuthState>((ref) {
-  return AuthNotifier(ref.watch(startupStatusProvider));
+  return AuthNotifier(
+    service: ref.watch(authServiceProvider),
+    startupStatus: ref.watch(startupStatusProvider),
+  );
 });
 
 class AuthState {
@@ -30,10 +38,13 @@ class AuthState {
     this.errorMessage,
   });
 
-  const AuthState.loading()
-      : this(
+  const AuthState.loading({
+    List<AppUser> users = const [],
+    AppUser? currentUser,
+  }) : this(
           isLoading: true,
-          users: const [],
+          users: users,
+          currentUser: currentUser,
         );
 
   const AuthState.ready({
@@ -51,59 +62,64 @@ class AuthState {
 
   bool hasPermission(String permission) {
     final user = currentUser;
-    if (user == null) return false;
+    if (user == null || !user.isActive) return false;
     return AppRoles.permissionsForRole(user.role).contains(permission);
   }
 }
 
 class AuthNotifier extends StateNotifier<AuthState> {
-  AuthNotifier(this._startupStatus) : super(const AuthState.loading()) {
-    loadSession();
+  AuthNotifier({
+    required AuthService? service,
+    required StartupStatus startupStatus,
+  })  : _service = service,
+        _startupStatus = startupStatus,
+        super(const AuthState.loading()) {
+    _listenToFirebaseAuth();
   }
 
+  final AuthService? _service;
   final StartupStatus _startupStatus;
-  static const usersKey = 'villabooks_users';
-  static const loggedInUserIdKey = 'villabooks_logged_in_user_id';
+  StreamSubscription<Object?>? _authSubscription;
 
   Future<bool> login(String email, String password) async {
+    final normalizedEmail = email.trim().toLowerCase();
+    if (normalizedEmail.isEmpty || password.isEmpty) {
+      state = AuthState.ready(
+        users: state.users,
+        currentUser: state.currentUser,
+        errorMessage: 'Enter your email and password.',
+      );
+      return false;
+    }
+
+    final service = _service;
+    if (service == null) {
+      state = AuthState.ready(
+        users: const [],
+        errorMessage: _startupStatus.hasFirebaseError
+            ? 'Firebase is unavailable. Connect to Firebase to sign in.'
+            : 'Firebase Auth is required to sign in.',
+      );
+      return false;
+    }
+
+    state = AuthState.loading(
+      users: state.users,
+      currentUser: state.currentUser,
+    );
+
     try {
-      final normalizedEmail = email.trim().toLowerCase();
-      if (normalizedEmail.isEmpty || password.isEmpty) {
-        state = AuthState.ready(
-          users: state.users,
-          errorMessage: 'Enter your email and password.',
-        );
-        return false;
-      }
-
-      final auth = _firebaseAuth;
-      if (auth == null) {
-        return _loginWithCachedUser(normalizedEmail, password);
-      }
-
-      final credential = await auth.signInWithEmailAndPassword(
+      final user = await service.login(
         email: normalizedEmail,
         password: password,
       );
-      final firebaseUser = credential.user;
-      if (firebaseUser == null) {
-        state = AuthState.ready(
-          users: state.users,
-          errorMessage: 'Unable to sign in. Please try again.',
-        );
-        return false;
-      }
-
-      final appUser = await _loadCloudUserProfile(firebaseUser);
-      final users = await _mergeAndSaveUser(appUser);
-      debugPrint('[Auth] Firebase login succeeded for "${appUser.username}".');
-      state = AuthState.ready(users: users, currentUser: appUser);
+      final users = await _loadUsersForCurrentRole(service, user);
+      state = AuthState.ready(users: users, currentUser: user);
       return true;
-    } on firebase_auth.FirebaseAuthException catch (error) {
-      debugPrint('[Auth] Firebase login failed: ${error.code}');
+    } on AuthServiceException catch (error) {
       state = AuthState.ready(
         users: state.users,
-        errorMessage: _friendlyAuthMessage(error),
+        errorMessage: error.message,
       );
       return false;
     } catch (error, stackTrace) {
@@ -111,7 +127,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
       debugPrintStack(stackTrace: stackTrace);
       state = AuthState.ready(
         users: state.users,
-        errorMessage: 'Unable to log in. Please restart the app and try again.',
+        errorMessage: 'Unable to log in. Please try again.',
       );
       return false;
     }
@@ -119,154 +135,74 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
   Future<void> logout() async {
     try {
-      await _firebaseAuth?.signOut();
-      final preferences = await SharedPreferences.getInstance();
-      await preferences.remove(loggedInUserIdKey);
+      await _service?.logout();
     } catch (error, stackTrace) {
-      debugPrint('[Auth] Logout persistence failed: $error');
+      debugPrint('[Auth] Logout failed: $error');
       debugPrintStack(stackTrace: stackTrace);
     } finally {
-      state = AuthState.ready(users: state.users);
+      state = const AuthState.ready(users: []);
     }
   }
 
   Future<void> loadSession() async {
-    try {
-      debugPrint('[Auth] Loading saved session.');
-      final users = await loadUsers();
-      AppUser? currentUser;
-
-      final firebaseUser = _firebaseAuth?.currentUser;
-      if (firebaseUser != null) {
-        currentUser = await _loadCloudUserProfile(firebaseUser);
-        await _mergeAndSaveUser(currentUser);
-      } else {
-        final preferences = await SharedPreferences.getInstance();
-        final loggedInUserId = preferences.getString(loggedInUserIdKey);
-        currentUser = loggedInUserId == null
-            ? null
-            : users.where((user) => user.id == loggedInUserId).firstOrNull;
-      }
-
-      debugPrint(
-        '[Auth] Session loaded. users=${users.length}, loggedIn=${currentUser != null}',
-      );
-      state = AuthState.ready(
-        users: currentUser == null ? users : await loadUsers(),
-        currentUser: currentUser,
-      );
-    } catch (error, stackTrace) {
-      debugPrint('[Auth] Failed to load session: $error');
-      debugPrintStack(stackTrace: stackTrace);
-      state = AuthState.ready(
-        users: const [],
-        errorMessage: 'Local session could not be loaded.',
-      );
-    }
+    await _refreshFromFirebaseUser();
   }
 
   Future<List<AppUser>> loadUsers() async {
-    try {
-      final cachedUsers = await _loadUsersFromPrefs();
-      final cloudUsers = await _loadCloudUsers();
-      final users = cloudUsers.isEmpty ? cachedUsers : cloudUsers;
-      if (cloudUsers.isNotEmpty) {
-        await _saveUsers(cloudUsers);
-      }
-      debugPrint(
-        '[Auth] Users ready. count=${users.length}, usernames=${_usernamesForLog(users)}',
-      );
-      return users;
-    } catch (error, stackTrace) {
-      debugPrint('[Auth] Failed to load users: $error');
-      debugPrintStack(stackTrace: stackTrace);
-      return _loadUsersFromPrefs();
-    }
-  }
+    final service = _service;
+    final currentUser = state.currentUser;
+    if (service == null || currentUser == null) return const [];
 
-  Future<void> resetLocalAuthForDevelopment() async {
-    final preferences = await SharedPreferences.getInstance();
-    await preferences.remove(usersKey);
-    await preferences.remove(loggedInUserIdKey);
-    debugPrint(
-      '[Auth] Cleared local auth keys: $usersKey, $loggedInUserIdKey.',
-    );
-    await loadSession();
+    final users = await _loadUsersForCurrentRole(service, currentUser);
+    state = AuthState.ready(users: users, currentUser: currentUser);
+    return users;
   }
 
   Future<bool> addUser(AppUser user, {required String password}) async {
-    final auth = _firebaseAuth;
-    if (auth == null) {
+    final service = _service;
+    if (service == null || !canManageUsers()) {
       state = AuthState.ready(
         users: state.users,
         currentUser: state.currentUser,
-        errorMessage: _startupStatus.hasFirebaseError
-            ? 'Firebase is unavailable. Connect to Firebase to create users.'
-            : 'Firebase Auth is required to create users.',
+        errorMessage: 'Only admins can create Firebase users.',
       );
       return false;
     }
 
-    firebase_auth.FirebaseAuth? secondaryAuth;
-    firebase_auth.User? createdFirebaseUser;
     try {
-      secondaryAuth = await _secondaryFirebaseAuth();
-      final credential = await secondaryAuth.createUserWithEmailAndPassword(
-        email: user.username.trim().toLowerCase(),
+      final savedUser = await service.createUser(
+        email: user.username,
         password: password,
+        role: user.role,
+        displayName: user.displayName,
       );
-      createdFirebaseUser = credential.user;
-      if (createdFirebaseUser == null) {
-        state = AuthState.ready(
-          users: state.users,
-          currentUser: state.currentUser,
-          errorMessage: 'Unable to create user. Please try again.',
-        );
-        return false;
-      }
-
-      final savedUser = user.copyWith(
-        id: createdFirebaseUser.uid,
-        username: user.username.trim().toLowerCase(),
-        password: '',
-        createdAt: user.createdAt,
-      );
-      await _saveCloudUser(savedUser);
-      final users = [...state.users, savedUser];
-      await _saveAndSetUsers(users);
+      final users = [...state.users, savedUser]
+        ..sort((a, b) => a.username.compareTo(b.username));
+      state = AuthState.ready(users: users, currentUser: state.currentUser);
       return true;
-    } on firebase_auth.FirebaseAuthException catch (error) {
-      debugPrint('[Auth] Firebase user creation failed: ${error.code}');
+    } on AuthServiceException catch (error) {
       state = AuthState.ready(
         users: state.users,
         currentUser: state.currentUser,
-        errorMessage: _friendlyCreateUserMessage(error),
+        errorMessage: error.message,
       );
       return false;
     } catch (error, stackTrace) {
       debugPrint('[Auth] User creation failed: $error');
       debugPrintStack(stackTrace: stackTrace);
-      if (createdFirebaseUser != null) {
-        try {
-          await createdFirebaseUser.delete();
-        } catch (cleanupError, cleanupStackTrace) {
-          debugPrint('[Auth] Created auth user cleanup failed: $cleanupError');
-          debugPrintStack(stackTrace: cleanupStackTrace);
-        }
-      }
       state = AuthState.ready(
         users: state.users,
         currentUser: state.currentUser,
         errorMessage: 'Unable to create user. Please try again.',
       );
       return false;
-    } finally {
-      await secondaryAuth?.signOut();
-      await secondaryAuth?.app.delete();
     }
   }
 
   Future<void> updateUser(AppUser user) async {
+    final service = _service;
+    if (service == null || !canManageUsers()) return;
+
     final existing =
         state.users.where((item) => item.id == user.id).firstOrNull;
     if (existing == null) return;
@@ -277,17 +213,26 @@ class AuthNotifier extends StateNotifier<AuthState> {
       if (adminCount <= 1) return;
     }
 
-    final updatedUser = user.copyWith(password: '', updatedAt: DateTime.now());
-    await _saveCloudUser(updatedUser);
+    final updatedUser = user.copyWith(
+      username: user.username.trim().toLowerCase(),
+      updatedAt: DateTime.now(),
+    );
+    await service.saveUserProfile(updatedUser);
     final users = [
       for (final existing in state.users)
         if (existing.id == user.id) updatedUser else existing,
-    ];
-    await _saveAndSetUsers(users);
+    ]..sort((a, b) => a.username.compareTo(b.username));
+    final currentUser = state.currentUser?.id == updatedUser.id
+        ? updatedUser
+        : state.currentUser;
+    state = AuthState.ready(users: users, currentUser: currentUser);
   }
 
   Future<void> deleteUser(String id) async {
+    final service = _service;
+    if (service == null || !canManageUsers()) return;
     if (state.currentUser?.id == id) return;
+
     final target = state.users.where((user) => user.id == id).firstOrNull;
     if (target == null) return;
 
@@ -297,9 +242,13 @@ class AuthNotifier extends StateNotifier<AuthState> {
       if (adminCount <= 1) return;
     }
 
-    await _softDeleteCloudUser(target);
+    await service.disableUser(target);
     final users = state.users.where((user) => user.id != id).toList();
-    await _saveAndSetUsers(users);
+    state = AuthState.ready(users: users, currentUser: state.currentUser);
+  }
+
+  Future<void> resetPassword(String email) async {
+    await _service?.resetPassword(email);
   }
 
   bool hasPermission(String permission) {
@@ -314,261 +263,69 @@ class AuthNotifier extends StateNotifier<AuthState> {
     return state.currentUser?.role == AppRoles.admin;
   }
 
-  Future<List<AppUser>> _loadUsersFromPrefs() async {
-    final preferences = await SharedPreferences.getInstance();
-    final rawUsers = preferences.getString(usersKey);
-    if (rawUsers == null || rawUsers.isEmpty) {
-      debugPrint('[Auth] Loaded users count=0, usernames=[]');
-      return [];
+  void _listenToFirebaseAuth() {
+    final service = _service;
+    if (service == null) {
+      state = AuthState.ready(
+        users: const [],
+        errorMessage: _startupStatus.firebaseError,
+      );
+      return;
     }
 
-    final decoded = jsonDecode(rawUsers) as List<dynamic>;
-    final users = decoded
-        .map((json) => AppUser.fromJson(json as Map<String, dynamic>))
-        .toList();
-    debugPrint(
-      '[Auth] Loaded users count=${users.length}, usernames=${_usernamesForLog(users)}',
-    );
-    return users;
-  }
-
-  Future<void> _saveAndSetUsers(List<AppUser> users) async {
-    await _saveUsers(users);
-    final currentUser = state.currentUser == null
-        ? null
-        : users.where((user) => user.id == state.currentUser!.id).firstOrNull;
-    state = AuthState.ready(users: users, currentUser: currentUser);
-  }
-
-  Future<void> _saveUsers(List<AppUser> users) async {
-    final preferences = await SharedPreferences.getInstance();
-    final encoded = jsonEncode(users.map((user) => user.toJson()).toList());
-    await preferences.setString(usersKey, encoded);
-    debugPrint(
-      '[Auth] Saved users count=${users.length}, usernames=${_usernamesForLog(users)}',
+    _authSubscription = service.authStateChanges().listen(
+      (_) => _refreshFromFirebaseUser(),
+      onError: (Object error, StackTrace stackTrace) {
+        debugPrint('[Auth] Auth state stream failed: $error');
+        debugPrintStack(stackTrace: stackTrace);
+        state = AuthState.ready(
+          users: state.users,
+          currentUser: state.currentUser,
+          errorMessage: 'Authentication state could not be loaded.',
+        );
+      },
     );
   }
 
-  String _usernamesForLog(List<AppUser> users) {
-    return users.map((user) => user.username).join(', ');
-  }
+  Future<void> _refreshFromFirebaseUser() async {
+    final service = _service;
+    if (service == null) return;
 
-  firebase_auth.FirebaseAuth? get _firebaseAuth {
-    if (!_startupStatus.firebaseInitialized || Firebase.apps.isEmpty) {
-      return null;
-    }
     try {
-      return firebase_auth.FirebaseAuth.instance;
+      final currentUser = await service.getCurrentUser();
+      if (currentUser == null) {
+        state = const AuthState.ready(users: []);
+        return;
+      }
+      final users = await _loadUsersForCurrentRole(service, currentUser);
+      state = AuthState.ready(users: users, currentUser: currentUser);
+    } on AuthServiceException catch (error) {
+      state = AuthState.ready(
+        users: const [],
+        errorMessage: error.message,
+      );
     } catch (error, stackTrace) {
-      debugPrint('[Auth] Firebase Auth unavailable: $error');
+      debugPrint('[Auth] Failed to load Firebase session: $error');
       debugPrintStack(stackTrace: stackTrace);
-      return null;
+      state = AuthState.ready(
+        users: const [],
+        errorMessage: 'Authentication state could not be loaded.',
+      );
     }
   }
 
-  Future<firebase_auth.FirebaseAuth> _secondaryFirebaseAuth() async {
-    final app = await Firebase.initializeApp(
-      name: 'user-creation-${const Uuid().v4()}',
-      options: Firebase.app().options,
-    );
-    return firebase_auth.FirebaseAuth.instanceFor(app: app);
-  }
-
-  FirebaseFirestore? get _firestore {
-    if (!_startupStatus.firebaseInitialized || Firebase.apps.isEmpty) {
-      return null;
-    }
-    try {
-      return FirebaseFirestore.instance;
-    } catch (error, stackTrace) {
-      debugPrint('[Auth] Firestore unavailable: $error');
-      debugPrintStack(stackTrace: stackTrace);
-      return null;
-    }
-  }
-
-  Future<bool> _loginWithCachedUser(String email, String password) async {
-    final users = state.users.isEmpty ? await loadUsers() : state.users;
-    debugPrint(
-      '[Auth] Firebase Auth unavailable for "$email"; local password login is disabled.',
-    );
-    state = AuthState.ready(
-      users: users,
-      errorMessage: _startupStatus.hasFirebaseError
-          ? 'Firebase is unavailable. Connect to Firebase to sign in.'
-          : 'Firebase Auth is required to sign in.',
-    );
-    return false;
-  }
-
-  Future<AppUser> _loadCloudUserProfile(
-    firebase_auth.User firebaseUser,
+  Future<List<AppUser>> _loadUsersForCurrentRole(
+    AuthService service,
+    AppUser currentUser,
   ) async {
-    final firestore = _firestore;
-    final now = DateTime.now();
-    if (firestore == null) {
-      return AppUser(
-        id: firebaseUser.uid,
-        username: firebaseUser.email ?? firebaseUser.uid,
-        role: AppRoles.reader,
-        createdAt: now,
-      );
-    }
-
-    final doc = await firestore.collection('users').doc(firebaseUser.uid).get();
-    final data = doc.data();
-    if (data == null) {
-      final user = AppUser(
-        id: firebaseUser.uid,
-        username: firebaseUser.email ?? firebaseUser.uid,
-        role: AppRoles.reader,
-        createdAt: now,
-      );
-      await _tryRepairCloudUserProfile(user);
-      return user;
-    }
-
-    final user = _appUserFromCloud(firebaseUser.uid, data);
-    if (data['isDeleted'] == true || data['isActive'] == false) {
-      await _tryRepairCloudUserProfile(user);
-    }
-
-    return user;
+    if (currentUser.role != AppRoles.admin) return [currentUser];
+    return service.fetchUsers();
   }
 
-  Future<List<AppUser>> _loadCloudUsers() async {
-    final firestore = _firestore;
-    final currentUser = _firebaseAuth?.currentUser;
-    if (firestore == null || currentUser == null) return const [];
-
-    final snapshot = await firestore
-        .collection('users')
-        .where('isDeleted', isEqualTo: false)
-        .get();
-    return snapshot.docs
-        .map((doc) => _appUserFromCloud(doc.id, doc.data()))
-        .toList();
-  }
-
-  AppUser _appUserFromCloud(String id, Map<String, dynamic> data) {
-    return AppUser(
-      id: id,
-      username: data['username'] as String? ?? data['email'] as String? ?? '',
-      role: data['role'] as String? ?? AppRoles.reader,
-      createdAt: _readCloudDate(data['createdAt']) ?? DateTime.now(),
-      updatedAt: _readCloudDate(data['updatedAt']),
-    );
-  }
-
-  Future<List<AppUser>> _mergeAndSaveUser(AppUser user) async {
-    final users = [
-      for (final existing in await _loadUsersFromPrefs())
-        if (existing.id == user.id) user else existing,
-    ];
-    if (!users.any((existing) => existing.id == user.id)) users.add(user);
-    await _saveUsers(users);
-    return users;
-  }
-
-  Future<void> _saveCloudUser(AppUser user) async {
-    final firestore = _firestore;
-    if (firestore == null) return;
-    await firestore.collection('users').doc(user.id).set(
-      {
-        'id': user.id,
-        'username': user.username,
-        'email': user.username,
-        'role': user.role,
-        'isActive': true,
-        'isDeleted': false,
-        'updatedAt': FieldValue.serverTimestamp(),
-        'createdAt': user.createdAt.toIso8601String(),
-      },
-      SetOptions(merge: true),
-    );
-  }
-
-  Future<void> _reactivateOwnCloudUser(AppUser user) async {
-    final firestore = _firestore;
-    if (firestore == null) return;
-    await firestore.collection('users').doc(user.id).set(
-      {
-        'id': user.id,
-        'username': user.username,
-        'email': user.username,
-        'role': user.role,
-        'isActive': true,
-        'isDeleted': false,
-        'updatedAt': FieldValue.serverTimestamp(),
-      },
-      SetOptions(merge: true),
-    );
-  }
-
-  Future<void> _tryRepairCloudUserProfile(AppUser user) async {
-    try {
-      await _reactivateOwnCloudUser(user);
-    } on FirebaseException catch (error, stackTrace) {
-      debugPrint(
-        '[Auth] Profile repair skipped for ${user.id}: ${error.code}',
-      );
-      debugPrintStack(stackTrace: stackTrace);
-    } catch (error, stackTrace) {
-      debugPrint('[Auth] Profile repair skipped for ${user.id}: $error');
-      debugPrintStack(stackTrace: stackTrace);
-    }
-  }
-
-  Future<void> _softDeleteCloudUser(AppUser user) async {
-    final firestore = _firestore;
-    if (firestore == null) return;
-    await firestore.collection('users').doc(user.id).set(
-      {
-        'isActive': false,
-        'isDeleted': true,
-        'updatedAt': FieldValue.serverTimestamp(),
-      },
-      SetOptions(merge: true),
-    );
-  }
-
-  DateTime? _readCloudDate(Object? value) {
-    if (value is Timestamp) return value.toDate();
-    if (value is String) return DateTime.tryParse(value);
-    if (value is DateTime) return value;
-    return null;
-  }
-
-  String _friendlyAuthMessage(firebase_auth.FirebaseAuthException error) {
-    switch (error.code) {
-      case 'invalid-email':
-        return 'Enter a valid email address.';
-      case 'user-disabled':
-        return 'This account has been disabled.';
-      case 'user-not-found':
-      case 'wrong-password':
-      case 'invalid-credential':
-        return 'Invalid email or password.';
-      case 'network-request-failed':
-        return 'No internet connection. Try again when you are online.';
-      default:
-        return 'Unable to sign in. Please try again.';
-    }
-  }
-
-  String _friendlyCreateUserMessage(firebase_auth.FirebaseAuthException error) {
-    switch (error.code) {
-      case 'email-already-in-use':
-        return 'That email already has a Firebase login.';
-      case 'invalid-email':
-        return 'Enter a valid email address.';
-      case 'weak-password':
-        return 'Password must be at least 6 characters.';
-      case 'network-request-failed':
-        return 'No internet connection. Try again when you are online.';
-      default:
-        return 'Unable to create user. Please try again.';
-    }
+  @override
+  void dispose() {
+    _authSubscription?.cancel();
+    super.dispose();
   }
 }
 
