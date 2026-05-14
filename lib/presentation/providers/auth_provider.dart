@@ -194,15 +194,76 @@ class AuthNotifier extends StateNotifier<AuthState> {
     await loadSession();
   }
 
-  Future<void> addUser(AppUser user) async {
-    final savedUser = user.copyWith(
-      id: user.id.isEmpty ? const Uuid().v4() : user.id,
-      password: '',
-      createdAt: user.createdAt,
-    );
-    await _saveCloudUser(savedUser);
-    final users = [...state.users, savedUser];
-    await _saveAndSetUsers(users);
+  Future<bool> addUser(AppUser user, {required String password}) async {
+    final auth = _firebaseAuth;
+    if (auth == null) {
+      state = AuthState.ready(
+        users: state.users,
+        currentUser: state.currentUser,
+        errorMessage: _startupStatus.hasFirebaseError
+            ? 'Firebase is unavailable. Connect to Firebase to create users.'
+            : 'Firebase Auth is required to create users.',
+      );
+      return false;
+    }
+
+    firebase_auth.FirebaseAuth? secondaryAuth;
+    firebase_auth.User? createdFirebaseUser;
+    try {
+      secondaryAuth = await _secondaryFirebaseAuth();
+      final credential = await secondaryAuth.createUserWithEmailAndPassword(
+        email: user.username.trim().toLowerCase(),
+        password: password,
+      );
+      createdFirebaseUser = credential.user;
+      if (createdFirebaseUser == null) {
+        state = AuthState.ready(
+          users: state.users,
+          currentUser: state.currentUser,
+          errorMessage: 'Unable to create user. Please try again.',
+        );
+        return false;
+      }
+
+      final savedUser = user.copyWith(
+        id: createdFirebaseUser.uid,
+        username: user.username.trim().toLowerCase(),
+        password: '',
+        createdAt: user.createdAt,
+      );
+      await _saveCloudUser(savedUser);
+      final users = [...state.users, savedUser];
+      await _saveAndSetUsers(users);
+      return true;
+    } on firebase_auth.FirebaseAuthException catch (error) {
+      debugPrint('[Auth] Firebase user creation failed: ${error.code}');
+      state = AuthState.ready(
+        users: state.users,
+        currentUser: state.currentUser,
+        errorMessage: _friendlyCreateUserMessage(error),
+      );
+      return false;
+    } catch (error, stackTrace) {
+      debugPrint('[Auth] User creation failed: $error');
+      debugPrintStack(stackTrace: stackTrace);
+      if (createdFirebaseUser != null) {
+        try {
+          await createdFirebaseUser.delete();
+        } catch (cleanupError, cleanupStackTrace) {
+          debugPrint('[Auth] Created auth user cleanup failed: $cleanupError');
+          debugPrintStack(stackTrace: cleanupStackTrace);
+        }
+      }
+      state = AuthState.ready(
+        users: state.users,
+        currentUser: state.currentUser,
+        errorMessage: 'Unable to create user. Please try again.',
+      );
+      return false;
+    } finally {
+      await secondaryAuth?.signOut();
+      await secondaryAuth?.app.delete();
+    }
   }
 
   Future<void> updateUser(AppUser user) async {
@@ -303,6 +364,14 @@ class AuthNotifier extends StateNotifier<AuthState> {
       debugPrintStack(stackTrace: stackTrace);
       return null;
     }
+  }
+
+  Future<firebase_auth.FirebaseAuth> _secondaryFirebaseAuth() async {
+    final app = await Firebase.initializeApp(
+      name: 'user-creation-${const Uuid().v4()}',
+      options: Firebase.app().options,
+    );
+    return firebase_auth.FirebaseAuth.instanceFor(app: app);
   }
 
   FirebaseFirestore? get _firestore {
@@ -484,6 +553,21 @@ class AuthNotifier extends StateNotifier<AuthState> {
         return 'No internet connection. Try again when you are online.';
       default:
         return 'Unable to sign in. Please try again.';
+    }
+  }
+
+  String _friendlyCreateUserMessage(firebase_auth.FirebaseAuthException error) {
+    switch (error.code) {
+      case 'email-already-in-use':
+        return 'That email already has a Firebase login.';
+      case 'invalid-email':
+        return 'Enter a valid email address.';
+      case 'weak-password':
+        return 'Password must be at least 6 characters.';
+      case 'network-request-failed':
+        return 'No internet connection. Try again when you are online.';
+      default:
+        return 'Unable to create user. Please try again.';
     }
   }
 }

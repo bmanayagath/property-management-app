@@ -21,6 +21,8 @@ class _AddEditUserScreenState extends ConsumerState<AddEditUserScreen> {
   final _formKey = GlobalKey<FormState>();
   final _uidController = TextEditingController();
   final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  final _confirmPasswordController = TextEditingController();
   late String _selectedRole;
 
   bool get _isEditing => widget.user != null;
@@ -38,6 +40,8 @@ class _AddEditUserScreenState extends ConsumerState<AddEditUserScreen> {
   void dispose() {
     _uidController.dispose();
     _emailController.dispose();
+    _passwordController.dispose();
+    _confirmPasswordController.dispose();
     super.dispose();
   }
 
@@ -65,21 +69,14 @@ class _AddEditUserScreenState extends ConsumerState<AddEditUserScreen> {
               ),
               child: Column(
                 children: [
-                  TextFormField(
-                    controller: _uidController,
-                    enabled: !_isEditing,
-                    decoration: _inputDecoration('Firebase Auth UID'),
-                    validator: (value) {
-                      final uid = value?.trim() ?? '';
-                      if (uid.isEmpty) return 'Firebase Auth UID is required';
-                      final duplicate = users.any(
-                        (user) => user.id == uid && user.id != widget.user?.id,
-                      );
-                      if (duplicate) return 'UID already has a profile';
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 14),
+                  if (_isEditing) ...[
+                    TextFormField(
+                      controller: _uidController,
+                      enabled: false,
+                      decoration: _inputDecoration('Firebase Auth UID'),
+                    ),
+                    const SizedBox(height: 14),
+                  ],
                   TextFormField(
                     controller: _emailController,
                     keyboardType: TextInputType.emailAddress,
@@ -100,6 +97,37 @@ class _AddEditUserScreenState extends ConsumerState<AddEditUserScreen> {
                       return null;
                     },
                   ),
+                  if (!_isEditing) ...[
+                    const SizedBox(height: 14),
+                    TextFormField(
+                      controller: _passwordController,
+                      obscureText: true,
+                      decoration: _inputDecoration('Password'),
+                      validator: (value) {
+                        final password = value ?? '';
+                        if (password.isEmpty) return 'Password is required';
+                        if (password.length < 6) {
+                          return 'Password must be at least 6 characters';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 14),
+                    TextFormField(
+                      controller: _confirmPasswordController,
+                      obscureText: true,
+                      decoration: _inputDecoration('Confirm Password'),
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Confirm the password';
+                        }
+                        if (value != _passwordController.text) {
+                          return 'Passwords do not match';
+                        }
+                        return null;
+                      },
+                    ),
+                  ],
                   const SizedBox(height: 14),
                   DropdownButtonFormField<String>(
                     initialValue: _selectedRole,
@@ -177,7 +205,7 @@ class _AddEditUserScreenState extends ConsumerState<AddEditUserScreen> {
     }
 
     final user = AppUser(
-      id: existing?.id ?? _uidController.text.trim(),
+      id: existing?.id ?? '',
       username: _emailController.text.trim(),
       role: _selectedRole,
       createdAt: existing?.createdAt ?? DateTime.now(),
@@ -185,13 +213,25 @@ class _AddEditUserScreenState extends ConsumerState<AddEditUserScreen> {
     );
 
     final notifier = ref.read(authProvider.notifier);
+    var didSave = true;
     if (_isEditing) {
       await notifier.updateUser(user);
     } else {
-      await notifier.addUser(user);
+      didSave = await notifier.addUser(
+        user,
+        password: _passwordController.text,
+      );
     }
 
     if (!mounted) return;
-    Navigator.pop(context);
+    if (didSave) {
+      Navigator.pop(context);
+    } else {
+      final message = ref.read(authProvider).errorMessage ??
+          'Unable to save user. Please try again.';
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message)),
+      );
+    }
   }
 }
