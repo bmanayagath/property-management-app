@@ -29,8 +29,10 @@ class AppNotification {
       title: json['title'] as String,
       body: json['body'] as String,
       type: json['type'] as String,
-      createdByUserId: json['createdByUserId'] as String,
-      createdByUsername: json['createdByUsername'] as String,
+      createdByUserId: json['createdByUserId'] as String? ??
+          json['createdBy'] as String? ??
+          '',
+      createdByUsername: json['createdByUsername'] as String? ?? '',
       targetUserIds: _stringListFromJson(json['targetUserIds']),
       targetRole: json['targetRole'] as String?,
       createdAt: _dateTimeFromJson(json['createdAt']),
@@ -45,11 +47,13 @@ class AppNotification {
       'body': body,
       'type': type,
       'createdByUserId': createdByUserId,
+      'createdBy': createdByUserId,
       'createdByUsername': createdByUsername,
       'targetUserIds': targetUserIds,
       'targetRole': targetRole,
       'createdAt': createdAt.toIso8601String(),
       'isReadMap': isReadMap,
+      'isDeleted': false,
     };
   }
 
@@ -91,6 +95,11 @@ class NotificationTypes {
   static const incomeAdded = 'income_added';
   static const expenseAdded = 'expense_added';
   static const villaAdded = 'villa_added';
+  static const villaUpdated = 'villa_updated';
+  static const villaDeleted = 'villa_deleted';
+  static const roomAdded = 'room_added';
+  static const roomUpdated = 'room_updated';
+  static const roomDeleted = 'room_deleted';
   static const villaVacant = 'villa_vacant';
   static const highExpense = 'high_expense';
   static const rentDue = 'rent_due';
@@ -101,6 +110,11 @@ class NotificationTypes {
     incomeAdded,
     expenseAdded,
     villaAdded,
+    villaUpdated,
+    villaDeleted,
+    roomAdded,
+    roomUpdated,
+    roomDeleted,
     villaVacant,
     highExpense,
     rentDue,

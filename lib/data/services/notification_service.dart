@@ -82,6 +82,14 @@ class NotificationService {
     _notificationsController.add(updated);
   }
 
+  Future<AppNotification?> getNotificationById(String notificationId) async {
+    final notifications = await _loadNotifications();
+    for (final notification in notifications) {
+      if (notification.id == notificationId) return notification;
+    }
+    return null;
+  }
+
   Future<List<AppNotification>> _loadNotificationsForUser(String userId) async {
     final notifications = await _loadNotifications();
     return _filterForUser(notifications, userId);

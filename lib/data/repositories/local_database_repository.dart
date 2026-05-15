@@ -53,6 +53,10 @@ class LocalDatabaseRepository {
     required String collection,
     required String id,
   }) async {
+    if (!{'villas', 'rooms', 'incomes', 'expenses'}.contains(collection)) {
+      return;
+    }
+
     await database.customUpdate(
       '''
       UPDATE $collection
@@ -114,6 +118,13 @@ class LocalDatabaseRepository {
     final now = DateTime.now();
     final createdAt = villa.createdAt;
     final updatedAt = villa.updatedAt ?? createdAt;
+    if (_hasPendingLocalChange(
+      syncStatus: existing?.syncStatus,
+      localUpdatedAt: existing?.updatedAt,
+      remoteUpdatedAt: updatedAt,
+    )) {
+      return;
+    }
 
     final companion = db.VillasCompanion(
       id: Value(villa.id),
@@ -131,7 +142,7 @@ class LocalDatabaseRepository {
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
       isDeleted: Value(villa.isDeleted ? 1 : 0),
-      syncStatus: const Value('synced'),
+      syncStatus: Value(villa.syncStatus == 'pending' ? 'pending' : 'synced'),
       deletedAt: Value(villa.deletedAt),
       deletedBy: Value(villa.deletedBy),
       createdBy: Value(villa.createdBy),

@@ -117,8 +117,14 @@ class NotificationCard extends StatelessWidget {
       case NotificationTypes.highExpense:
         return Icons.receipt_long_outlined;
       case NotificationTypes.villaAdded:
+      case NotificationTypes.villaUpdated:
+      case NotificationTypes.villaDeleted:
       case NotificationTypes.villaVacant:
         return Icons.home_work_outlined;
+      case NotificationTypes.roomAdded:
+      case NotificationTypes.roomUpdated:
+      case NotificationTypes.roomDeleted:
+        return Icons.meeting_room_outlined;
       case NotificationTypes.rentDue:
       case NotificationTypes.pendingRent:
         return Icons.event_available_outlined;
@@ -137,7 +143,13 @@ class NotificationCard extends StatelessWidget {
       case NotificationTypes.highExpense:
         return const Color(0xFFF04438);
       case NotificationTypes.villaAdded:
+      case NotificationTypes.villaUpdated:
+      case NotificationTypes.roomAdded:
+      case NotificationTypes.roomUpdated:
         return const Color(0xFF2563EB);
+      case NotificationTypes.villaDeleted:
+      case NotificationTypes.roomDeleted:
+        return const Color(0xFFF04438);
       case NotificationTypes.villaVacant:
       case NotificationTypes.pendingRent:
       case NotificationTypes.rentDue:

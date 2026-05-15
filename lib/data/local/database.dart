@@ -199,10 +199,15 @@ class AppDatabase extends _$AppDatabase {
     await _addColumnIfMissingSql('villas', 'updated_by', 'TEXT');
     await _addColumnIfMissingSql('villas', 'last_synced_at', 'INTEGER');
 
+    await _addColumnIfMissingSql(
+        'rooms', 'is_deleted', 'INTEGER NOT NULL DEFAULT 0');
+    await _addColumnIfMissingSql(
+        'rooms', 'sync_status', "TEXT NOT NULL DEFAULT 'pending'");
     await _addColumnIfMissingSql('rooms', 'deleted_at', 'INTEGER');
     await _addColumnIfMissingSql('rooms', 'deleted_by', 'TEXT');
     await _addColumnIfMissingSql('rooms', 'created_by', 'TEXT');
     await _addColumnIfMissingSql('rooms', 'updated_by', 'TEXT');
+    await _addColumnIfMissingSql('rooms', 'last_synced_at', 'INTEGER');
 
     await _addColumnIfMissingSql(
         'incomes', 'is_deleted', 'INTEGER NOT NULL DEFAULT 0');

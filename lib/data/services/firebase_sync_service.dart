@@ -338,6 +338,50 @@ class FirebaseSyncService {
     });
   }
 
+  Stream<List<AppNotification>> watchCloudNotificationsForUser(String userId) {
+    if (_usesRestSync) {
+      debugPrint(
+        '[FirebaseSync] cloud notification stream disabled on Windows REST sync.',
+      );
+      return Stream.value(const []);
+    }
+
+    final firestore = _safeFirestore;
+    if (firestore == null) {
+      debugPrint('[FirebaseSync] cloud notification stream disabled.');
+      return Stream.value(const []);
+    }
+
+    return firestore
+        .collection('notifications')
+        .where('targetUserIds', arrayContains: userId)
+        .snapshots()
+        .asyncMap((snapshot) async {
+      final activeDocs = snapshot.docs
+          .where((doc) => doc.data()['isDeleted'] != true)
+          .toList();
+      final notifications = activeDocs
+          .map((doc) => AppNotification.fromJson(_withDocumentId(doc)))
+          .toList()
+        ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+
+      final localRepository = _localRepository;
+      if (localRepository != null) {
+        for (final notification in notifications) {
+          await localRepository.upsertNotification(notification);
+          debugPrint(
+            '[FirebaseSync] notification received id=${notification.id}',
+          );
+        }
+      }
+
+      debugPrint(
+        '[FirebaseSync] cloud notifications snapshot user=$userId raw=${snapshot.docs.length}, active=${activeDocs.length}',
+      );
+      return notifications;
+    });
+  }
+
   Stream<List<Income>> watchCloudIncomes() {
     if (_usesRestSync) {
       debugPrint(
@@ -675,8 +719,12 @@ class FirebaseSyncService {
             .collection(record.collection)
             .doc(record.id)
             .set(payload, SetOptions(merge: true));
+        await _localRepository?.markSyncRecordSynced(
+          collection: record.collection,
+          id: record.id,
+        );
         debugPrint(
-          '[FirebaseSync] synced ${record.collection}/${record.id}',
+          '[FirebaseSync] synced ${record.collection}/${record.id}; syncStatus=synced',
         );
       } catch (error) {
         debugPrint(
@@ -722,8 +770,12 @@ class FirebaseSyncService {
           payload,
           serverDeletedAt: record.data['isDeleted'] == true,
         );
+        await _localRepository?.markSyncRecordSynced(
+          collection: record.collection,
+          id: record.id,
+        );
         debugPrint(
-          '[FirebaseSync] REST synced ${record.collection}/${record.id}',
+          '[FirebaseSync] REST synced ${record.collection}/${record.id}; syncStatus=synced',
         );
       } catch (error, stackTrace) {
         debugPrint(
