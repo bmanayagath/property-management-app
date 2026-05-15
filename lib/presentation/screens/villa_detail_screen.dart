@@ -30,7 +30,7 @@ class VillaDetailScreen extends ConsumerWidget {
         return AlertDialog(
           title: const Text('Delete Villa?'),
           content: const Text(
-            'Deleting this villa will also remove all its rooms, income, and expenses from active records. Continue?',
+            'Deleting this villa will also remove all rooms, income, and expenses linked to it from active records. This action will sync to other devices. Do you want to continue?',
           ),
           actions: [
             TextButton(
@@ -47,9 +47,11 @@ class VillaDetailScreen extends ConsumerWidget {
                 Navigator.pop(context);
                 Navigator.pop(context);
               },
-              child: Text(
-                'Delete',
-                style: TextStyle(color: AppColors.error),
+              style: TextButton.styleFrom(
+                foregroundColor: AppColors.error,
+              ),
+              child: const Text(
+                'Delete Villa',
               ),
             ),
           ],

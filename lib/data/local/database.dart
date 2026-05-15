@@ -272,27 +272,65 @@ class AppDatabase extends _$AppDatabase {
   }
 
   Future<void> deleteVilla(String id, {String? deletedBy}) {
-    return transaction(() async {
-      final childRooms =
-          await (select(rooms)..where((tbl) => tbl.villaId.equals(id))).get();
-      final roomIds = childRooms.map((room) => room.id).toSet();
-      await softDeleteVilla(id, deletedBy: deletedBy);
-      await softDeleteRoomsByVilla(id, deletedBy: deletedBy);
-      await softDeleteIncomesForVillaOrRooms(
-        villaId: id,
-        roomIds: roomIds,
-        deletedBy: deletedBy,
-      );
-      await softDeleteExpensesForVillaOrRooms(
-        villaId: id,
-        roomIds: roomIds,
-        deletedBy: deletedBy,
-      );
-    });
+    return _deleteVillaCascade(id, deletedBy);
   }
 
   Future<void> deleteVillaCascade(String villaId, String currentUserId) {
-    return deleteVilla(villaId, deletedBy: currentUserId);
+    return _deleteVillaCascade(villaId, currentUserId);
+  }
+
+  Future<void> _deleteVillaCascade(String villaId, String? currentUserId) {
+    return transaction(() async {
+      final villa = await getVillaById(villaId);
+      if (villa == null) return;
+
+      final now = DateTime.now();
+      final childRooms = await (select(rooms)
+            ..where((tbl) => tbl.villaId.equals(villaId)))
+          .get();
+      final roomIds = childRooms.map((room) => room.id).toSet();
+
+      await _softDeleteWhere(
+        tableName: 'villas',
+        whereClause: 'id = ?',
+        whereArgs: [Variable<String>(villaId)],
+        now: now,
+        deletedBy: currentUserId,
+      );
+
+      await _softDeleteWhere(
+        tableName: 'rooms',
+        whereClause: 'villa_id = ?',
+        whereArgs: [Variable<String>(villaId)],
+        now: now,
+        deletedBy: currentUserId,
+      );
+
+      final placeholders = roomIds.map((_) => '?').join(', ');
+      final linkedRecordWhereClause = roomIds.isEmpty
+          ? 'villa_id = ?'
+          : 'villa_id = ? OR room_id IN ($placeholders)';
+      final linkedRecordWhereArgs = [
+        Variable<String>(villaId),
+        for (final roomId in roomIds) Variable<String>(roomId),
+      ];
+
+      await _softDeleteWhere(
+        tableName: 'incomes',
+        whereClause: linkedRecordWhereClause,
+        whereArgs: linkedRecordWhereArgs,
+        now: now,
+        deletedBy: currentUserId,
+      );
+
+      await _softDeleteWhere(
+        tableName: 'expenses',
+        whereClause: linkedRecordWhereClause,
+        whereArgs: linkedRecordWhereArgs,
+        now: now,
+        deletedBy: currentUserId,
+      );
+    });
   }
 
   Future<int> softDeleteVilla(String id, {String? deletedBy}) {
