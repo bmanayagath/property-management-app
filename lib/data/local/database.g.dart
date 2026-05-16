@@ -143,6 +143,36 @@ class $VillasTable extends Villas with TableInfo<$VillasTable, Villa> {
   late final GeneratedColumn<DateTime> lastSyncedAt = GeneratedColumn<DateTime>(
       'last_synced_at', aliasedName, true,
       type: DriftSqlType.dateTime, requiredDuringInsert: false);
+  static const VerificationMeta _latitudeMeta =
+      const VerificationMeta('latitude');
+  @override
+  late final GeneratedColumn<double> latitude = GeneratedColumn<double>(
+      'latitude', aliasedName, true,
+      type: DriftSqlType.double, requiredDuringInsert: false);
+  static const VerificationMeta _longitudeMeta =
+      const VerificationMeta('longitude');
+  @override
+  late final GeneratedColumn<double> longitude = GeneratedColumn<double>(
+      'longitude', aliasedName, true,
+      type: DriftSqlType.double, requiredDuringInsert: false);
+  static const VerificationMeta _mapAddressMeta =
+      const VerificationMeta('mapAddress');
+  @override
+  late final GeneratedColumn<String> mapAddress = GeneratedColumn<String>(
+      'map_address', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _googleMapsUrlMeta =
+      const VerificationMeta('googleMapsUrl');
+  @override
+  late final GeneratedColumn<String> googleMapsUrl = GeneratedColumn<String>(
+      'google_maps_url', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _wazeUrlMeta =
+      const VerificationMeta('wazeUrl');
+  @override
+  late final GeneratedColumn<String> wazeUrl = GeneratedColumn<String>(
+      'waze_url', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
   @override
   List<GeneratedColumn> get $columns => [
         id,
@@ -165,7 +195,12 @@ class $VillasTable extends Villas with TableInfo<$VillasTable, Villa> {
         deletedBy,
         createdBy,
         updatedBy,
-        lastSyncedAt
+        lastSyncedAt,
+        latitude,
+        longitude,
+        mapAddress,
+        googleMapsUrl,
+        wazeUrl
       ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -298,6 +333,30 @@ class $VillasTable extends Villas with TableInfo<$VillasTable, Villa> {
           lastSyncedAt.isAcceptableOrUnknown(
               data['last_synced_at']!, _lastSyncedAtMeta));
     }
+    if (data.containsKey('latitude')) {
+      context.handle(_latitudeMeta,
+          latitude.isAcceptableOrUnknown(data['latitude']!, _latitudeMeta));
+    }
+    if (data.containsKey('longitude')) {
+      context.handle(_longitudeMeta,
+          longitude.isAcceptableOrUnknown(data['longitude']!, _longitudeMeta));
+    }
+    if (data.containsKey('map_address')) {
+      context.handle(
+          _mapAddressMeta,
+          mapAddress.isAcceptableOrUnknown(
+              data['map_address']!, _mapAddressMeta));
+    }
+    if (data.containsKey('google_maps_url')) {
+      context.handle(
+          _googleMapsUrlMeta,
+          googleMapsUrl.isAcceptableOrUnknown(
+              data['google_maps_url']!, _googleMapsUrlMeta));
+    }
+    if (data.containsKey('waze_url')) {
+      context.handle(_wazeUrlMeta,
+          wazeUrl.isAcceptableOrUnknown(data['waze_url']!, _wazeUrlMeta));
+    }
     return context;
   }
 
@@ -350,6 +409,16 @@ class $VillasTable extends Villas with TableInfo<$VillasTable, Villa> {
           .read(DriftSqlType.string, data['${effectivePrefix}updated_by']),
       lastSyncedAt: attachedDatabase.typeMapping.read(
           DriftSqlType.dateTime, data['${effectivePrefix}last_synced_at']),
+      latitude: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}latitude']),
+      longitude: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}longitude']),
+      mapAddress: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}map_address']),
+      googleMapsUrl: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}google_maps_url']),
+      wazeUrl: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}waze_url']),
     );
   }
 
@@ -381,6 +450,11 @@ class Villa extends DataClass implements Insertable<Villa> {
   final String? createdBy;
   final String? updatedBy;
   final DateTime? lastSyncedAt;
+  final double? latitude;
+  final double? longitude;
+  final String? mapAddress;
+  final String? googleMapsUrl;
+  final String? wazeUrl;
   const Villa(
       {required this.id,
       required this.villaName,
@@ -402,7 +476,12 @@ class Villa extends DataClass implements Insertable<Villa> {
       this.deletedBy,
       this.createdBy,
       this.updatedBy,
-      this.lastSyncedAt});
+      this.lastSyncedAt,
+      this.latitude,
+      this.longitude,
+      this.mapAddress,
+      this.googleMapsUrl,
+      this.wazeUrl});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -436,6 +515,21 @@ class Villa extends DataClass implements Insertable<Villa> {
     }
     if (!nullToAbsent || lastSyncedAt != null) {
       map['last_synced_at'] = Variable<DateTime>(lastSyncedAt);
+    }
+    if (!nullToAbsent || latitude != null) {
+      map['latitude'] = Variable<double>(latitude);
+    }
+    if (!nullToAbsent || longitude != null) {
+      map['longitude'] = Variable<double>(longitude);
+    }
+    if (!nullToAbsent || mapAddress != null) {
+      map['map_address'] = Variable<String>(mapAddress);
+    }
+    if (!nullToAbsent || googleMapsUrl != null) {
+      map['google_maps_url'] = Variable<String>(googleMapsUrl);
+    }
+    if (!nullToAbsent || wazeUrl != null) {
+      map['waze_url'] = Variable<String>(wazeUrl);
     }
     return map;
   }
@@ -473,6 +567,21 @@ class Villa extends DataClass implements Insertable<Villa> {
       lastSyncedAt: lastSyncedAt == null && nullToAbsent
           ? const Value.absent()
           : Value(lastSyncedAt),
+      latitude: latitude == null && nullToAbsent
+          ? const Value.absent()
+          : Value(latitude),
+      longitude: longitude == null && nullToAbsent
+          ? const Value.absent()
+          : Value(longitude),
+      mapAddress: mapAddress == null && nullToAbsent
+          ? const Value.absent()
+          : Value(mapAddress),
+      googleMapsUrl: googleMapsUrl == null && nullToAbsent
+          ? const Value.absent()
+          : Value(googleMapsUrl),
+      wazeUrl: wazeUrl == null && nullToAbsent
+          ? const Value.absent()
+          : Value(wazeUrl),
     );
   }
 
@@ -502,6 +611,11 @@ class Villa extends DataClass implements Insertable<Villa> {
       createdBy: serializer.fromJson<String?>(json['createdBy']),
       updatedBy: serializer.fromJson<String?>(json['updatedBy']),
       lastSyncedAt: serializer.fromJson<DateTime?>(json['lastSyncedAt']),
+      latitude: serializer.fromJson<double?>(json['latitude']),
+      longitude: serializer.fromJson<double?>(json['longitude']),
+      mapAddress: serializer.fromJson<String?>(json['mapAddress']),
+      googleMapsUrl: serializer.fromJson<String?>(json['googleMapsUrl']),
+      wazeUrl: serializer.fromJson<String?>(json['wazeUrl']),
     );
   }
   @override
@@ -529,6 +643,11 @@ class Villa extends DataClass implements Insertable<Villa> {
       'createdBy': serializer.toJson<String?>(createdBy),
       'updatedBy': serializer.toJson<String?>(updatedBy),
       'lastSyncedAt': serializer.toJson<DateTime?>(lastSyncedAt),
+      'latitude': serializer.toJson<double?>(latitude),
+      'longitude': serializer.toJson<double?>(longitude),
+      'mapAddress': serializer.toJson<String?>(mapAddress),
+      'googleMapsUrl': serializer.toJson<String?>(googleMapsUrl),
+      'wazeUrl': serializer.toJson<String?>(wazeUrl),
     };
   }
 
@@ -553,7 +672,12 @@ class Villa extends DataClass implements Insertable<Villa> {
           Value<String?> deletedBy = const Value.absent(),
           Value<String?> createdBy = const Value.absent(),
           Value<String?> updatedBy = const Value.absent(),
-          Value<DateTime?> lastSyncedAt = const Value.absent()}) =>
+          Value<DateTime?> lastSyncedAt = const Value.absent(),
+          Value<double?> latitude = const Value.absent(),
+          Value<double?> longitude = const Value.absent(),
+          Value<String?> mapAddress = const Value.absent(),
+          Value<String?> googleMapsUrl = const Value.absent(),
+          Value<String?> wazeUrl = const Value.absent()}) =>
       Villa(
         id: id ?? this.id,
         villaName: villaName ?? this.villaName,
@@ -577,6 +701,12 @@ class Villa extends DataClass implements Insertable<Villa> {
         updatedBy: updatedBy.present ? updatedBy.value : this.updatedBy,
         lastSyncedAt:
             lastSyncedAt.present ? lastSyncedAt.value : this.lastSyncedAt,
+        latitude: latitude.present ? latitude.value : this.latitude,
+        longitude: longitude.present ? longitude.value : this.longitude,
+        mapAddress: mapAddress.present ? mapAddress.value : this.mapAddress,
+        googleMapsUrl:
+            googleMapsUrl.present ? googleMapsUrl.value : this.googleMapsUrl,
+        wazeUrl: wazeUrl.present ? wazeUrl.value : this.wazeUrl,
       );
   Villa copyWithCompanion(VillasCompanion data) {
     return Villa(
@@ -614,6 +744,14 @@ class Villa extends DataClass implements Insertable<Villa> {
       lastSyncedAt: data.lastSyncedAt.present
           ? data.lastSyncedAt.value
           : this.lastSyncedAt,
+      latitude: data.latitude.present ? data.latitude.value : this.latitude,
+      longitude: data.longitude.present ? data.longitude.value : this.longitude,
+      mapAddress:
+          data.mapAddress.present ? data.mapAddress.value : this.mapAddress,
+      googleMapsUrl: data.googleMapsUrl.present
+          ? data.googleMapsUrl.value
+          : this.googleMapsUrl,
+      wazeUrl: data.wazeUrl.present ? data.wazeUrl.value : this.wazeUrl,
     );
   }
 
@@ -640,7 +778,12 @@ class Villa extends DataClass implements Insertable<Villa> {
           ..write('deletedBy: $deletedBy, ')
           ..write('createdBy: $createdBy, ')
           ..write('updatedBy: $updatedBy, ')
-          ..write('lastSyncedAt: $lastSyncedAt')
+          ..write('lastSyncedAt: $lastSyncedAt, ')
+          ..write('latitude: $latitude, ')
+          ..write('longitude: $longitude, ')
+          ..write('mapAddress: $mapAddress, ')
+          ..write('googleMapsUrl: $googleMapsUrl, ')
+          ..write('wazeUrl: $wazeUrl')
           ..write(')'))
         .toString();
   }
@@ -667,7 +810,12 @@ class Villa extends DataClass implements Insertable<Villa> {
         deletedBy,
         createdBy,
         updatedBy,
-        lastSyncedAt
+        lastSyncedAt,
+        latitude,
+        longitude,
+        mapAddress,
+        googleMapsUrl,
+        wazeUrl
       ]);
   @override
   bool operator ==(Object other) =>
@@ -693,7 +841,12 @@ class Villa extends DataClass implements Insertable<Villa> {
           other.deletedBy == this.deletedBy &&
           other.createdBy == this.createdBy &&
           other.updatedBy == this.updatedBy &&
-          other.lastSyncedAt == this.lastSyncedAt);
+          other.lastSyncedAt == this.lastSyncedAt &&
+          other.latitude == this.latitude &&
+          other.longitude == this.longitude &&
+          other.mapAddress == this.mapAddress &&
+          other.googleMapsUrl == this.googleMapsUrl &&
+          other.wazeUrl == this.wazeUrl);
 }
 
 class VillasCompanion extends UpdateCompanion<Villa> {
@@ -718,6 +871,11 @@ class VillasCompanion extends UpdateCompanion<Villa> {
   final Value<String?> createdBy;
   final Value<String?> updatedBy;
   final Value<DateTime?> lastSyncedAt;
+  final Value<double?> latitude;
+  final Value<double?> longitude;
+  final Value<String?> mapAddress;
+  final Value<String?> googleMapsUrl;
+  final Value<String?> wazeUrl;
   final Value<int> rowid;
   const VillasCompanion({
     this.id = const Value.absent(),
@@ -741,6 +899,11 @@ class VillasCompanion extends UpdateCompanion<Villa> {
     this.createdBy = const Value.absent(),
     this.updatedBy = const Value.absent(),
     this.lastSyncedAt = const Value.absent(),
+    this.latitude = const Value.absent(),
+    this.longitude = const Value.absent(),
+    this.mapAddress = const Value.absent(),
+    this.googleMapsUrl = const Value.absent(),
+    this.wazeUrl = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   VillasCompanion.insert({
@@ -765,6 +928,11 @@ class VillasCompanion extends UpdateCompanion<Villa> {
     this.createdBy = const Value.absent(),
     this.updatedBy = const Value.absent(),
     this.lastSyncedAt = const Value.absent(),
+    this.latitude = const Value.absent(),
+    this.longitude = const Value.absent(),
+    this.mapAddress = const Value.absent(),
+    this.googleMapsUrl = const Value.absent(),
+    this.wazeUrl = const Value.absent(),
     this.rowid = const Value.absent(),
   })  : id = Value(id),
         villaName = Value(villaName),
@@ -798,6 +966,11 @@ class VillasCompanion extends UpdateCompanion<Villa> {
     Expression<String>? createdBy,
     Expression<String>? updatedBy,
     Expression<DateTime>? lastSyncedAt,
+    Expression<double>? latitude,
+    Expression<double>? longitude,
+    Expression<String>? mapAddress,
+    Expression<String>? googleMapsUrl,
+    Expression<String>? wazeUrl,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -822,6 +995,11 @@ class VillasCompanion extends UpdateCompanion<Villa> {
       if (createdBy != null) 'created_by': createdBy,
       if (updatedBy != null) 'updated_by': updatedBy,
       if (lastSyncedAt != null) 'last_synced_at': lastSyncedAt,
+      if (latitude != null) 'latitude': latitude,
+      if (longitude != null) 'longitude': longitude,
+      if (mapAddress != null) 'map_address': mapAddress,
+      if (googleMapsUrl != null) 'google_maps_url': googleMapsUrl,
+      if (wazeUrl != null) 'waze_url': wazeUrl,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -848,6 +1026,11 @@ class VillasCompanion extends UpdateCompanion<Villa> {
       Value<String?>? createdBy,
       Value<String?>? updatedBy,
       Value<DateTime?>? lastSyncedAt,
+      Value<double?>? latitude,
+      Value<double?>? longitude,
+      Value<String?>? mapAddress,
+      Value<String?>? googleMapsUrl,
+      Value<String?>? wazeUrl,
       Value<int>? rowid}) {
     return VillasCompanion(
       id: id ?? this.id,
@@ -871,6 +1054,11 @@ class VillasCompanion extends UpdateCompanion<Villa> {
       createdBy: createdBy ?? this.createdBy,
       updatedBy: updatedBy ?? this.updatedBy,
       lastSyncedAt: lastSyncedAt ?? this.lastSyncedAt,
+      latitude: latitude ?? this.latitude,
+      longitude: longitude ?? this.longitude,
+      mapAddress: mapAddress ?? this.mapAddress,
+      googleMapsUrl: googleMapsUrl ?? this.googleMapsUrl,
+      wazeUrl: wazeUrl ?? this.wazeUrl,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -941,6 +1129,21 @@ class VillasCompanion extends UpdateCompanion<Villa> {
     if (lastSyncedAt.present) {
       map['last_synced_at'] = Variable<DateTime>(lastSyncedAt.value);
     }
+    if (latitude.present) {
+      map['latitude'] = Variable<double>(latitude.value);
+    }
+    if (longitude.present) {
+      map['longitude'] = Variable<double>(longitude.value);
+    }
+    if (mapAddress.present) {
+      map['map_address'] = Variable<String>(mapAddress.value);
+    }
+    if (googleMapsUrl.present) {
+      map['google_maps_url'] = Variable<String>(googleMapsUrl.value);
+    }
+    if (wazeUrl.present) {
+      map['waze_url'] = Variable<String>(wazeUrl.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -971,6 +1174,11 @@ class VillasCompanion extends UpdateCompanion<Villa> {
           ..write('createdBy: $createdBy, ')
           ..write('updatedBy: $updatedBy, ')
           ..write('lastSyncedAt: $lastSyncedAt, ')
+          ..write('latitude: $latitude, ')
+          ..write('longitude: $longitude, ')
+          ..write('mapAddress: $mapAddress, ')
+          ..write('googleMapsUrl: $googleMapsUrl, ')
+          ..write('wazeUrl: $wazeUrl, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -3848,6 +4056,11 @@ typedef $$VillasTableCreateCompanionBuilder = VillasCompanion Function({
   Value<String?> createdBy,
   Value<String?> updatedBy,
   Value<DateTime?> lastSyncedAt,
+  Value<double?> latitude,
+  Value<double?> longitude,
+  Value<String?> mapAddress,
+  Value<String?> googleMapsUrl,
+  Value<String?> wazeUrl,
   Value<int> rowid,
 });
 typedef $$VillasTableUpdateCompanionBuilder = VillasCompanion Function({
@@ -3872,6 +4085,11 @@ typedef $$VillasTableUpdateCompanionBuilder = VillasCompanion Function({
   Value<String?> createdBy,
   Value<String?> updatedBy,
   Value<DateTime?> lastSyncedAt,
+  Value<double?> latitude,
+  Value<double?> longitude,
+  Value<String?> mapAddress,
+  Value<String?> googleMapsUrl,
+  Value<String?> wazeUrl,
   Value<int> rowid,
 });
 
@@ -3995,6 +4213,21 @@ class $$VillasTableFilterComposer
 
   ColumnFilters<DateTime> get lastSyncedAt => $composableBuilder(
       column: $table.lastSyncedAt, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get latitude => $composableBuilder(
+      column: $table.latitude, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get longitude => $composableBuilder(
+      column: $table.longitude, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get mapAddress => $composableBuilder(
+      column: $table.mapAddress, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get googleMapsUrl => $composableBuilder(
+      column: $table.googleMapsUrl, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get wazeUrl => $composableBuilder(
+      column: $table.wazeUrl, builder: (column) => ColumnFilters(column));
 
   Expression<bool> roomsRefs(
       Expression<bool> Function($$RoomsTableFilterComposer f) f) {
@@ -4135,6 +4368,22 @@ class $$VillasTableOrderingComposer
   ColumnOrderings<DateTime> get lastSyncedAt => $composableBuilder(
       column: $table.lastSyncedAt,
       builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get latitude => $composableBuilder(
+      column: $table.latitude, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get longitude => $composableBuilder(
+      column: $table.longitude, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get mapAddress => $composableBuilder(
+      column: $table.mapAddress, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get googleMapsUrl => $composableBuilder(
+      column: $table.googleMapsUrl,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get wazeUrl => $composableBuilder(
+      column: $table.wazeUrl, builder: (column) => ColumnOrderings(column));
 }
 
 class $$VillasTableAnnotationComposer
@@ -4208,6 +4457,21 @@ class $$VillasTableAnnotationComposer
 
   GeneratedColumn<DateTime> get lastSyncedAt => $composableBuilder(
       column: $table.lastSyncedAt, builder: (column) => column);
+
+  GeneratedColumn<double> get latitude =>
+      $composableBuilder(column: $table.latitude, builder: (column) => column);
+
+  GeneratedColumn<double> get longitude =>
+      $composableBuilder(column: $table.longitude, builder: (column) => column);
+
+  GeneratedColumn<String> get mapAddress => $composableBuilder(
+      column: $table.mapAddress, builder: (column) => column);
+
+  GeneratedColumn<String> get googleMapsUrl => $composableBuilder(
+      column: $table.googleMapsUrl, builder: (column) => column);
+
+  GeneratedColumn<String> get wazeUrl =>
+      $composableBuilder(column: $table.wazeUrl, builder: (column) => column);
 
   Expression<T> roomsRefs<T extends Object>(
       Expression<T> Function($$RoomsTableAnnotationComposer a) f) {
@@ -4318,6 +4582,11 @@ class $$VillasTableTableManager extends RootTableManager<
             Value<String?> createdBy = const Value.absent(),
             Value<String?> updatedBy = const Value.absent(),
             Value<DateTime?> lastSyncedAt = const Value.absent(),
+            Value<double?> latitude = const Value.absent(),
+            Value<double?> longitude = const Value.absent(),
+            Value<String?> mapAddress = const Value.absent(),
+            Value<String?> googleMapsUrl = const Value.absent(),
+            Value<String?> wazeUrl = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               VillasCompanion(
@@ -4342,6 +4611,11 @@ class $$VillasTableTableManager extends RootTableManager<
             createdBy: createdBy,
             updatedBy: updatedBy,
             lastSyncedAt: lastSyncedAt,
+            latitude: latitude,
+            longitude: longitude,
+            mapAddress: mapAddress,
+            googleMapsUrl: googleMapsUrl,
+            wazeUrl: wazeUrl,
             rowid: rowid,
           ),
           createCompanionCallback: ({
@@ -4366,6 +4640,11 @@ class $$VillasTableTableManager extends RootTableManager<
             Value<String?> createdBy = const Value.absent(),
             Value<String?> updatedBy = const Value.absent(),
             Value<DateTime?> lastSyncedAt = const Value.absent(),
+            Value<double?> latitude = const Value.absent(),
+            Value<double?> longitude = const Value.absent(),
+            Value<String?> mapAddress = const Value.absent(),
+            Value<String?> googleMapsUrl = const Value.absent(),
+            Value<String?> wazeUrl = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               VillasCompanion.insert(
@@ -4390,6 +4669,11 @@ class $$VillasTableTableManager extends RootTableManager<
             createdBy: createdBy,
             updatedBy: updatedBy,
             lastSyncedAt: lastSyncedAt,
+            latitude: latitude,
+            longitude: longitude,
+            mapAddress: mapAddress,
+            googleMapsUrl: googleMapsUrl,
+            wazeUrl: wazeUrl,
             rowid: rowid,
           ),
           withReferenceMapper: (p0) => p0

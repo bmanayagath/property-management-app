@@ -36,6 +36,11 @@ mixin _$VillaModel {
   String? get createdBy => throw _privateConstructorUsedError;
   String? get updatedBy => throw _privateConstructorUsedError;
   DateTime? get lastSyncedAt => throw _privateConstructorUsedError;
+  double? get latitude => throw _privateConstructorUsedError;
+  double? get longitude => throw _privateConstructorUsedError;
+  String? get mapAddress => throw _privateConstructorUsedError;
+  String? get googleMapsUrl => throw _privateConstructorUsedError;
+  String? get wazeUrl => throw _privateConstructorUsedError;
 
   /// Serializes this VillaModel to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
@@ -67,7 +72,12 @@ abstract class $VillaModelCopyWith<$Res> {
       String? deletedBy,
       String? createdBy,
       String? updatedBy,
-      DateTime? lastSyncedAt});
+      DateTime? lastSyncedAt,
+      double? latitude,
+      double? longitude,
+      String? mapAddress,
+      String? googleMapsUrl,
+      String? wazeUrl});
 }
 
 /// @nodoc
@@ -99,6 +109,11 @@ class _$VillaModelCopyWithImpl<$Res, $Val extends VillaModel>
     Object? createdBy = freezed,
     Object? updatedBy = freezed,
     Object? lastSyncedAt = freezed,
+    Object? latitude = freezed,
+    Object? longitude = freezed,
+    Object? mapAddress = freezed,
+    Object? googleMapsUrl = freezed,
+    Object? wazeUrl = freezed,
   }) {
     return _then(_value.copyWith(
       id: null == id
@@ -157,6 +172,26 @@ class _$VillaModelCopyWithImpl<$Res, $Val extends VillaModel>
           ? _value.lastSyncedAt
           : lastSyncedAt // ignore: cast_nullable_to_non_nullable
               as DateTime?,
+      latitude: freezed == latitude
+          ? _value.latitude
+          : latitude // ignore: cast_nullable_to_non_nullable
+              as double?,
+      longitude: freezed == longitude
+          ? _value.longitude
+          : longitude // ignore: cast_nullable_to_non_nullable
+              as double?,
+      mapAddress: freezed == mapAddress
+          ? _value.mapAddress
+          : mapAddress // ignore: cast_nullable_to_non_nullable
+              as String?,
+      googleMapsUrl: freezed == googleMapsUrl
+          ? _value.googleMapsUrl
+          : googleMapsUrl // ignore: cast_nullable_to_non_nullable
+              as String?,
+      wazeUrl: freezed == wazeUrl
+          ? _value.wazeUrl
+          : wazeUrl // ignore: cast_nullable_to_non_nullable
+              as String?,
     ) as $Val);
   }
 }
@@ -183,7 +218,12 @@ abstract class _$$VillaModelImplCopyWith<$Res>
       String? deletedBy,
       String? createdBy,
       String? updatedBy,
-      DateTime? lastSyncedAt});
+      DateTime? lastSyncedAt,
+      double? latitude,
+      double? longitude,
+      String? mapAddress,
+      String? googleMapsUrl,
+      String? wazeUrl});
 }
 
 /// @nodoc
@@ -213,6 +253,11 @@ class __$$VillaModelImplCopyWithImpl<$Res>
     Object? createdBy = freezed,
     Object? updatedBy = freezed,
     Object? lastSyncedAt = freezed,
+    Object? latitude = freezed,
+    Object? longitude = freezed,
+    Object? mapAddress = freezed,
+    Object? googleMapsUrl = freezed,
+    Object? wazeUrl = freezed,
   }) {
     return _then(_$VillaModelImpl(
       id: null == id
@@ -271,6 +316,26 @@ class __$$VillaModelImplCopyWithImpl<$Res>
           ? _value.lastSyncedAt
           : lastSyncedAt // ignore: cast_nullable_to_non_nullable
               as DateTime?,
+      latitude: freezed == latitude
+          ? _value.latitude
+          : latitude // ignore: cast_nullable_to_non_nullable
+              as double?,
+      longitude: freezed == longitude
+          ? _value.longitude
+          : longitude // ignore: cast_nullable_to_non_nullable
+              as double?,
+      mapAddress: freezed == mapAddress
+          ? _value.mapAddress
+          : mapAddress // ignore: cast_nullable_to_non_nullable
+              as String?,
+      googleMapsUrl: freezed == googleMapsUrl
+          ? _value.googleMapsUrl
+          : googleMapsUrl // ignore: cast_nullable_to_non_nullable
+              as String?,
+      wazeUrl: freezed == wazeUrl
+          ? _value.wazeUrl
+          : wazeUrl // ignore: cast_nullable_to_non_nullable
+              as String?,
     ));
   }
 }
@@ -292,7 +357,12 @@ class _$VillaModelImpl implements _VillaModel {
       this.deletedBy,
       this.createdBy,
       this.updatedBy,
-      this.lastSyncedAt});
+      this.lastSyncedAt,
+      this.latitude,
+      this.longitude,
+      this.mapAddress,
+      this.googleMapsUrl,
+      this.wazeUrl});
 
   factory _$VillaModelImpl.fromJson(Map<String, dynamic> json) =>
       _$$VillaModelImplFromJson(json);
@@ -331,10 +401,20 @@ class _$VillaModelImpl implements _VillaModel {
   final String? updatedBy;
   @override
   final DateTime? lastSyncedAt;
+  @override
+  final double? latitude;
+  @override
+  final double? longitude;
+  @override
+  final String? mapAddress;
+  @override
+  final String? googleMapsUrl;
+  @override
+  final String? wazeUrl;
 
   @override
   String toString() {
-    return 'VillaModel(id: $id, villaName: $villaName, location: $location, villaNumber: $villaNumber, notes: $notes, createdAt: $createdAt, updatedAt: $updatedAt, isDeleted: $isDeleted, syncStatus: $syncStatus, deletedAt: $deletedAt, deletedBy: $deletedBy, createdBy: $createdBy, updatedBy: $updatedBy, lastSyncedAt: $lastSyncedAt)';
+    return 'VillaModel(id: $id, villaName: $villaName, location: $location, villaNumber: $villaNumber, notes: $notes, createdAt: $createdAt, updatedAt: $updatedAt, isDeleted: $isDeleted, syncStatus: $syncStatus, deletedAt: $deletedAt, deletedBy: $deletedBy, createdBy: $createdBy, updatedBy: $updatedBy, lastSyncedAt: $lastSyncedAt, latitude: $latitude, longitude: $longitude, mapAddress: $mapAddress, googleMapsUrl: $googleMapsUrl, wazeUrl: $wazeUrl)';
   }
 
   @override
@@ -367,27 +447,42 @@ class _$VillaModelImpl implements _VillaModel {
             (identical(other.updatedBy, updatedBy) ||
                 other.updatedBy == updatedBy) &&
             (identical(other.lastSyncedAt, lastSyncedAt) ||
-                other.lastSyncedAt == lastSyncedAt));
+                other.lastSyncedAt == lastSyncedAt) &&
+            (identical(other.latitude, latitude) ||
+                other.latitude == latitude) &&
+            (identical(other.longitude, longitude) ||
+                other.longitude == longitude) &&
+            (identical(other.mapAddress, mapAddress) ||
+                other.mapAddress == mapAddress) &&
+            (identical(other.googleMapsUrl, googleMapsUrl) ||
+                other.googleMapsUrl == googleMapsUrl) &&
+            (identical(other.wazeUrl, wazeUrl) || other.wazeUrl == wazeUrl));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
-  int get hashCode => Object.hash(
-      runtimeType,
-      id,
-      villaName,
-      location,
-      villaNumber,
-      notes,
-      createdAt,
-      updatedAt,
-      isDeleted,
-      syncStatus,
-      deletedAt,
-      deletedBy,
-      createdBy,
-      updatedBy,
-      lastSyncedAt);
+  int get hashCode => Object.hashAll([
+        runtimeType,
+        id,
+        villaName,
+        location,
+        villaNumber,
+        notes,
+        createdAt,
+        updatedAt,
+        isDeleted,
+        syncStatus,
+        deletedAt,
+        deletedBy,
+        createdBy,
+        updatedBy,
+        lastSyncedAt,
+        latitude,
+        longitude,
+        mapAddress,
+        googleMapsUrl,
+        wazeUrl
+      ]);
 
   /// Create a copy of VillaModel
   /// with the given fields replaced by the non-null parameter values.
@@ -420,7 +515,12 @@ abstract class _VillaModel implements VillaModel {
       final String? deletedBy,
       final String? createdBy,
       final String? updatedBy,
-      final DateTime? lastSyncedAt}) = _$VillaModelImpl;
+      final DateTime? lastSyncedAt,
+      final double? latitude,
+      final double? longitude,
+      final String? mapAddress,
+      final String? googleMapsUrl,
+      final String? wazeUrl}) = _$VillaModelImpl;
 
   factory _VillaModel.fromJson(Map<String, dynamic> json) =
       _$VillaModelImpl.fromJson;
@@ -455,6 +555,16 @@ abstract class _VillaModel implements VillaModel {
   String? get updatedBy;
   @override
   DateTime? get lastSyncedAt;
+  @override
+  double? get latitude;
+  @override
+  double? get longitude;
+  @override
+  String? get mapAddress;
+  @override
+  String? get googleMapsUrl;
+  @override
+  String? get wazeUrl;
 
   /// Create a copy of VillaModel
   /// with the given fields replaced by the non-null parameter values.

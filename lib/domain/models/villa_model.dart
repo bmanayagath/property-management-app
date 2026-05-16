@@ -23,6 +23,11 @@ class VillaModel with _$VillaModel {
     String? createdBy,
     String? updatedBy,
     DateTime? lastSyncedAt,
+    double? latitude,
+    double? longitude,
+    String? mapAddress,
+    String? googleMapsUrl,
+    String? wazeUrl,
   }) = _VillaModel;
 
   factory VillaModel.fromJson(Map<String, dynamic> json) =>

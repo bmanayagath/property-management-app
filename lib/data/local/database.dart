@@ -30,6 +30,11 @@ class Villas extends Table {
   TextColumn get createdBy => text().nullable()();
   TextColumn get updatedBy => text().nullable()();
   DateTimeColumn get lastSyncedAt => dateTime().nullable()();
+  RealColumn get latitude => real().nullable()();
+  RealColumn get longitude => real().nullable()();
+  TextColumn get mapAddress => text().nullable()();
+  TextColumn get googleMapsUrl => text().nullable()();
+  TextColumn get wazeUrl => text().nullable()();
 
   @override
   Set<Column> get primaryKey => {id};
@@ -126,7 +131,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 5;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -185,8 +190,19 @@ class AppDatabase extends _$AppDatabase {
           if (from < 4) {
             await _addSyncColumns(migrator);
           }
+          if (from < 5) {
+            await _addVillaLocationColumns();
+          }
         },
       );
+
+  Future<void> _addVillaLocationColumns() async {
+    await _addColumnIfMissingSql('villas', 'latitude', 'REAL');
+    await _addColumnIfMissingSql('villas', 'longitude', 'REAL');
+    await _addColumnIfMissingSql('villas', 'map_address', 'TEXT');
+    await _addColumnIfMissingSql('villas', 'google_maps_url', 'TEXT');
+    await _addColumnIfMissingSql('villas', 'waze_url', 'TEXT');
+  }
 
   Future<void> _addSyncColumns(Migrator migrator) async {
     await _addColumnIfMissingSql(

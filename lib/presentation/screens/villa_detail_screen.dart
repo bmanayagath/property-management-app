@@ -4,7 +4,11 @@ import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_styles.dart';
 import '../../core/constants/app_permissions.dart';
 import '../../core/utils/currency_formatter.dart';
+import '../../data/services/map_launcher_service.dart';
+import '../../data/services/whatsapp_share_service.dart';
 import '../../domain/models/income.dart';
+import '../../domain/models/room.dart';
+import '../../domain/models/villa_model.dart';
 import '../providers/auth_provider.dart';
 import '../providers/dashboard_provider.dart';
 import '../providers/database_provider.dart';
@@ -22,6 +26,10 @@ class VillaDetailScreen extends ConsumerWidget {
     Key? key,
     required this.villaId,
   }) : super(key: key);
+
+  bool _hasVillaLocation(VillaModel villa) {
+    return villa.latitude != null && villa.longitude != null;
+  }
 
   void _showDeleteConfirmation(BuildContext context, WidgetRef ref) {
     showDialog(
@@ -153,6 +161,9 @@ class VillaDetailScreen extends ConsumerWidget {
 
                   // Rooms Summary Card
                   _buildRoomsSummary(context, ref, villa.id),
+                  const SizedBox(height: 24),
+
+                  _buildLocationSection(context, ref, villa),
                   const SizedBox(height: 24),
 
                   // Rooms List
@@ -383,6 +394,127 @@ class VillaDetailScreen extends ConsumerWidget {
       },
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (error, stack) => Text('Error loading rooms: $error'),
+    );
+  }
+
+  Widget _buildLocationSection(
+    BuildContext context,
+    WidgetRef ref,
+    VillaModel villa,
+  ) {
+    final roomsAsync = ref.watch(roomsByVillaProvider(villa.id));
+    final hasLocation = _hasVillaLocation(villa);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Villa Location',
+          style: AppStyles.titleMedium,
+        ),
+        const SizedBox(height: 12),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: AppColors.border, width: 1),
+          ),
+          child: roomsAsync.when(
+            data: (rooms) {
+              final activeRooms = rooms
+                  .where((room) => room.villaId == villa.id && !room.isDeleted)
+                  .toList();
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (hasLocation) ...[
+                    Text(
+                      villa.mapAddress ?? villa.location,
+                      style: AppStyles.bodyMedium,
+                    ),
+                    const SizedBox(height: 12),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        OutlinedButton.icon(
+                          onPressed: () => _openGoogleMaps(context, villa),
+                          icon: const Icon(Icons.map_outlined, size: 18),
+                          label: const Text('Open in Google Maps'),
+                        ),
+                        OutlinedButton.icon(
+                          onPressed: () => _openWaze(context, villa),
+                          icon: const Icon(Icons.navigation_outlined, size: 18),
+                          label: const Text('Open in Waze'),
+                        ),
+                        ElevatedButton.icon(
+                          onPressed: () => _shareVilla(villa, activeRooms),
+                          icon: const Icon(Icons.share_outlined, size: 18),
+                          label: const Text('Share Villa on WhatsApp'),
+                        ),
+                      ],
+                    ),
+                  ] else ...[
+                    Text(
+                      'Location not added',
+                      style: AppStyles.bodySmall.copyWith(
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    ElevatedButton.icon(
+                      onPressed: () => _shareVilla(villa, activeRooms),
+                      icon: const Icon(Icons.share_outlined, size: 18),
+                      label: const Text('Share Villa on WhatsApp'),
+                    ),
+                  ],
+                ],
+              );
+            },
+            loading: () => const Center(child: CircularProgressIndicator()),
+            error: (error, stack) => Text('Error loading rooms: $error'),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _openGoogleMaps(BuildContext context, VillaModel villa) async {
+    final opened = await MapLauncherService().openGoogleMaps(villa);
+    if (!context.mounted || opened) return;
+    _showMessage(context, 'Could not open Google Maps.');
+  }
+
+  Future<void> _openWaze(BuildContext context, VillaModel villa) async {
+    final opened = await MapLauncherService().openWaze(villa);
+    if (!context.mounted || opened) return;
+    _showMessage(context, 'Could not open Waze.');
+  }
+
+  Future<void> _shareVilla(VillaModel villa, List<Room> rooms) {
+    final activeRooms = rooms.where((room) => !room.isDeleted).toList();
+    final vacantRooms = activeRooms.where((room) => room.isVacant).toList();
+    final rentValues = vacantRooms.map((room) => room.monthlyRent).toList();
+    final minRent = rentValues.isEmpty
+        ? 0.0
+        : rentValues.reduce((value, rent) => value < rent ? value : rent);
+    final maxRent = rentValues.isEmpty
+        ? 0.0
+        : rentValues.reduce((value, rent) => value > rent ? value : rent);
+
+    return WhatsAppShareService().shareVilla(
+      villa: villa,
+      vacantRoomsCount: vacantRooms.length,
+      minRent: minRent,
+      maxRent: maxRent,
+    );
+  }
+
+  void _showMessage(BuildContext context, String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
     );
   }
 

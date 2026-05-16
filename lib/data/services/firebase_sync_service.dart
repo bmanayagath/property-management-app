@@ -934,6 +934,11 @@ class FirebaseSyncService {
       'createdBy': villa.createdBy,
       'updatedBy': villa.updatedBy,
       'lastSyncedAt': villa.lastSyncedAt?.toIso8601String(),
+      'latitude': villa.latitude,
+      'longitude': villa.longitude,
+      'mapAddress': villa.mapAddress,
+      'googleMapsUrl': villa.googleMapsUrl,
+      'wazeUrl': villa.wazeUrl,
     };
   }
 
@@ -1042,6 +1047,11 @@ class FirebaseSyncService {
       createdBy: json['createdBy'] as String?,
       updatedBy: json['updatedBy'] as String?,
       lastSyncedAt: _readNullableDateTime(json['lastSyncedAt']),
+      latitude: (json['latitude'] as num?)?.toDouble(),
+      longitude: (json['longitude'] as num?)?.toDouble(),
+      mapAddress: json['mapAddress'] as String?,
+      googleMapsUrl: json['googleMapsUrl'] as String?,
+      wazeUrl: json['wazeUrl'] as String?,
     );
   }
 

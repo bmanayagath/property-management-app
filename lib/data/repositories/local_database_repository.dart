@@ -148,6 +148,11 @@ class LocalDatabaseRepository {
       createdBy: Value(villa.createdBy),
       updatedBy: Value(villa.updatedBy),
       lastSyncedAt: Value(DateTime.now()),
+      latitude: Value(villa.latitude),
+      longitude: Value(villa.longitude),
+      mapAddress: Value(villa.mapAddress),
+      googleMapsUrl: Value(villa.googleMapsUrl),
+      wazeUrl: Value(villa.wazeUrl),
     );
 
     if (existing == null) {

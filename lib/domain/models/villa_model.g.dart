@@ -28,6 +28,11 @@ _$VillaModelImpl _$$VillaModelImplFromJson(Map<String, dynamic> json) =>
       lastSyncedAt: json['lastSyncedAt'] == null
           ? null
           : DateTime.parse(json['lastSyncedAt'] as String),
+      latitude: (json['latitude'] as num?)?.toDouble(),
+      longitude: (json['longitude'] as num?)?.toDouble(),
+      mapAddress: json['mapAddress'] as String?,
+      googleMapsUrl: json['googleMapsUrl'] as String?,
+      wazeUrl: json['wazeUrl'] as String?,
     );
 
 Map<String, dynamic> _$$VillaModelImplToJson(_$VillaModelImpl instance) =>
@@ -46,4 +51,9 @@ Map<String, dynamic> _$$VillaModelImplToJson(_$VillaModelImpl instance) =>
       'createdBy': instance.createdBy,
       'updatedBy': instance.updatedBy,
       'lastSyncedAt': instance.lastSyncedAt?.toIso8601String(),
+      'latitude': instance.latitude,
+      'longitude': instance.longitude,
+      'mapAddress': instance.mapAddress,
+      'googleMapsUrl': instance.googleMapsUrl,
+      'wazeUrl': instance.wazeUrl,
     };

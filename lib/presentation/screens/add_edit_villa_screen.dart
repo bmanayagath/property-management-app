@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:geocoding/geocoding.dart';
+import 'package:geolocator/geolocator.dart';
 
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_styles.dart';
@@ -12,6 +14,7 @@ import '../widgets/app_date_picker_field.dart';
 import '../widgets/app_dropdown.dart';
 import '../widgets/app_text_field.dart';
 import '../widgets/room_card.dart';
+import 'location_picker_screen.dart';
 
 class AddEditVillaScreen extends ConsumerStatefulWidget {
   final VillaModel? villa;
@@ -34,6 +37,11 @@ class _AddEditVillaScreenState extends ConsumerState<AddEditVillaScreen> {
 
   bool _loadedExistingRooms = false;
   bool _isSaving = false;
+  double? _latitude;
+  double? _longitude;
+  String? _mapAddress;
+  String? _googleMapsUrl;
+  String? _wazeUrl;
 
   bool get _isEditing => widget.villa != null;
 
@@ -44,6 +52,11 @@ class _AddEditVillaScreenState extends ConsumerState<AddEditVillaScreen> {
     _villaNameController = TextEditingController(text: villa?.villaName ?? '');
     _locationController = TextEditingController(text: villa?.location ?? '');
     _notesController = TextEditingController(text: villa?.notes ?? '');
+    _latitude = villa?.latitude;
+    _longitude = villa?.longitude;
+    _mapAddress = villa?.mapAddress;
+    _googleMapsUrl = villa?.googleMapsUrl;
+    _wazeUrl = villa?.wazeUrl;
   }
 
   @override
@@ -79,6 +92,11 @@ class _AddEditVillaScreenState extends ConsumerState<AddEditVillaScreen> {
       notes: _notesController.text.trim(),
       createdAt: widget.villa?.createdAt ?? now,
       updatedAt: now,
+      latitude: _latitude,
+      longitude: _longitude,
+      mapAddress: _mapAddress,
+      googleMapsUrl: _googleMapsUrl,
+      wazeUrl: _wazeUrl,
     );
 
     try {
@@ -207,6 +225,115 @@ class _AddEditVillaScreenState extends ConsumerState<AddEditVillaScreen> {
       seen.add(normalized);
     }
     return null;
+  }
+
+  Future<void> _useCurrentLocation() async {
+    final hasPermission = await _ensureLocationPermission();
+    if (!hasPermission) return;
+
+    try {
+      final position = await Geolocator.getCurrentPosition();
+      await _setVillaLocation(position.latitude, position.longitude);
+    } catch (_) {
+      if (!mounted) return;
+      _showMessage('Could not get current location. Please try again.');
+    }
+  }
+
+  Future<void> _pickLocationOnMap() async {
+    final result = await Navigator.push<PickedVillaLocation>(
+      context,
+      MaterialPageRoute(
+        builder: (context) => LocationPickerScreen(
+          initialLatitude: _latitude,
+          initialLongitude: _longitude,
+        ),
+      ),
+    );
+    if (result == null) return;
+
+    setState(() {
+      _latitude = result.latitude;
+      _longitude = result.longitude;
+      _mapAddress = result.mapAddress;
+      _googleMapsUrl = result.googleMapsUrl;
+      _wazeUrl = result.wazeUrl;
+    });
+  }
+
+  void _clearLocation() {
+    setState(() {
+      _latitude = null;
+      _longitude = null;
+      _mapAddress = null;
+      _googleMapsUrl = null;
+      _wazeUrl = null;
+    });
+  }
+
+  Future<bool> _ensureLocationPermission() async {
+    final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      _showMessage('Location services are turned off.');
+      return false;
+    }
+
+    var permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+    }
+
+    if (permission == LocationPermission.denied) {
+      _showMessage('Location permission was denied.');
+      return false;
+    }
+
+    if (permission == LocationPermission.deniedForever) {
+      _showMessage('Location permission is disabled in settings.');
+      return false;
+    }
+
+    return true;
+  }
+
+  Future<void> _setVillaLocation(double latitude, double longitude) async {
+    final address = await _reverseGeocode(latitude, longitude);
+    if (!mounted) return;
+
+    setState(() {
+      _latitude = latitude;
+      _longitude = longitude;
+      _mapAddress = address;
+      _googleMapsUrl = _buildGoogleMapsUrl(latitude, longitude);
+      _wazeUrl = _buildWazeUrl(latitude, longitude);
+    });
+  }
+
+  Future<String?> _reverseGeocode(double latitude, double longitude) async {
+    try {
+      final placemarks = await placemarkFromCoordinates(latitude, longitude);
+      if (placemarks.isEmpty) return null;
+      final placemark = placemarks.first;
+      final parts = [
+        placemark.street,
+        placemark.subLocality,
+        placemark.locality,
+        placemark.administrativeArea,
+        placemark.country,
+      ].where((part) => part != null && part.trim().isNotEmpty).cast<String>();
+      final address = parts.join(', ');
+      return address.isEmpty ? null : address;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  String _buildGoogleMapsUrl(double latitude, double longitude) {
+    return 'https://www.google.com/maps/search/?api=1&query=$latitude,$longitude';
+  }
+
+  String _buildWazeUrl(double latitude, double longitude) {
+    return 'https://waze.com/ul?ll=$latitude,$longitude&navigate=yes';
   }
 
   void _showMessage(String message) {
@@ -346,6 +473,12 @@ class _AddEditVillaScreenState extends ConsumerState<AddEditVillaScreen> {
                 ),
                 const SizedBox(height: 24),
                 _buildSectionHeader(
+                  'Villa Location',
+                  Icons.map_outlined,
+                ),
+                _buildLocationCard(),
+                const SizedBox(height: 24),
+                _buildSectionHeader(
                   'Rooms',
                   Icons.meeting_room_outlined,
                   trailing: TextButton.icon(
@@ -466,6 +599,57 @@ class _AddEditVillaScreenState extends ConsumerState<AddEditVillaScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildLocationCard() {
+    final hasLocation = _latitude != null && _longitude != null;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            hasLocation
+                ? _mapAddress ?? 'Lat: $_latitude, Lng: $_longitude'
+                : 'Location is optional.',
+            style: AppStyles.bodyMedium.copyWith(
+              color: hasLocation
+                  ? AppColors.textPrimary
+                  : AppColors.textSecondary,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              OutlinedButton.icon(
+                onPressed: _useCurrentLocation,
+                icon: const Icon(Icons.my_location_outlined, size: 18),
+                label: const Text('Use Current Location'),
+              ),
+              OutlinedButton.icon(
+                onPressed: _pickLocationOnMap,
+                icon: const Icon(Icons.map_outlined, size: 18),
+                label: const Text('Pick Location on Map'),
+              ),
+              OutlinedButton.icon(
+                onPressed: hasLocation ? _clearLocation : null,
+                icon: const Icon(Icons.clear_outlined, size: 18),
+                label: const Text('Clear Location'),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
