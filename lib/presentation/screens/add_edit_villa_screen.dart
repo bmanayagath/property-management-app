@@ -26,6 +26,9 @@ class AddEditVillaScreen extends ConsumerStatefulWidget {
 }
 
 class _AddEditVillaScreenState extends ConsumerState<AddEditVillaScreen> {
+  static const double _dohaLatitude = 25.2854;
+  static const double _dohaLongitude = 51.5310;
+
   final _formKey = GlobalKey<FormState>();
   final _rooms = <Room>[];
   final _existingRoomIds = <String>{};
@@ -229,36 +232,47 @@ class _AddEditVillaScreenState extends ConsumerState<AddEditVillaScreen> {
 
   Future<void> _useCurrentLocation() async {
     final hasPermission = await _ensureLocationPermission();
-    if (!hasPermission) return;
+    if (!hasPermission) {
+      await _setVillaLocation(_dohaLatitude, _dohaLongitude);
+      return;
+    }
 
     try {
       final position = await Geolocator.getCurrentPosition();
       await _setVillaLocation(position.latitude, position.longitude);
     } catch (_) {
       if (!mounted) return;
-      _showMessage('Could not get current location. Please try again.');
+      await _setVillaLocation(_dohaLatitude, _dohaLongitude);
+      if (!mounted) return;
+      _showMessage('Current location unavailable. Doha default was selected.');
     }
   }
 
   Future<void> _pickLocationOnMap() async {
-    final result = await Navigator.push<PickedVillaLocation>(
-      context,
-      MaterialPageRoute(
-        builder: (context) => LocationPickerScreen(
-          initialLatitude: _latitude,
-          initialLongitude: _longitude,
+    try {
+      final result = await Navigator.push<PickedVillaLocation>(
+        context,
+        MaterialPageRoute(
+          builder: (context) => LocationPickerScreen(
+            initialLatitude: _latitude ?? _dohaLatitude,
+            initialLongitude: _longitude ?? _dohaLongitude,
+          ),
         ),
-      ),
-    );
-    if (result == null) return;
+      );
+      if (result == null) return;
 
-    setState(() {
-      _latitude = result.latitude;
-      _longitude = result.longitude;
-      _mapAddress = result.mapAddress;
-      _googleMapsUrl = result.googleMapsUrl;
-      _wazeUrl = result.wazeUrl;
-    });
+      setState(() {
+        _latitude = result.latitude;
+        _longitude = result.longitude;
+        _mapAddress = result.mapAddress;
+        _googleMapsUrl = result.googleMapsUrl;
+        _wazeUrl = result.wazeUrl;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      _showMessage(
+          'Unable to open map picker. Please try Use Current Location.');
+    }
   }
 
   void _clearLocation() {
@@ -622,9 +636,8 @@ class _AddEditVillaScreenState extends ConsumerState<AddEditVillaScreen> {
                 ? _mapAddress ?? 'Lat: $_latitude, Lng: $_longitude'
                 : 'Location is optional.',
             style: AppStyles.bodyMedium.copyWith(
-              color: hasLocation
-                  ? AppColors.textPrimary
-                  : AppColors.textSecondary,
+              color:
+                  hasLocation ? AppColors.textPrimary : AppColors.textSecondary,
             ),
           ),
           const SizedBox(height: 12),

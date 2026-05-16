@@ -4,7 +4,6 @@ import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_styles.dart';
 import '../../core/constants/app_permissions.dart';
 import '../../core/utils/currency_formatter.dart';
-import '../../data/services/map_launcher_service.dart';
 import '../../data/services/whatsapp_share_service.dart';
 import '../../domain/models/income.dart';
 import '../../domain/models/room.dart';
@@ -435,26 +434,13 @@ class VillaDetailScreen extends ConsumerWidget {
                       style: AppStyles.bodyMedium,
                     ),
                     const SizedBox(height: 12),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: [
-                        OutlinedButton.icon(
-                          onPressed: () => _openGoogleMaps(context, villa),
-                          icon: const Icon(Icons.map_outlined, size: 18),
-                          label: const Text('Open in Google Maps'),
-                        ),
-                        OutlinedButton.icon(
-                          onPressed: () => _openWaze(context, villa),
-                          icon: const Icon(Icons.navigation_outlined, size: 18),
-                          label: const Text('Open in Waze'),
-                        ),
-                        ElevatedButton.icon(
-                          onPressed: () => _shareVilla(villa, activeRooms),
-                          icon: const Icon(Icons.share_outlined, size: 18),
-                          label: const Text('Share Villa on WhatsApp'),
-                        ),
-                      ],
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: () => _shareVilla(villa, activeRooms),
+                        icon: const Icon(Icons.share_outlined, size: 18),
+                        label: const Text('Share Villa on WhatsApp'),
+                      ),
                     ),
                   ] else ...[
                     Text(
@@ -481,18 +467,6 @@ class VillaDetailScreen extends ConsumerWidget {
     );
   }
 
-  Future<void> _openGoogleMaps(BuildContext context, VillaModel villa) async {
-    final opened = await MapLauncherService().openGoogleMaps(villa);
-    if (!context.mounted || opened) return;
-    _showMessage(context, 'Could not open Google Maps.');
-  }
-
-  Future<void> _openWaze(BuildContext context, VillaModel villa) async {
-    final opened = await MapLauncherService().openWaze(villa);
-    if (!context.mounted || opened) return;
-    _showMessage(context, 'Could not open Waze.');
-  }
-
   Future<void> _shareVilla(VillaModel villa, List<Room> rooms) {
     final activeRooms = rooms.where((room) => !room.isDeleted).toList();
     final vacantRooms = activeRooms.where((room) => room.isVacant).toList();
@@ -509,12 +483,6 @@ class VillaDetailScreen extends ConsumerWidget {
       vacantRoomsCount: vacantRooms.length,
       minRent: minRent,
       maxRent: maxRent,
-    );
-  }
-
-  void _showMessage(BuildContext context, String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
     );
   }
 

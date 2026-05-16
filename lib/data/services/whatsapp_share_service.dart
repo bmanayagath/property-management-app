@@ -27,21 +27,24 @@ class WhatsAppShareService {
     required double minRent,
     required double maxRent,
   }) {
+    final hasLocation = villa.latitude != null && villa.longitude != null;
+    final address = (villa.mapAddress ?? '').trim().isNotEmpty
+        ? villa.mapAddress!.trim()
+        : 'Lat: ${villa.latitude}, Lng: ${villa.longitude}';
     final lines = <String>[
-      'Villa: ${villa.villaName}',
-      if ((villa.mapAddress ?? '').isNotEmpty) 'Location: ${villa.mapAddress}',
-      if ((villa.googleMapsUrl ?? '').isNotEmpty)
-        'Google Maps: ${villa.googleMapsUrl}',
-      if ((villa.wazeUrl ?? '').isNotEmpty) 'Waze: ${villa.wazeUrl}',
-      'Available Rooms: $vacantRoomsCount',
-      'Rent Range: QAR ${_formatRent(minRent)} - QAR ${_formatRent(maxRent)}',
+      if (hasLocation) 'Location: $address',
+      if (hasLocation && (villa.googleMapsUrl ?? '').isNotEmpty) ...[
+        '',
+        '📍 Google Maps:',
+        villa.googleMapsUrl!,
+      ],
+      if (hasLocation && (villa.wazeUrl ?? '').isNotEmpty) ...[
+        '',
+        '🚗 Waze:',
+        villa.wazeUrl!,
+      ],
     ];
 
     return lines.join('\n');
-  }
-
-  String _formatRent(double rent) {
-    if (rent == rent.roundToDouble()) return rent.toStringAsFixed(0);
-    return rent.toStringAsFixed(2);
   }
 }
