@@ -19,6 +19,9 @@ pwd
 echo "Flutter version:"
 flutter --version
 
+echo "Disabling Flutter Swift Package Manager integration"
+flutter config --no-enable-swift-package-manager
+
 echo "Getting Flutter packages"
 flutter pub get
 

@@ -22,6 +22,9 @@ flutter --version
 echo "Flutter doctor:"
 flutter doctor -v
 
+echo "Disabling Flutter Swift Package Manager integration"
+flutter config --no-enable-swift-package-manager
+
 echo "Cleaning Flutter project"
 flutter clean
 
