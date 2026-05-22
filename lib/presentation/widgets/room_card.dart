@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/utils/currency_formatter.dart';
 import '../../domain/models/room.dart';
@@ -31,8 +32,6 @@ class RoomCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final hasContactActions = onCallTenant != null || onWhatsappTenant != null;
-
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -87,23 +86,31 @@ class RoomCard extends StatelessWidget {
                     ],
                   ),
                 ),
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color:
-                        _getStatusColor(room.isOccupied).withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Text(
-                    room.isOccupied ? 'Occupied' : 'Vacant',
-                    style: TextStyle(
-                      color: _getStatusColor(room.isOccupied),
-                      fontSize: 10,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
+                const SizedBox(width: 8),
+                _StatusBadge(
+                  label: room.isOccupied ? 'Occupied' : 'Vacant',
+                  color: _getStatusColor(room.isOccupied),
                 ),
+                if (onCallTenant != null) ...[
+                  const SizedBox(width: 6),
+                  _TenantActionButton(
+                    tooltip: 'Call tenant',
+                    icon: Icons.phone_rounded,
+                    backgroundColor: const Color(0xFFEFF6FF),
+                    iconColor: const Color(0xFF2563EB),
+                    onPressed: onCallTenant!,
+                  ),
+                ],
+                if (onWhatsappTenant != null) ...[
+                  const SizedBox(width: 6),
+                  _TenantActionButton(
+                    tooltip: 'WhatsApp tenant',
+                    icon: FontAwesomeIcons.whatsapp,
+                    backgroundColor: const Color(0xFFEAFBF0),
+                    iconColor: const Color(0xFF25D366),
+                    onPressed: onWhatsappTenant!,
+                  ),
+                ],
                 if (onEdit != null || onDelete != null)
                   PopupMenuButton<String>(
                     onSelected: (value) {
@@ -193,30 +200,6 @@ class RoomCard extends StatelessWidget {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
-                      if (hasContactActions) ...[
-                        const SizedBox(height: 4),
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            if (onCallTenant != null)
-                              _TenantActionButton(
-                                tooltip: 'Call tenant',
-                                icon: Icons.phone_outlined,
-                                color: AppColors.primary,
-                                onPressed: onCallTenant!,
-                              ),
-                            if (onWhatsappTenant != null) ...[
-                              const SizedBox(width: 4),
-                              _TenantActionButton(
-                                tooltip: 'WhatsApp tenant',
-                                icon: Icons.chat_outlined,
-                                color: const Color(0xFF25D366),
-                                onPressed: onWhatsappTenant!,
-                              ),
-                            ],
-                          ],
-                        ),
-                      ],
                     ],
                   ),
                 ),
@@ -278,16 +261,47 @@ class RoomCard extends StatelessWidget {
   }
 }
 
+class _StatusBadge extends StatelessWidget {
+  final String label;
+  final Color color;
+
+  const _StatusBadge({
+    required this.label,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: color,
+          fontSize: 10,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    );
+  }
+}
+
 class _TenantActionButton extends StatelessWidget {
   final String tooltip;
   final IconData icon;
-  final Color color;
+  final Color backgroundColor;
+  final Color iconColor;
   final VoidCallback onPressed;
 
   const _TenantActionButton({
     required this.tooltip,
     required this.icon,
-    required this.color,
+    required this.backgroundColor,
+    required this.iconColor,
     required this.onPressed,
   });
 
@@ -297,19 +311,19 @@ class _TenantActionButton extends StatelessWidget {
       message: tooltip,
       child: InkWell(
         onTap: onPressed,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(18),
         child: Container(
-          width: 28,
-          height: 28,
+          width: 36,
+          height: 36,
           alignment: Alignment.center,
           decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(14),
+            color: backgroundColor,
+            shape: BoxShape.circle,
           ),
           child: Icon(
             icon,
-            color: color,
-            size: 15,
+            color: iconColor,
+            size: 18,
           ),
         ),
       ),
