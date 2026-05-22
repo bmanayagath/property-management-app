@@ -5,12 +5,18 @@ echo "Running Xcode Cloud Flutter post-clone setup"
 
 cd "$CI_PRIMARY_REPOSITORY_PATH"
 
-export PATH="$PATH:$HOME/flutter/bin"
+FLUTTER_HOME="$HOME/flutter"
+export PATH="$FLUTTER_HOME/bin:$PATH"
 
-if ! command -v flutter >/dev/null 2>&1; then
+if [ ! -d "$FLUTTER_HOME/.git" ]; then
   echo "Installing Flutter stable..."
-  git clone https://github.com/flutter/flutter.git --depth 1 -b stable "$HOME/flutter"
-  export PATH="$PATH:$HOME/flutter/bin"
+  rm -rf "$FLUTTER_HOME"
+  git clone https://github.com/flutter/flutter.git --depth 1 -b stable "$FLUTTER_HOME"
+else
+  echo "Updating Flutter stable..."
+  git -C "$FLUTTER_HOME" fetch origin stable --depth 1
+  git -C "$FLUTTER_HOME" checkout stable
+  git -C "$FLUTTER_HOME" reset --hard origin/stable
 fi
 
 echo "Current directory:"
