@@ -4,6 +4,7 @@ import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_styles.dart';
 import '../../core/constants/app_permissions.dart';
 import '../../core/utils/currency_formatter.dart';
+import '../../data/services/tenant_contact_service.dart';
 import '../../data/services/whatsapp_share_service.dart';
 import '../../domain/models/income.dart';
 import '../../domain/models/room.dart';
@@ -28,6 +29,28 @@ class VillaDetailScreen extends ConsumerWidget {
 
   bool _hasVillaLocation(VillaModel villa) {
     return villa.latitude != null && villa.longitude != null;
+  }
+
+  Future<void> _callTenant(BuildContext context, String phone) async {
+    final didOpen = await TenantContactService().callTenant(phone);
+    if (!context.mounted || didOpen) {
+      return;
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Unable to open phone dialer.')),
+    );
+  }
+
+  Future<void> _whatsappTenant(BuildContext context, String phone) async {
+    final didOpen = await TenantContactService().whatsappTenant(phone: phone);
+    if (!context.mounted || didOpen) {
+      return;
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('WhatsApp is not installed.')),
+    );
   }
 
   void _showDeleteConfirmation(BuildContext context, WidgetRef ref) {
@@ -583,6 +606,7 @@ class VillaDetailScreen extends ConsumerWidget {
                         .clamp(0.0, double.infinity)
                         .toDouble()
                     : room.monthlyRent;
+                final hasTenantPhone = room.tenantPhone.trim().isNotEmpty;
                 return RoomCard(
                   room: room,
                   pendingRent: CurrencyFormatter.format(pending),
@@ -591,6 +615,12 @@ class VillaDetailScreen extends ConsumerWidget {
                   onTap: () {
                     // Can add room detail screen later
                   },
+                  onCallTenant: hasTenantPhone
+                      ? () => _callTenant(context, room.tenantPhone)
+                      : null,
+                  onWhatsappTenant: hasTenantPhone
+                      ? () => _whatsappTenant(context, room.tenantPhone)
+                      : null,
                   onEdit: canManageVillas
                       ? () {
                           Navigator.push(

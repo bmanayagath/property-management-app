@@ -8,6 +8,8 @@ class RoomCard extends StatelessWidget {
   final VoidCallback onTap;
   final VoidCallback? onEdit;
   final VoidCallback? onDelete;
+  final VoidCallback? onCallTenant;
+  final VoidCallback? onWhatsappTenant;
   final String? pendingRent;
   final String pendingRentLabel;
 
@@ -17,6 +19,8 @@ class RoomCard extends StatelessWidget {
     required this.onTap,
     this.onEdit,
     this.onDelete,
+    this.onCallTenant,
+    this.onWhatsappTenant,
     this.pendingRent,
     this.pendingRentLabel = 'Pending',
   }) : super(key: key);
@@ -27,6 +31,8 @@ class RoomCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final hasContactActions = onCallTenant != null || onWhatsappTenant != null;
+
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -187,6 +193,30 @@ class RoomCard extends StatelessWidget {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
+                      if (hasContactActions) ...[
+                        const SizedBox(height: 4),
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (onCallTenant != null)
+                              _TenantActionButton(
+                                tooltip: 'Call tenant',
+                                icon: Icons.phone_outlined,
+                                color: AppColors.primary,
+                                onPressed: onCallTenant!,
+                              ),
+                            if (onWhatsappTenant != null) ...[
+                              const SizedBox(width: 4),
+                              _TenantActionButton(
+                                tooltip: 'WhatsApp tenant',
+                                icon: Icons.chat_outlined,
+                                color: const Color(0xFF25D366),
+                                onPressed: onWhatsappTenant!,
+                              ),
+                            ],
+                          ],
+                        ),
+                      ],
                     ],
                   ),
                 ),
@@ -242,6 +272,45 @@ class RoomCard extends StatelessWidget {
               ],
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _TenantActionButton extends StatelessWidget {
+  final String tooltip;
+  final IconData icon;
+  final Color color;
+  final VoidCallback onPressed;
+
+  const _TenantActionButton({
+    required this.tooltip,
+    required this.icon,
+    required this.color,
+    required this.onPressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: tooltip,
+      child: InkWell(
+        onTap: onPressed,
+        borderRadius: BorderRadius.circular(14),
+        child: Container(
+          width: 28,
+          height: 28,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: Icon(
+            icon,
+            color: color,
+            size: 15,
+          ),
         ),
       ),
     );
