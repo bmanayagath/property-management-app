@@ -77,46 +77,25 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
         title: const Text('Reports'),
         elevation: 0,
         actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 16),
-            child: Wrap(
-              spacing: 8,
-              children: [
-                if (canExportReports) ...[
-                  OutlinedButton.icon(
-                    onPressed: _isExporting
-                        ? null
-                        : () => _export(
-                              villasAsync.valueOrNull ?? const [],
-                              roomsAsync.valueOrNull ?? const [],
-                              incomesAsync.valueOrNull ?? const [],
-                              expenses,
-                              ExportFormat.pdf,
-                            ),
-                    icon: const Icon(Icons.picture_as_pdf_rounded),
-                    label: const Text('Export PDF'),
-                  ),
-                  FilledButton.icon(
-                    onPressed: _isExporting
-                        ? null
-                        : () => _export(
-                              villasAsync.valueOrNull ?? const [],
-                              roomsAsync.valueOrNull ?? const [],
-                              incomesAsync.valueOrNull ?? const [],
-                              expenses,
-                              ExportFormat.csv,
-                            ),
-                    icon: const Icon(Icons.table_chart_rounded),
-                    label: const Text('Export CSV'),
-                    style: FilledButton.styleFrom(
-                      backgroundColor: const Color(0xFF5549DE),
-                      foregroundColor: Colors.white,
-                    ),
-                  ),
-                ],
-              ],
+          if (canExportReports)
+            Padding(
+              padding: const EdgeInsets.only(right: 16),
+              child: Center(
+                child: OutlinedButton.icon(
+                  onPressed: _isExporting
+                      ? null
+                      : () => _export(
+                            villasAsync.valueOrNull ?? const [],
+                            roomsAsync.valueOrNull ?? const [],
+                            incomesAsync.valueOrNull ?? const [],
+                            expenses,
+                            ExportFormat.pdf,
+                          ),
+                  icon: const Icon(Icons.picture_as_pdf_rounded),
+                  label: const Text('Export PDF'),
+                ),
+              ),
             ),
-          ),
         ],
       ),
       body: SafeArea(
