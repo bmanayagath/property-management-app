@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/utils/currency_formatter.dart';
 import '../../domain/models/room.dart';
@@ -105,7 +104,7 @@ class RoomCard extends StatelessWidget {
                   const SizedBox(width: 6),
                   _TenantActionButton(
                     tooltip: 'WhatsApp tenant',
-                    icon: FontAwesomeIcons.whatsapp,
+                    icon: Icons.chat_rounded,
                     backgroundColor: const Color(0xFFEAFBF0),
                     iconColor: const Color(0xFF25D366),
                     onPressed: onWhatsappTenant!,
