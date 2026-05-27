@@ -32,7 +32,11 @@ echo "Getting Flutter packages"
 flutter pub get
 
 echo "Generating Flutter iOS config"
-flutter build ios --config-only --release
+if [ -n "$CI_BUILD_NUMBER" ]; then
+  flutter build ios --config-only --release --build-number="$CI_BUILD_NUMBER"
+else
+  flutter build ios --config-only --release
+fi
 
 echo "Checking Generated.xcconfig"
 ls -la ios/Flutter/
