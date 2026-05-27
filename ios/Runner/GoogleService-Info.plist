@@ -9,7 +9,7 @@
 	<key>PLIST_VERSION</key>
 	<string>1</string>
 	<key>BUNDLE_ID</key>
-	<string>com.example.villabooks</string>
+	<string>villa.management.app</string>
 	<key>PROJECT_ID</key>
 	<string>investment-calculator-811fd</string>
 	<key>STORAGE_BUCKET</key>
