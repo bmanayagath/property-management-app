@@ -3,9 +3,9 @@
 ## iOS Release
 
 - Confirm `PRODUCT_BUNDLE_IDENTIFIER` in `ios/Runner.xcodeproj/project.pbxproj`.
-  Current value: `villa.management.app`.
+  Current value: `com.example.villabooks`.
 - Confirm `ios/Runner/GoogleService-Info.plist` uses the same bundle id.
-  Current value: `villa.management.app`.
+  Current value: `com.example.villabooks`.
 - Replace the example bundle id with the final App Store bundle id in both
   Apple Developer and Firebase before uploading a production build.
 - Confirm Apple signing team and automatic/manual signing in Xcode.
