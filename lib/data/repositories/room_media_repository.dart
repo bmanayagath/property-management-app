@@ -35,7 +35,9 @@ class RoomMediaRepository {
 
   Future<RoomMedia> saveMedia(RoomMedia media) async {
     final collection = _requireCollection();
-    await collection.doc(media.id).set(media.toJson(), SetOptions(merge: true));
+    await collection
+        .doc(media.id)
+        .set(media.toFirestoreJson(), SetOptions(merge: true));
     return media;
   }
 
@@ -121,10 +123,6 @@ class RoomMediaRepository {
     );
 
     try {
-      await _trySaveMedia(pendingMedia);
-      await _trySaveMedia(
-        pendingMedia.copyWith(syncStatus: RoomMediaSyncStatus.uploading),
-      );
       final uploaded = await _uploadFile(
         file: file,
         fileType: fileType,
@@ -144,19 +142,14 @@ class RoomMediaRepository {
       );
       return saveMedia(syncedMedia);
     } on RoomMediaUploadCancelled {
-      await _trySaveMedia(pendingMedia);
       rethrow;
     } catch (error, stackTrace) {
       debugPrint('[RoomMedia] upload deferred for $id: $error');
       debugPrintStack(stackTrace: stackTrace);
-      final failedMedia = pendingMedia.copyWith(
-        syncStatus: RoomMediaSyncStatus.failed,
-      );
       debugPrint(
-        '[RoomMedia] marking upload failed id=$id localPath=${file.path}',
+        '[RoomMedia] upload failed id=$id localPath=${file.path}',
       );
-      await _trySaveMedia(failedMedia);
-      return failedMedia;
+      Error.throwWithStackTrace(error, stackTrace);
     }
   }
 

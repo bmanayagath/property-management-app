@@ -134,6 +134,22 @@ service cloud.firestore {
       allow delete: if noHardDelete();
     }
 
+    match /room_media/{mediaId} {
+      allow read: if signedIn();
+      allow create: if signedIn()
+        && (isAdmin() || (isContributor() && createsActiveRecord()))
+        && request.resource.data.localPath == ''
+        && request.resource.data.storagePath is string
+        && request.resource.data.storagePath.size() > 0
+        && request.resource.data.downloadUrl is string
+        && request.resource.data.downloadUrl.size() > 0
+        && request.resource.data.syncStatus == 'synced';
+      allow update: if signedIn()
+        && (isAdmin() || (isContributor() && updatesActiveRecord()))
+        && request.resource.data.localPath == '';
+      allow delete: if noHardDelete();
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }

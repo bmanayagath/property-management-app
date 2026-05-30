@@ -110,6 +110,13 @@ class RoomMedia {
     };
   }
 
+  Map<String, dynamic> toFirestoreJson() {
+    return {
+      ...toJson(),
+      'localPath': '',
+    };
+  }
+
   factory RoomMedia.fromJson(Map<String, dynamic> json) {
     return RoomMedia(
       id: json['id'] as String? ?? '',
