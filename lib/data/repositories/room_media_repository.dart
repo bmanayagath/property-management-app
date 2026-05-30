@@ -21,6 +21,7 @@ class RoomMediaRepository {
   FirebaseFirestore? _firestore;
   final FirebaseStorageService _storageService;
   final _uuid = const Uuid();
+  final Map<String, String> _localPathByMediaId = {};
 
   FirebaseFirestore? get _safeFirestore {
     if (Firebase.apps.isEmpty) return null;
@@ -34,6 +35,9 @@ class RoomMediaRepository {
   String createId() => _uuid.v4();
 
   Future<RoomMedia> saveMedia(RoomMedia media) async {
+    if (media.localPath.trim().isNotEmpty) {
+      _localPathByMediaId[media.id] = media.localPath;
+    }
     final collection = _requireCollection();
     await collection
         .doc(media.id)
@@ -54,7 +58,9 @@ class RoomMediaRepository {
         .snapshots()
         .map((snapshot) {
       final media = snapshot.docs
-          .map((doc) => RoomMedia.fromJson({...doc.data(), 'id': doc.id}))
+          .map((doc) => _withCachedLocalPath(
+                RoomMedia.fromJson({...doc.data(), 'id': doc.id}),
+              ))
           .where((item) => !item.isDeleted)
           .toList();
       media.sort((a, b) => b.createdAt.compareTo(a.createdAt));
@@ -74,7 +80,9 @@ class RoomMediaRepository {
         .where('isDeleted', isEqualTo: false)
         .get();
     final media = snapshot.docs
-        .map((doc) => RoomMedia.fromJson({...doc.data(), 'id': doc.id}))
+        .map((doc) => _withCachedLocalPath(
+              RoomMedia.fromJson({...doc.data(), 'id': doc.id}),
+            ))
         .where((item) => !item.isDeleted)
         .toList();
     media.sort((a, b) => b.createdAt.compareTo(a.createdAt));
@@ -83,6 +91,15 @@ class RoomMediaRepository {
 
   Future<void> updateMedia(RoomMedia media) async {
     await saveMedia(media);
+  }
+
+  Future<RoomMedia?> getMediaById(String mediaId) async {
+    final collection = _collection;
+    if (collection == null || mediaId.trim().isEmpty) return null;
+    final snapshot = await collection.doc(mediaId).get();
+    final data = snapshot.data();
+    if (!snapshot.exists || data == null) return null;
+    return _withCachedLocalPath(RoomMedia.fromJson({...data, 'id': mediaId}));
   }
 
   Future<void> softDeleteMedia(RoomMedia media, {String? deletedBy}) async {
@@ -121,6 +138,7 @@ class RoomMediaRepository {
       createdBy: createdBy,
       syncStatus: RoomMediaSyncStatus.pending,
     );
+    _localPathByMediaId[id] = file.path;
 
     try {
       final uploaded = await _uploadFile(
@@ -153,15 +171,37 @@ class RoomMediaRepository {
     }
   }
 
+  Future<RoomMedia> uploadSingleRoomMedia(
+    String mediaId, {
+    RoomMediaUploadController? uploadController,
+    ValueChanged<double>? onProgress,
+  }) async {
+    final media = await getMediaById(mediaId);
+    if (media == null || media.isDeleted) {
+      throw StateError('Room media could not be found.');
+    }
+    return retryUpload(
+      media,
+      uploadController: uploadController,
+      onProgress: onProgress,
+    );
+  }
+
   Future<RoomMedia> retryUpload(
     RoomMedia media, {
     RoomMediaUploadController? uploadController,
     ValueChanged<double>? onProgress,
   }) async {
-    final file = File(media.localPath);
+    final localPath = media.localPath.trim().isNotEmpty
+        ? media.localPath
+        : _localPathByMediaId[media.id] ?? '';
+    final file = File(localPath);
     if (!await file.exists()) {
-      throw StateError('Original media file is no longer available.');
+      await _trySaveMedia(
+          media.copyWith(syncStatus: RoomMediaSyncStatus.failed));
+      throw RoomMediaLocalFileMissingException(localPath);
     }
+    _localPathByMediaId[media.id] = file.path;
     await updateMedia(
         media.copyWith(syncStatus: RoomMediaSyncStatus.uploading));
     try {
@@ -280,6 +320,16 @@ class RoomMediaRepository {
       uploadController: uploadController,
       onProgress: onProgress,
     );
+  }
+
+  RoomMedia _withCachedLocalPath(RoomMedia media) {
+    if (media.localPath.trim().isNotEmpty) {
+      _localPathByMediaId[media.id] = media.localPath;
+      return media;
+    }
+    final localPath = _localPathByMediaId[media.id];
+    if (localPath == null || localPath.trim().isEmpty) return media;
+    return media.copyWith(localPath: localPath);
   }
 
   CollectionReference<Map<String, dynamic>> _requireCollection() {

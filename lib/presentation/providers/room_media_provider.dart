@@ -1,10 +1,16 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/repositories/room_media_repository.dart';
+import '../../data/services/firebase_storage_service.dart';
 import '../../models/room_media.dart';
 
 final roomMediaRepositoryProvider = Provider<RoomMediaRepository>((ref) {
   return RoomMediaRepository();
+});
+
+final roomMediaUploadProvider = Provider<RoomMediaUploadActions>((ref) {
+  return RoomMediaUploadActions(ref.watch(roomMediaRepositoryProvider));
 });
 
 final roomMediaProvider = StreamProvider.family<List<RoomMedia>, RoomMediaKey>(
@@ -35,4 +41,22 @@ class RoomMediaKey {
 
   @override
   int get hashCode => Object.hash(villaId, roomId);
+}
+
+class RoomMediaUploadActions {
+  final RoomMediaRepository _repository;
+
+  const RoomMediaUploadActions(this._repository);
+
+  Future<RoomMedia> uploadSingleRoomMedia(
+    String mediaId, {
+    RoomMediaUploadController? uploadController,
+    ValueChanged<double>? onProgress,
+  }) {
+    return _repository.uploadSingleRoomMedia(
+      mediaId,
+      uploadController: uploadController,
+      onProgress: onProgress,
+    );
+  }
 }

@@ -47,6 +47,9 @@ class FirebaseStorageService {
     RoomMediaUploadController? uploadController,
     ValueChanged<double>? onProgress,
   }) async {
+    _validatePathSegment('villaId', villaId);
+    _validatePathSegment('roomId', roomId);
+    _validatePathSegment('mediaId', mediaId);
     final normalizedExtension = _normalizeImageExtension(extension);
     final path = imagePath(
       villaId: villaId,
@@ -72,6 +75,9 @@ class FirebaseStorageService {
     RoomMediaUploadController? uploadController,
     ValueChanged<double>? onProgress,
   }) async {
+    _validatePathSegment('villaId', villaId);
+    _validatePathSegment('roomId', roomId);
+    _validatePathSegment('mediaId', mediaId);
     final normalizedExtension =
         extension.toLowerCase() == 'mov' ? 'mov' : 'mp4';
     final path = normalizedExtension == 'mov'
@@ -95,25 +101,27 @@ class FirebaseStorageService {
     ValueChanged<double>? onProgress,
   }) async {
     final storage = _requireStorage();
-    final user = FirebaseAuth.instance.currentUser;
+    final currentUser = FirebaseAuth.instance.currentUser;
     final exists = await file.exists();
     final size = exists ? await file.length() : 0;
     final extension = _extensionFromPath(path);
 
     debugPrint(
         '[RoomMediaStorage] Firebase apps count=${Firebase.apps.length}');
-    debugPrint('[RoomMediaStorage] Firebase user uid=${user?.uid ?? 'none'}');
+    debugPrint(
+        '[RoomMediaStorage] Firebase user uid=${currentUser?.uid ?? 'none'}');
     debugPrint('[RoomMediaStorage] Firebase app=${storage.app.name}');
     debugPrint('[RoomMediaStorage] Firebase Storage bucket=${storage.bucket}');
     debugPrint(
       '[RoomMediaStorage] Firebase options bucket=${storage.app.options.storageBucket}',
     );
-    debugPrint('[RoomMediaStorage] local file path=${file.path}');
-    debugPrint('[RoomMediaStorage] local file exists=$exists');
-    debugPrint('[RoomMediaStorage] local file size=$size bytes');
-    debugPrint('[RoomMediaStorage] storage path=$path');
+    debugPrint('Upload user uid: ${currentUser?.uid}');
+    debugPrint('Upload local path: ${file.path}');
+    debugPrint('File exists: $exists');
+    debugPrint('File size: $size');
+    debugPrint('Storage path: $path');
 
-    if (user == null) {
+    if (currentUser == null) {
       throw FirebaseException(
         plugin: 'firebase_storage',
         code: 'unauthenticated',
@@ -121,7 +129,7 @@ class FirebaseStorageService {
       );
     }
     if (!exists) {
-      throw StateError('Room media local file does not exist: ${file.path}');
+      throw RoomMediaLocalFileMissingException(file.path);
     }
     if (size <= 0) {
       throw StateError('Room media local file is empty: ${file.path}');
@@ -143,27 +151,31 @@ class FirebaseStorageService {
     });
     try {
       await task;
-    } on FirebaseException catch (error) {
-      debugPrint('[RoomMediaStorage] FirebaseException code=${error.code}');
-      debugPrint(
-        '[RoomMediaStorage] FirebaseException message=${error.message}',
+      final url = await ref.getDownloadURL();
+      debugPrint('Upload success URL: $url');
+      debugPrint('[RoomMediaStorage] upload success path=$path');
+      return StorageUploadResult(
+        storagePath: path,
+        downloadUrl: url,
       );
+    } on FirebaseException catch (error, stackTrace) {
       if (uploadController?.isCancelled == true || error.code == 'canceled') {
         throw const RoomMediaUploadCancelled();
       }
+      debugPrint('Firebase Storage upload failed');
+      debugPrint('Code: ${error.code}');
+      debugPrint('Message: ${error.message}');
+      debugPrint('Plugin: ${error.plugin}');
+      debugPrint('Stack: $stackTrace');
       rethrow;
-    } catch (error) {
-      debugPrint('[RoomMediaStorage] upload failed: $error');
+    } catch (error, stackTrace) {
+      debugPrint('Unknown upload error: $error');
+      debugPrint('Stack: $stackTrace');
       rethrow;
     } finally {
       await subscription.cancel();
       uploadController?._detach(task);
     }
-    debugPrint('[RoomMediaStorage] upload success path=$path');
-    return StorageUploadResult(
-      storagePath: path,
-      downloadUrl: await ref.getDownloadURL(),
-    );
   }
 
   Future<void> deleteMedia(RoomMedia media) async {
@@ -206,6 +218,12 @@ class FirebaseStorageService {
     if (extension == 'jpeg') return 'jpg';
     return 'jpg';
   }
+
+  void _validatePathSegment(String name, String value) {
+    if (value.trim().isEmpty) {
+      throw StateError('Room media storage path has an empty $name.');
+    }
+  }
 }
 
 class RoomMediaUploadController {
@@ -233,6 +251,17 @@ class RoomMediaUploadController {
 
 class RoomMediaUploadCancelled implements Exception {
   const RoomMediaUploadCancelled();
+}
+
+class RoomMediaLocalFileMissingException implements Exception {
+  final String path;
+
+  const RoomMediaLocalFileMissingException(this.path);
+
+  String get message => 'Selected media file is no longer available.';
+
+  @override
+  String toString() => '$message Path: $path';
 }
 
 class StorageUploadResult {

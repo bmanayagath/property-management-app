@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
@@ -144,6 +145,7 @@ class _RoomMediaGalleryWidgetState
                         return _MediaTile(
                           media: media,
                           canDelete: widget.canDelete,
+                          canRetry: widget.canUpload,
                           canShare: widget.canShare,
                           onTap: () => _openMedia(media),
                           onDelete: () => _deleteMedia(media),
@@ -206,6 +208,9 @@ class _RoomMediaGalleryWidgetState
   }
 
   Future<String?> _validateRoomAndVilla() async {
+    if (FirebaseAuth.instance.currentUser == null) {
+      return 'Please login again to upload media.';
+    }
     final room = await ref.read(roomByIdProvider(widget.roomId).future);
     if (room == null || room.isDeleted) {
       return 'This room has been deleted. Media cannot be uploaded.';
@@ -344,8 +349,8 @@ class _RoomMediaGalleryWidgetState
     );
 
     try {
-      await ref.read(roomMediaRepositoryProvider).retryUpload(
-        media,
+      await ref.read(roomMediaUploadProvider).uploadSingleRoomMedia(
+        media.id,
         uploadController: controller,
         onProgress: (value) {
           progress.value = value.clamp(0, 1);
@@ -355,7 +360,13 @@ class _RoomMediaGalleryWidgetState
       _showMessage('Upload completed.');
     } on RoomMediaUploadCancelled {
       _showMessage('Upload cancelled.');
-    } catch (_) {
+    } on FirebaseException catch (error) {
+      _showMessage(_uploadFailureMessage(error));
+    } on RoomMediaLocalFileMissingException catch (error) {
+      _showMessage(error.message);
+    } catch (error, stackTrace) {
+      debugPrint('Unknown upload error: $error');
+      debugPrint('Stack: $stackTrace');
       _showMessage('Upload failed. Please try again.');
     } finally {
       final activeDialogContext = dialogContext;
@@ -417,11 +428,19 @@ class _RoomMediaGalleryWidgetState
       SnackBar(content: Text(message)),
     );
   }
+
+  String _uploadFailureMessage(FirebaseException error) {
+    if (error.code == 'unauthenticated') {
+      return 'Please login again to upload media.';
+    }
+    return 'Upload failed: ${error.code}';
+  }
 }
 
 class _MediaTile extends StatelessWidget {
   final RoomMedia media;
   final bool canDelete;
+  final bool canRetry;
   final bool canShare;
   final VoidCallback onTap;
   final VoidCallback onDelete;
@@ -431,6 +450,7 @@ class _MediaTile extends StatelessWidget {
   const _MediaTile({
     required this.media,
     required this.canDelete,
+    required this.canRetry,
     required this.canShare,
     required this.onTap,
     required this.onDelete,
@@ -476,7 +496,22 @@ class _MediaTile extends StatelessWidget {
               ),
             ),
           ),
-          if (canShare || canDelete)
+          if (canRetry && media.syncStatus == RoomMediaSyncStatus.failed)
+            Positioned(
+              right: 6,
+              bottom: 6,
+              child: IconButton.filled(
+                onPressed: onRetry,
+                icon: const Icon(Icons.refresh_outlined, size: 18),
+                tooltip: 'Retry Upload',
+                constraints: const BoxConstraints.tightFor(
+                  width: 36,
+                  height: 36,
+                ),
+                padding: EdgeInsets.zero,
+              ),
+            ),
+          if (canShare || canDelete || canRetry)
             Positioned(
               top: 2,
               right: 2,
@@ -488,7 +523,8 @@ class _MediaTile extends StatelessWidget {
                 },
                 itemBuilder: (context) {
                   return [
-                    if (media.syncStatus != RoomMediaSyncStatus.synced &&
+                    if (canRetry &&
+                        media.syncStatus != RoomMediaSyncStatus.synced &&
                         media.localPath.trim().isNotEmpty)
                       const PopupMenuItem(
                         value: 'retry',

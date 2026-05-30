@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
@@ -307,11 +308,21 @@ class _RoomMediaPreviewScreenState
       Navigator.pop(context, true);
     } on RoomMediaUploadCancelled {
       _showMessage('Upload cancelled.');
-    } catch (_) {
-      _showMessage('Upload failed. Please try again.');
+    } on FirebaseException catch (error) {
+      _showMessage(_uploadFailureMessage(error));
       if (mounted) {
         setState(() => _canRetry = true);
       }
+    } on RoomMediaLocalFileMissingException catch (error) {
+      _showMessage(error.message);
+      if (mounted) {
+        setState(() => _canRetry = true);
+      }
+    } catch (error, stackTrace) {
+      debugPrint('Unknown upload error: $error');
+      debugPrint('Stack: $stackTrace');
+      _showMessage('Upload failed. Please try again.');
+      if (mounted) setState(() => _canRetry = true);
     } finally {
       if (mounted) {
         setState(() {
@@ -326,6 +337,14 @@ class _RoomMediaPreviewScreenState
   }
 
   Future<String?> _validateBeforeUpload() async {
+    if (FirebaseAuth.instance.currentUser == null) {
+      return 'Please login again to upload media.';
+    }
+    if (widget.villaId.trim().isEmpty ||
+        widget.roomId.trim().isEmpty ||
+        _media.isEmpty) {
+      return 'Upload failed. Please try again.';
+    }
     final room = await ref.read(roomByIdProvider(widget.roomId).future);
     if (room == null || room.isDeleted) {
       return 'This room has been deleted. Media cannot be uploaded.';
@@ -343,6 +362,9 @@ class _RoomMediaPreviewScreenState
 
     final seen = <String>{};
     for (final item in _media) {
+      if (!await item.file.exists()) {
+        return 'Selected media file is no longer available.';
+      }
       if (!seen.add(item.duplicateKey)) {
         return 'Duplicate media files are not allowed.';
       }
@@ -373,6 +395,13 @@ class _RoomMediaPreviewScreenState
     }
 
     return null;
+  }
+
+  String _uploadFailureMessage(FirebaseException error) {
+    if (error.code == 'unauthenticated') {
+      return 'Please login again to upload media.';
+    }
+    return 'Upload failed: ${error.code}';
   }
 
   bool _hasDuplicate(PickedRoomMedia media) {
