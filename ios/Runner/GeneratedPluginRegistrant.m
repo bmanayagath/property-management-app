@@ -30,6 +30,12 @@
 @import firebase_core;
 #endif
 
+#if __has_include(<firebase_storage/FLTFirebaseStoragePlugin.h>)
+#import <firebase_storage/FLTFirebaseStoragePlugin.h>
+#else
+@import firebase_storage;
+#endif
+
 #if __has_include(<geocoding_ios/GeocodingPlugin.h>)
 #import <geocoding_ios/GeocodingPlugin.h>
 #else
@@ -46,6 +52,12 @@
 #import <google_maps_flutter_ios/FGMGoogleMapsPlugin.h>
 #else
 @import google_maps_flutter_ios;
+#endif
+
+#if __has_include(<image_picker_ios/FLTImagePickerPlugin.h>)
+#import <image_picker_ios/FLTImagePickerPlugin.h>
+#else
+@import image_picker_ios;
 #endif
 
 #if __has_include(<printing/PrintingPlugin.h>)
@@ -66,6 +78,12 @@
 @import shared_preferences_foundation;
 #endif
 
+#if __has_include(<sqflite_darwin/SqflitePlugin.h>)
+#import <sqflite_darwin/SqflitePlugin.h>
+#else
+@import sqflite_darwin;
+#endif
+
 #if __has_include(<sqlite3_flutter_libs/Sqlite3FlutterLibsPlugin.h>)
 #import <sqlite3_flutter_libs/Sqlite3FlutterLibsPlugin.h>
 #else
@@ -78,6 +96,12 @@
 @import url_launcher_ios;
 #endif
 
+#if __has_include(<video_player_avfoundation/VideoPlayerPlugin.h>)
+#import <video_player_avfoundation/VideoPlayerPlugin.h>
+#else
+@import video_player_avfoundation;
+#endif
+
 @implementation GeneratedPluginRegistrant
 
 + (void)registerWithRegistry:(NSObject<FlutterPluginRegistry>*)registry {
@@ -85,14 +109,18 @@
   [ConnectivityPlusPlugin registerWithRegistrar:[registry registrarForPlugin:@"ConnectivityPlusPlugin"]];
   [FLTFirebaseAuthPlugin registerWithRegistrar:[registry registrarForPlugin:@"FLTFirebaseAuthPlugin"]];
   [FLTFirebaseCorePlugin registerWithRegistrar:[registry registrarForPlugin:@"FLTFirebaseCorePlugin"]];
+  [FLTFirebaseStoragePlugin registerWithRegistrar:[registry registrarForPlugin:@"FLTFirebaseStoragePlugin"]];
   [GeocodingPlugin registerWithRegistrar:[registry registrarForPlugin:@"GeocodingPlugin"]];
   [GeolocatorPlugin registerWithRegistrar:[registry registrarForPlugin:@"GeolocatorPlugin"]];
   [FGMGoogleMapsPlugin registerWithRegistrar:[registry registrarForPlugin:@"FGMGoogleMapsPlugin"]];
+  [FLTImagePickerPlugin registerWithRegistrar:[registry registrarForPlugin:@"FLTImagePickerPlugin"]];
   [PrintingPlugin registerWithRegistrar:[registry registrarForPlugin:@"PrintingPlugin"]];
   [FPPSharePlusPlugin registerWithRegistrar:[registry registrarForPlugin:@"FPPSharePlusPlugin"]];
   [SharedPreferencesPlugin registerWithRegistrar:[registry registrarForPlugin:@"SharedPreferencesPlugin"]];
+  [SqflitePlugin registerWithRegistrar:[registry registrarForPlugin:@"SqflitePlugin"]];
   [Sqlite3FlutterLibsPlugin registerWithRegistrar:[registry registrarForPlugin:@"Sqlite3FlutterLibsPlugin"]];
   [URLLauncherPlugin registerWithRegistrar:[registry registrarForPlugin:@"URLLauncherPlugin"]];
+  [VideoPlayerPlugin registerWithRegistrar:[registry registrarForPlugin:@"VideoPlayerPlugin"]];
 }
 
 @end

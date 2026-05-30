@@ -1,21 +1,31 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:share_plus/share_plus.dart';
 import '../../core/constants/app_colors.dart';
+import '../../core/constants/app_roles.dart';
 import '../../core/constants/app_styles.dart';
 import '../../core/constants/app_permissions.dart';
+import '../../data/services/room_media_picker_service.dart';
 import '../../core/utils/currency_formatter.dart';
 import '../../data/services/tenant_contact_service.dart';
 import '../../data/services/whatsapp_share_service.dart';
 import '../../domain/models/income.dart';
 import '../../domain/models/room.dart';
 import '../../domain/models/villa_model.dart';
+import '../../models/room_media.dart';
 import '../providers/auth_provider.dart';
 import '../providers/dashboard_provider.dart';
 import '../providers/database_provider.dart';
 import '../providers/income_provider.dart';
+import '../providers/room_media_provider.dart';
 import '../providers/villa_provider.dart';
 import '../providers/room_provider.dart';
+import '../screens/room_media_preview_screen.dart';
 import '../widgets/room_card.dart';
+import '../widgets/room_media_gallery_widget.dart';
 import 'add_edit_villa_screen.dart';
 import 'add_edit_room_screen.dart';
 
@@ -98,6 +108,8 @@ class VillaDetailScreen extends ConsumerWidget {
         authState.hasPermission(AppPermissions.manageVillas);
     final canDeleteVillas = canManageVillas &&
         authState.hasPermission(AppPermissions.deleteRecords);
+    final canManageRoomMedia = _canManageRoomMedia(authState);
+    final canShareRoomMedia = _canShareRoomMedia(authState);
 
     return Scaffold(
       appBar: AppBar(
@@ -189,7 +201,14 @@ class VillaDetailScreen extends ConsumerWidget {
                   const SizedBox(height: 24),
 
                   // Rooms List
-                  _buildRoomsList(context, ref, villa.id, canManageVillas),
+                  _buildRoomsList(
+                    context,
+                    ref,
+                    villa.id,
+                    canManageVillas,
+                    canManageRoomMedia,
+                    canShareRoomMedia,
+                  ),
                   const SizedBox(height: 24),
 
                   if (canManageVillas) ...[
@@ -509,8 +528,14 @@ class VillaDetailScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildRoomsList(BuildContext context, WidgetRef ref, String villaId,
-      bool canManageVillas) {
+  Widget _buildRoomsList(
+    BuildContext context,
+    WidgetRef ref,
+    String villaId,
+    bool canManageVillas,
+    bool canManageRoomMedia,
+    bool canShareRoomMedia,
+  ) {
     final roomsAsync = ref.watch(watchRoomsByVillaProvider(villaId));
     final incomes =
         ref.watch(incomeListProvider).valueOrNull ?? const <Income>[];
@@ -613,8 +638,38 @@ class VillaDetailScreen extends ConsumerWidget {
                   pendingRentLabel:
                       room.isOccupied ? 'Pending' : 'Potential Loss',
                   onTap: () {
-                    // Can add room detail screen later
+                    _openRoomMediaGallery(
+                      context,
+                      room,
+                      canManageRoomMedia: canManageRoomMedia,
+                      canShareRoomMedia: canShareRoomMedia,
+                    );
                   },
+                  onAddPhoto: canManageRoomMedia
+                      ? () => _pickAndPreviewRoomMedia(
+                            context,
+                            ref,
+                            room,
+                            RoomMediaFileType.image,
+                          )
+                      : null,
+                  onAddVideo: canManageRoomMedia
+                      ? () => _pickAndPreviewRoomMedia(
+                            context,
+                            ref,
+                            room,
+                            RoomMediaFileType.video,
+                          )
+                      : null,
+                  onViewMedia: () => _openRoomMediaGallery(
+                    context,
+                    room,
+                    canManageRoomMedia: canManageRoomMedia,
+                    canShareRoomMedia: canShareRoomMedia,
+                  ),
+                  onShareMedia: canShareRoomMedia
+                      ? () => _shareRoomMedia(context, ref, room)
+                      : null,
                   onCallTenant: hasTenantPhone
                       ? () => _callTenant(context, room.tenantPhone)
                       : null,
@@ -680,6 +735,198 @@ class VillaDetailScreen extends ConsumerWidget {
           error: (error, stack) => Text('Error loading rooms: $error'),
         ),
       ],
+    );
+  }
+
+  bool _canManageRoomMedia(AuthState authState) {
+    final role = authState.currentUser?.role;
+    return role == AppRoles.admin || role == AppRoles.contributor;
+  }
+
+  bool _canShareRoomMedia(AuthState authState) {
+    final role = authState.currentUser?.role;
+    return role == AppRoles.admin ||
+        role == AppRoles.contributor ||
+        role == AppRoles.reader;
+  }
+
+  void _openRoomMediaGallery(
+    BuildContext context,
+    Room room, {
+    required bool canManageRoomMedia,
+    required bool canShareRoomMedia,
+  }) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => Scaffold(
+          appBar: AppBar(
+            title: Text('${room.displayName} Media'),
+          ),
+          body: RoomMediaGalleryWidget(
+            villaId: room.villaId,
+            roomId: room.id,
+            canUpload: canManageRoomMedia,
+            canDelete: canManageRoomMedia,
+            canShare: canShareRoomMedia,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _pickAndPreviewRoomMedia(
+    BuildContext context,
+    WidgetRef ref,
+    Room room,
+    String fileType,
+  ) async {
+    final currentRoom = await ref.read(roomByIdProvider(room.id).future);
+    if (currentRoom == null || currentRoom.isDeleted) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content:
+              Text('This room has been deleted. Media cannot be uploaded.'),
+        ),
+      );
+      return;
+    }
+    final villa = await ref.read(villaByIdProvider(room.villaId).future);
+    if (villa == null || villa.isDeleted) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content:
+              Text('This villa has been deleted. Media cannot be uploaded.'),
+        ),
+      );
+      return;
+    }
+    final existing = await ref.read(roomMediaRepositoryProvider).getRoomMedia(
+          villaId: room.villaId,
+          roomId: room.id,
+        );
+    final photos = existing.where((item) => item.isImage).length;
+    final videos = existing.where((item) => item.isVideo).length;
+    if (fileType == RoomMediaFileType.image &&
+        photos >= RoomMediaPickerService.maxPhotosPerRoom) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Maximum 10 photos allowed per room.')),
+      );
+      return;
+    }
+    if (fileType == RoomMediaFileType.video &&
+        videos >= RoomMediaPickerService.maxVideosPerRoom) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Maximum 2 videos allowed per room.')),
+      );
+      return;
+    }
+
+    final source = await _chooseMediaSource(context);
+    if (source == null) return;
+
+    try {
+      final picker = RoomMediaPickerService();
+      final picked = fileType == RoomMediaFileType.video
+          ? await picker.pickVideo(source: source)
+          : await picker.pickPhoto(source: source);
+      if (picked == null || !context.mounted) return;
+
+      await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => RoomMediaPreviewScreen(
+            villaId: room.villaId,
+            roomId: room.id,
+            initialMedia: [picked],
+            existingPhotoCount: photos,
+            existingVideoCount: videos,
+          ),
+        ),
+      );
+    } on RoomMediaPickerException catch (error) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.message)),
+      );
+    } catch (_) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Unable to select media.')),
+      );
+    }
+  }
+
+  Future<ImageSource?> _chooseMediaSource(BuildContext context) {
+    return showModalBottomSheet<ImageSource>(
+      context: context,
+      builder: (context) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.photo_camera_outlined),
+                title: const Text('Camera'),
+                onTap: () => Navigator.pop(context, ImageSource.camera),
+              ),
+              ListTile(
+                leading: const Icon(Icons.photo_library_outlined),
+                title: const Text('Gallery'),
+                onTap: () => Navigator.pop(context, ImageSource.gallery),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _shareRoomMedia(
+    BuildContext context,
+    WidgetRef ref,
+    Room room,
+  ) async {
+    final media = await ref.read(roomMediaRepositoryProvider).getRoomMedia(
+          villaId: room.villaId,
+          roomId: room.id,
+        );
+    final files = <XFile>[];
+    final urls = <String>[];
+
+    for (final item in media) {
+      final localPath = item.localPath.trim();
+      if (localPath.isNotEmpty && await File(localPath).exists()) {
+        files.add(XFile(localPath));
+      } else if (item.downloadUrl.trim().isNotEmpty) {
+        urls.add(item.downloadUrl.trim());
+      }
+    }
+
+    if (files.isNotEmpty) {
+      await SharePlus.instance.share(
+        ShareParams(
+          text: 'Hello',
+          files: files,
+        ),
+      );
+      return;
+    }
+
+    if (urls.isNotEmpty) {
+      await SharePlus.instance.share(
+        ShareParams(text: ['Hello', '', ...urls].join('\n')),
+      );
+      return;
+    }
+
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('No room media is available to share.')),
     );
   }
 

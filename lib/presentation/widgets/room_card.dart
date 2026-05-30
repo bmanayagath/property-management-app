@@ -10,6 +10,10 @@ class RoomCard extends StatelessWidget {
   final VoidCallback? onDelete;
   final VoidCallback? onCallTenant;
   final VoidCallback? onWhatsappTenant;
+  final VoidCallback? onAddPhoto;
+  final VoidCallback? onAddVideo;
+  final VoidCallback? onViewMedia;
+  final VoidCallback? onShareMedia;
   final String? pendingRent;
   final String pendingRentLabel;
 
@@ -21,6 +25,10 @@ class RoomCard extends StatelessWidget {
     this.onDelete,
     this.onCallTenant,
     this.onWhatsappTenant,
+    this.onAddPhoto,
+    this.onAddVideo,
+    this.onViewMedia,
+    this.onShareMedia,
     this.pendingRent,
     this.pendingRentLabel = 'Pending',
   }) : super(key: key);
@@ -110,17 +118,76 @@ class RoomCard extends StatelessWidget {
                     onPressed: onWhatsappTenant!,
                   ),
                 ],
-                if (onEdit != null || onDelete != null)
+                if (onEdit != null ||
+                    onDelete != null ||
+                    onAddPhoto != null ||
+                    onAddVideo != null ||
+                    onViewMedia != null ||
+                    onShareMedia != null)
                   PopupMenuButton<String>(
                     onSelected: (value) {
                       if (value == 'edit' && onEdit != null) {
                         onEdit!();
                       } else if (value == 'delete' && onDelete != null) {
                         onDelete!();
+                      } else if (value == 'add_photo' && onAddPhoto != null) {
+                        onAddPhoto!();
+                      } else if (value == 'add_video' && onAddVideo != null) {
+                        onAddVideo!();
+                      } else if (value == 'view_media' && onViewMedia != null) {
+                        onViewMedia!();
+                      } else if (value == 'share_media' &&
+                          onShareMedia != null) {
+                        onShareMedia!();
                       }
                     },
                     itemBuilder: (BuildContext context) {
                       return [
+                        if (onAddPhoto != null)
+                          const PopupMenuItem(
+                            value: 'add_photo',
+                            child: Row(
+                              children: [
+                                Icon(Icons.add_photo_alternate_outlined,
+                                    size: 18),
+                                SizedBox(width: 8),
+                                Text('Add Photo'),
+                              ],
+                            ),
+                          ),
+                        if (onAddVideo != null)
+                          const PopupMenuItem(
+                            value: 'add_video',
+                            child: Row(
+                              children: [
+                                Icon(Icons.video_call_outlined, size: 18),
+                                SizedBox(width: 8),
+                                Text('Add Video'),
+                              ],
+                            ),
+                          ),
+                        if (onViewMedia != null)
+                          const PopupMenuItem(
+                            value: 'view_media',
+                            child: Row(
+                              children: [
+                                Icon(Icons.photo_library_outlined, size: 18),
+                                SizedBox(width: 8),
+                                Text('View Media'),
+                              ],
+                            ),
+                          ),
+                        if (onShareMedia != null)
+                          const PopupMenuItem(
+                            value: 'share_media',
+                            child: Row(
+                              children: [
+                                Icon(Icons.ios_share_outlined, size: 18),
+                                SizedBox(width: 8),
+                                Text('Share Media'),
+                              ],
+                            ),
+                          ),
                         if (onEdit != null)
                           const PopupMenuItem(
                             value: 'edit',
