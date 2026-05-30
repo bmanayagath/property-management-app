@@ -457,22 +457,25 @@ class _MediaTile extends StatelessWidget {
                 size: 36,
               ),
             ),
-          if (media.syncStatus != RoomMediaSyncStatus.synced)
-            Positioned(
-              left: 6,
-              bottom: 6,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-                decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: 0.6),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: const Text(
-                  'Pending',
-                  style: TextStyle(color: Colors.white, fontSize: 10),
+          Positioned(
+            left: 6,
+            bottom: 6,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+              decoration: BoxDecoration(
+                color: _statusColor(media.syncStatus).withValues(alpha: 0.86),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Text(
+                _statusLabel(media.syncStatus),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
                 ),
               ),
             ),
+          ),
           if (canShare || canDelete)
             Positioned(
               top: 2,
@@ -527,6 +530,34 @@ class _MediaTile extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  String _statusLabel(String status) {
+    switch (status) {
+      case RoomMediaSyncStatus.uploading:
+        return 'Uploading';
+      case RoomMediaSyncStatus.synced:
+        return 'Synced';
+      case RoomMediaSyncStatus.failed:
+        return 'Failed';
+      case RoomMediaSyncStatus.pending:
+      default:
+        return 'Pending';
+    }
+  }
+
+  Color _statusColor(String status) {
+    switch (status) {
+      case RoomMediaSyncStatus.uploading:
+        return const Color(0xFF2563EB);
+      case RoomMediaSyncStatus.synced:
+        return const Color(0xFF059669);
+      case RoomMediaSyncStatus.failed:
+        return const Color(0xFFDC2626);
+      case RoomMediaSyncStatus.pending:
+      default:
+        return const Color(0xFF92400E);
+    }
   }
 }
 

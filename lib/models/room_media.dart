@@ -16,6 +16,7 @@ class RoomMedia {
   final DateTime? deletedAt;
   final String? deletedBy;
   final String syncStatus;
+  final DateTime? uploadedAt;
 
   const RoomMedia({
     required this.id,
@@ -33,6 +34,7 @@ class RoomMedia {
     this.deletedAt,
     this.deletedBy,
     this.syncStatus = RoomMediaSyncStatus.pending,
+    this.uploadedAt,
   });
 
   bool get isImage => fileType == RoomMediaFileType.image;
@@ -64,6 +66,8 @@ class RoomMedia {
     String? deletedBy,
     bool clearDeletedBy = false,
     String? syncStatus,
+    DateTime? uploadedAt,
+    bool clearUploadedAt = false,
   }) {
     return RoomMedia(
       id: id ?? this.id,
@@ -81,6 +85,7 @@ class RoomMedia {
       deletedAt: clearDeletedAt ? null : deletedAt ?? this.deletedAt,
       deletedBy: clearDeletedBy ? null : deletedBy ?? this.deletedBy,
       syncStatus: syncStatus ?? this.syncStatus,
+      uploadedAt: clearUploadedAt ? null : uploadedAt ?? this.uploadedAt,
     );
   }
 
@@ -101,6 +106,7 @@ class RoomMedia {
       'deletedAt': deletedAt == null ? null : Timestamp.fromDate(deletedAt!),
       'deletedBy': deletedBy,
       'syncStatus': syncStatus,
+      'uploadedAt': uploadedAt == null ? null : Timestamp.fromDate(uploadedAt!),
     };
   }
 
@@ -121,6 +127,7 @@ class RoomMedia {
       deletedAt: _dateFromJson(json['deletedAt']),
       deletedBy: json['deletedBy'] as String?,
       syncStatus: json['syncStatus'] as String? ?? RoomMediaSyncStatus.synced,
+      uploadedAt: _dateFromJson(json['uploadedAt']),
     );
   }
 
@@ -144,6 +151,7 @@ class RoomMediaSyncStatus {
   RoomMediaSyncStatus._();
 
   static const pending = 'pending';
+  static const uploading = 'uploading';
   static const synced = 'synced';
   static const failed = 'failed';
 }

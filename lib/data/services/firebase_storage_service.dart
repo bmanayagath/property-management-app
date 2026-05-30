@@ -20,8 +20,11 @@ class FirebaseStorageService {
     required String villaId,
     required String roomId,
     required String mediaId,
+    String extension = 'jpg',
   }) {
-    return 'villas/$villaId/rooms/$roomId/media/$mediaId.jpg';
+    final normalizedExtension =
+        extension.toLowerCase() == 'png' ? 'png' : 'jpg';
+    return 'villas/$villaId/rooms/$roomId/media/$mediaId.$normalizedExtension';
   }
 
   String videoPath({
@@ -111,9 +114,18 @@ class FirebaseStorageService {
   }
 
   Future<void> deleteMedia(RoomMedia media) async {
+    await deleteFile(media.storagePath);
+  }
+
+  Future<void> deleteFile(String storagePath) async {
     final storage = _safeStorage;
-    if (storage == null || media.storagePath.trim().isEmpty) return;
-    await storage.ref(media.storagePath).delete();
+    if (storage == null || storagePath.trim().isEmpty) return;
+    await storage.ref(storagePath).delete();
+  }
+
+  Future<String> getDownloadUrl(String storagePath) async {
+    final storage = _requireStorage();
+    return storage.ref(storagePath).getDownloadURL();
   }
 
   Future<String?> generateThumbnail(RoomMedia media) async {

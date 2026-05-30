@@ -47,7 +47,6 @@ class RoomMediaRepository {
     if (collection == null) return Stream.value(const []);
 
     return collection
-        .where('villaId', isEqualTo: villaId)
         .where('roomId', isEqualTo: roomId)
         .where('isDeleted', isEqualTo: false)
         .snapshots()
@@ -69,7 +68,6 @@ class RoomMediaRepository {
     if (collection == null) return const [];
 
     final snapshot = await collection
-        .where('villaId', isEqualTo: villaId)
         .where('roomId', isEqualTo: roomId)
         .where('isDeleted', isEqualTo: false)
         .get();
@@ -123,6 +121,10 @@ class RoomMediaRepository {
     );
 
     try {
+      await _trySaveMedia(pendingMedia);
+      await _trySaveMedia(
+        pendingMedia.copyWith(syncStatus: RoomMediaSyncStatus.uploading),
+      );
       final uploaded = await _uploadFile(
         file: file,
         fileType: fileType,
@@ -138,15 +140,22 @@ class RoomMediaRepository {
         thumbnailUrl:
             fileType == RoomMediaFileType.image ? uploaded.downloadUrl : '',
         syncStatus: RoomMediaSyncStatus.synced,
+        uploadedAt: DateTime.now(),
       );
       return saveMedia(syncedMedia);
     } on RoomMediaUploadCancelled {
+      await _trySaveMedia(pendingMedia);
       rethrow;
     } catch (error, stackTrace) {
       debugPrint('[RoomMedia] upload deferred for $id: $error');
       debugPrintStack(stackTrace: stackTrace);
-      await saveMedia(pendingMedia);
-      return pendingMedia;
+      final failedMedia = pendingMedia.copyWith(
+        syncStatus: _isOfflineUploadError(error)
+            ? RoomMediaSyncStatus.pending
+            : RoomMediaSyncStatus.failed,
+      );
+      await _trySaveMedia(failedMedia);
+      return failedMedia;
     }
   }
 
@@ -159,25 +168,48 @@ class RoomMediaRepository {
     if (!await file.exists()) {
       throw StateError('Original media file is no longer available.');
     }
-    final uploaded = await _uploadFile(
-      file: file,
-      fileType: media.fileType,
-      villaId: media.villaId,
-      roomId: media.roomId,
-      mediaId: media.id,
-      uploadController: uploadController,
-      onProgress: onProgress,
-    );
-    final updated = media.copyWith(
-      storagePath: uploaded.storagePath,
-      downloadUrl: uploaded.downloadUrl,
-      thumbnailUrl: media.isImage ? uploaded.downloadUrl : '',
-      syncStatus: RoomMediaSyncStatus.synced,
-    );
-    return saveMedia(updated);
+    await updateMedia(
+        media.copyWith(syncStatus: RoomMediaSyncStatus.uploading));
+    try {
+      final uploaded = await _uploadFile(
+        file: file,
+        fileType: media.fileType,
+        villaId: media.villaId,
+        roomId: media.roomId,
+        mediaId: media.id,
+        uploadController: uploadController,
+        onProgress: onProgress,
+      );
+      final updated = media.copyWith(
+        storagePath: uploaded.storagePath,
+        downloadUrl: uploaded.downloadUrl,
+        thumbnailUrl: media.isImage ? uploaded.downloadUrl : '',
+        syncStatus: RoomMediaSyncStatus.synced,
+        uploadedAt: DateTime.now(),
+      );
+      return saveMedia(updated);
+    } catch (error) {
+      if (error is! RoomMediaUploadCancelled) {
+        await _trySaveMedia(
+          media.copyWith(
+            syncStatus: _isOfflineUploadError(error)
+                ? RoomMediaSyncStatus.pending
+                : RoomMediaSyncStatus.failed,
+          ),
+        );
+      }
+      rethrow;
+    }
   }
 
   Future<void> syncPendingMedia({
+    required String villaId,
+    required String roomId,
+  }) {
+    return uploadPendingRoomMedia(villaId: villaId, roomId: roomId);
+  }
+
+  Future<void> uploadPendingRoomMedia({
     required String villaId,
     required String roomId,
   }) async {
@@ -191,6 +223,9 @@ class RoomMediaRepository {
       final file = File(media.localPath);
       if (!await file.exists()) continue;
       try {
+        await updateMedia(
+          media.copyWith(syncStatus: RoomMediaSyncStatus.uploading),
+        );
         final uploaded = await _uploadFile(
           file: file,
           fileType: media.fileType,
@@ -204,10 +239,18 @@ class RoomMediaRepository {
             downloadUrl: uploaded.downloadUrl,
             thumbnailUrl: media.isImage ? uploaded.downloadUrl : '',
             syncStatus: RoomMediaSyncStatus.synced,
+            uploadedAt: DateTime.now(),
           ),
         );
       } catch (error) {
         debugPrint('[RoomMedia] pending upload still unavailable: $error');
+        await updateMedia(
+          media.copyWith(
+            syncStatus: _isOfflineUploadError(error)
+                ? RoomMediaSyncStatus.pending
+                : RoomMediaSyncStatus.failed,
+          ),
+        );
       }
     }
   }
@@ -248,5 +291,25 @@ class RoomMediaRepository {
       throw StateError('Firestore is unavailable.');
     }
     return collection;
+  }
+
+  bool _isOfflineUploadError(Object error) {
+    if (error is StateError) return true;
+    if (error is FirebaseException) {
+      return error.code == 'unavailable' ||
+          error.code == 'network-request-failed' ||
+          error.code == 'retry-limit-exceeded';
+    }
+    return false;
+  }
+
+  Future<bool> _trySaveMedia(RoomMedia media) async {
+    try {
+      await saveMedia(media);
+      return true;
+    } catch (error) {
+      debugPrint('[RoomMedia] metadata save deferred: $error');
+      return false;
+    }
   }
 }
