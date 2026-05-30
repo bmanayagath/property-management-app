@@ -276,6 +276,7 @@ class RoomMediaRepository {
       villaId: villaId,
       roomId: roomId,
       mediaId: mediaId,
+      extension: path.extension(file.path).replaceFirst('.', ''),
       uploadController: uploadController,
       onProgress: onProgress,
     );

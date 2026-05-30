@@ -10,11 +10,14 @@ import '../../models/room_media.dart';
 class FirebaseStorageService {
   FirebaseStorageService({FirebaseStorage? storage}) : _storage = storage;
 
+  static const bucketUrl =
+      'gs://investment-calculator-811fd.firebasestorage.app';
+
   FirebaseStorage? _storage;
 
   FirebaseStorage? get _safeStorage {
     if (Firebase.apps.isEmpty) return null;
-    return _storage ??= FirebaseStorage.instance;
+    return _storage ??= FirebaseStorage.instanceFor(bucket: bucketUrl);
   }
 
   String imagePath({
@@ -23,8 +26,7 @@ class FirebaseStorageService {
     required String mediaId,
     String extension = 'jpg',
   }) {
-    final normalizedExtension =
-        extension.toLowerCase() == 'png' ? 'png' : 'jpg';
+    final normalizedExtension = _normalizeImageExtension(extension);
     return 'villas/$villaId/rooms/$roomId/media/$mediaId.$normalizedExtension';
   }
 
@@ -41,14 +43,21 @@ class FirebaseStorageService {
     required String villaId,
     required String roomId,
     required String mediaId,
+    String extension = 'jpg',
     RoomMediaUploadController? uploadController,
     ValueChanged<double>? onProgress,
   }) async {
-    final path = imagePath(villaId: villaId, roomId: roomId, mediaId: mediaId);
+    final normalizedExtension = _normalizeImageExtension(extension);
+    final path = imagePath(
+      villaId: villaId,
+      roomId: roomId,
+      mediaId: mediaId,
+      extension: normalizedExtension,
+    );
     return _uploadFile(
       file: file,
       path: path,
-      contentType: 'image/jpeg',
+      contentType: normalizedExtension == 'png' ? 'image/png' : 'image/jpeg',
       uploadController: uploadController,
       onProgress: onProgress,
     );
@@ -121,7 +130,7 @@ class FirebaseStorageService {
       throw StateError('Room media storage path has no file extension: $path');
     }
 
-    final ref = storage.ref(path);
+    final ref = storage.ref().child(path);
     final task = ref.putFile(
       file,
       SettableMetadata(contentType: contentType),
@@ -189,6 +198,13 @@ class FirebaseStorageService {
     final index = value.lastIndexOf('.');
     if (index == -1 || index == value.length - 1) return '';
     return value.substring(index + 1).toLowerCase();
+  }
+
+  String _normalizeImageExtension(String value) {
+    final extension = value.trim().toLowerCase().replaceFirst('.', '');
+    if (extension == 'png') return 'png';
+    if (extension == 'jpeg') return 'jpg';
+    return 'jpg';
   }
 }
 
