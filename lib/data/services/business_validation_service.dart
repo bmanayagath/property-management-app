@@ -95,7 +95,7 @@ class BusinessValidationService {
       }
       if (!selectedRoom.isOccupied) {
         return const ValidationResult.invalid(
-          'Cannot add rent for a vacant room.',
+          'Cannot record rent for a vacant room.',
         );
       }
 

@@ -5,6 +5,7 @@ import 'package:uuid/uuid.dart';
 
 import '../../../core/constants/app_permissions.dart';
 import '../../../core/utils/currency_formatter.dart';
+import '../../../core/utils/room_helpers.dart';
 import '../../../data/services/business_validation_service.dart';
 import '../../../domain/models/app_notification.dart';
 import '../../../domain/models/income.dart';
@@ -91,7 +92,8 @@ class _AddEditIncomeScreenState extends ConsumerState<AddEditIncomeScreen> {
             );
             final roomsForSelectedVilla = activeRooms
                 .where((room) => room.villaId == _selectedVillaId)
-                .toList();
+                .toList()
+              ..sort(compareRoomsNaturally);
             final selectableRooms = roomsForSelectedVilla
                 .where((room) => _selectedIncomeType == IncomeTypes.rent
                     ? room.isOccupied
@@ -99,6 +101,9 @@ class _AddEditIncomeScreenState extends ConsumerState<AddEditIncomeScreen> {
                 .toList();
             final selectedVillaIsValid =
                 activeVillas.any((villa) => villa.id == _selectedVillaId);
+            final selectedRoomIsValid =
+                selectableRooms.any((room) => room.id == _selectedRoomId);
+            _clearInvalidSelectedRoom(selectedRoomIsValid);
 
             return Form(
               key: _formKey,
@@ -149,16 +154,14 @@ class _AddEditIncomeScreenState extends ConsumerState<AddEditIncomeScreen> {
                       if (selectedVillaIsValid) ...[
                         const SizedBox(height: 14),
                         DropdownButtonFormField<String>(
-                          initialValue: selectableRooms
-                                  .any((room) => room.id == _selectedRoomId)
-                              ? _selectedRoomId
-                              : null,
+                          initialValue:
+                              selectedRoomIsValid ? _selectedRoomId : null,
                           decoration: _decoration('Room'),
                           items: selectableRooms
                               .map(
                                 (room) => DropdownMenuItem(
                                   value: room.id,
-                                  child: Text(room.displayName),
+                                  child: Text(getRoomDropdownLabel(room)),
                                 ),
                               )
                               .toList(),
@@ -191,7 +194,18 @@ class _AddEditIncomeScreenState extends ConsumerState<AddEditIncomeScreen> {
                             : null,
                         onChanged: (value) {
                           if (value == null) return;
-                          setState(() => _selectedIncomeType = value);
+                          setState(() {
+                            _selectedIncomeType = value;
+                            if (value == IncomeTypes.rent) {
+                              final selectedRoom = roomsForSelectedVilla
+                                  .where((room) => room.id == _selectedRoomId)
+                                  .firstOrNull;
+                              if (selectedRoom == null ||
+                                  !selectedRoom.isOccupied) {
+                                _selectedRoomId = null;
+                              }
+                            }
+                          });
                         },
                       ),
                       const SizedBox(height: 14),
@@ -476,6 +490,14 @@ class _AddEditIncomeScreenState extends ConsumerState<AddEditIncomeScreen> {
 
   static String _villaLabel(VillaModel villa) {
     return villa.villaName.trim().isEmpty ? 'Villa' : villa.villaName.trim();
+  }
+
+  void _clearInvalidSelectedRoom(bool selectedRoomIsValid) {
+    if (_selectedRoomId == null || selectedRoomIsValid) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || _selectedRoomId == null) return;
+      setState(() => _selectedRoomId = null);
+    });
   }
 }
 
