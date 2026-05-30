@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/foundation.dart';
@@ -85,6 +86,35 @@ class FirebaseStorageService {
     ValueChanged<double>? onProgress,
   }) async {
     final storage = _requireStorage();
+    final user = FirebaseAuth.instance.currentUser;
+    final exists = await file.exists();
+    final size = exists ? await file.length() : 0;
+    final extension = _extensionFromPath(path);
+
+    debugPrint('[RoomMediaStorage] Firebase user uid=${user?.uid ?? 'none'}');
+    debugPrint('[RoomMediaStorage] Firebase Storage bucket=${storage.bucket}');
+    debugPrint('[RoomMediaStorage] local file path=${file.path}');
+    debugPrint('[RoomMediaStorage] local file exists=$exists');
+    debugPrint('[RoomMediaStorage] local file size=$size bytes');
+    debugPrint('[RoomMediaStorage] storage path=$path');
+
+    if (user == null) {
+      throw FirebaseException(
+        plugin: 'firebase_storage',
+        code: 'unauthenticated',
+        message: 'No Firebase user is signed in for room media upload.',
+      );
+    }
+    if (!exists) {
+      throw StateError('Room media local file does not exist: ${file.path}');
+    }
+    if (size <= 0) {
+      throw StateError('Room media local file is empty: ${file.path}');
+    }
+    if (extension.isEmpty) {
+      throw StateError('Room media storage path has no file extension: $path');
+    }
+
     final ref = storage.ref(path);
     final task = ref.putFile(
       file,
@@ -99,14 +129,22 @@ class FirebaseStorageService {
     try {
       await task;
     } on FirebaseException catch (error) {
+      debugPrint('[RoomMediaStorage] FirebaseException code=${error.code}');
+      debugPrint(
+        '[RoomMediaStorage] FirebaseException message=${error.message}',
+      );
       if (uploadController?.isCancelled == true || error.code == 'canceled') {
         throw const RoomMediaUploadCancelled();
       }
+      rethrow;
+    } catch (error) {
+      debugPrint('[RoomMediaStorage] upload failed: $error');
       rethrow;
     } finally {
       await subscription.cancel();
       uploadController?._detach(task);
     }
+    debugPrint('[RoomMediaStorage] upload success path=$path');
     return StorageUploadResult(
       storagePath: path,
       downloadUrl: await ref.getDownloadURL(),
@@ -139,6 +177,12 @@ class FirebaseStorageService {
       throw StateError('Firebase Storage is unavailable.');
     }
     return storage;
+  }
+
+  String _extensionFromPath(String value) {
+    final index = value.lastIndexOf('.');
+    if (index == -1 || index == value.length - 1) return '';
+    return value.substring(index + 1).toLowerCase();
   }
 }
 

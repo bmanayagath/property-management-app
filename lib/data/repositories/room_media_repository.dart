@@ -150,9 +150,7 @@ class RoomMediaRepository {
       debugPrint('[RoomMedia] upload deferred for $id: $error');
       debugPrintStack(stackTrace: stackTrace);
       final failedMedia = pendingMedia.copyWith(
-        syncStatus: _isOfflineUploadError(error)
-            ? RoomMediaSyncStatus.pending
-            : RoomMediaSyncStatus.failed,
+        syncStatus: RoomMediaSyncStatus.failed,
       );
       await _trySaveMedia(failedMedia);
       return failedMedia;
@@ -192,9 +190,7 @@ class RoomMediaRepository {
       if (error is! RoomMediaUploadCancelled) {
         await _trySaveMedia(
           media.copyWith(
-            syncStatus: _isOfflineUploadError(error)
-                ? RoomMediaSyncStatus.pending
-                : RoomMediaSyncStatus.failed,
+            syncStatus: RoomMediaSyncStatus.failed,
           ),
         );
       }
@@ -246,9 +242,7 @@ class RoomMediaRepository {
         debugPrint('[RoomMedia] pending upload still unavailable: $error');
         await updateMedia(
           media.copyWith(
-            syncStatus: _isOfflineUploadError(error)
-                ? RoomMediaSyncStatus.pending
-                : RoomMediaSyncStatus.failed,
+            syncStatus: RoomMediaSyncStatus.failed,
           ),
         );
       }
@@ -291,16 +285,6 @@ class RoomMediaRepository {
       throw StateError('Firestore is unavailable.');
     }
     return collection;
-  }
-
-  bool _isOfflineUploadError(Object error) {
-    if (error is StateError) return true;
-    if (error is FirebaseException) {
-      return error.code == 'unavailable' ||
-          error.code == 'network-request-failed' ||
-          error.code == 'retry-limit-exceeded';
-    }
-    return false;
   }
 
   Future<bool> _trySaveMedia(RoomMedia media) async {
