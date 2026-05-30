@@ -152,6 +152,9 @@ class RoomMediaRepository {
       final failedMedia = pendingMedia.copyWith(
         syncStatus: RoomMediaSyncStatus.failed,
       );
+      debugPrint(
+        '[RoomMedia] marking upload failed id=$id localPath=${file.path}',
+      );
       await _trySaveMedia(failedMedia);
       return failedMedia;
     }
@@ -188,6 +191,9 @@ class RoomMediaRepository {
       return saveMedia(updated);
     } catch (error) {
       if (error is! RoomMediaUploadCancelled) {
+        debugPrint(
+          '[RoomMedia] retry upload failed id=${media.id} localPath=${media.localPath}',
+        );
         await _trySaveMedia(
           media.copyWith(
             syncStatus: RoomMediaSyncStatus.failed,
@@ -240,6 +246,9 @@ class RoomMediaRepository {
         );
       } catch (error) {
         debugPrint('[RoomMedia] pending upload still unavailable: $error');
+        debugPrint(
+          '[RoomMedia] marking pending upload failed id=${media.id} localPath=${media.localPath}',
+        );
         await updateMedia(
           media.copyWith(
             syncStatus: RoomMediaSyncStatus.failed,

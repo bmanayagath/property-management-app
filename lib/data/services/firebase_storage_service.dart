@@ -91,8 +91,14 @@ class FirebaseStorageService {
     final size = exists ? await file.length() : 0;
     final extension = _extensionFromPath(path);
 
+    debugPrint(
+        '[RoomMediaStorage] Firebase apps count=${Firebase.apps.length}');
     debugPrint('[RoomMediaStorage] Firebase user uid=${user?.uid ?? 'none'}');
+    debugPrint('[RoomMediaStorage] Firebase app=${storage.app.name}');
     debugPrint('[RoomMediaStorage] Firebase Storage bucket=${storage.bucket}');
+    debugPrint(
+      '[RoomMediaStorage] Firebase options bucket=${storage.app.options.storageBucket}',
+    );
     debugPrint('[RoomMediaStorage] local file path=${file.path}');
     debugPrint('[RoomMediaStorage] local file exists=$exists');
     debugPrint('[RoomMediaStorage] local file size=$size bytes');
