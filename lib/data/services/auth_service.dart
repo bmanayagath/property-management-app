@@ -6,6 +6,7 @@ import 'package:uuid/uuid.dart';
 
 import '../../core/constants/app_roles.dart';
 import '../../domain/models/app_user.dart';
+import 'logger_service.dart';
 
 class AuthServiceException implements Exception {
   final String message;
@@ -51,7 +52,15 @@ class AuthService {
             'Unable to sign in. Please try again.');
       }
       return _loadProfile(firebaseUser);
-    } on firebase_auth.FirebaseAuthException catch (error) {
+    } on firebase_auth.FirebaseAuthException catch (error, stackTrace) {
+      await LoggerService.logAuth(
+        screenName: 'AuthService',
+        operation: 'Login',
+        message: 'Firebase authentication failed',
+        details: '${error.code}: ${error.message}',
+        stackTrace: stackTrace.toString(),
+        level: 'ERROR',
+      );
       throw AuthServiceException(friendlyAuthMessage(error));
     }
   }
@@ -90,7 +99,15 @@ class AuthService {
       );
       await saveUserProfile(appUser);
       return appUser;
-    } on firebase_auth.FirebaseAuthException catch (error) {
+    } on firebase_auth.FirebaseAuthException catch (error, stackTrace) {
+      await LoggerService.logAuth(
+        screenName: 'AuthService',
+        operation: 'CreateUser',
+        message: 'Firebase user creation failed',
+        details: '${error.code}: ${error.message}',
+        stackTrace: stackTrace.toString(),
+        level: 'ERROR',
+      );
       throw AuthServiceException(friendlyCreateUserMessage(error));
     } catch (_) {
       if (createdFirebaseUser != null) {
@@ -111,7 +128,15 @@ class AuthService {
   Future<void> resetPassword(String email) async {
     try {
       await _auth.sendPasswordResetEmail(email: email.trim().toLowerCase());
-    } on firebase_auth.FirebaseAuthException catch (error) {
+    } on firebase_auth.FirebaseAuthException catch (error, stackTrace) {
+      await LoggerService.logAuth(
+        screenName: 'AuthService',
+        operation: 'ResetPassword',
+        message: 'Firebase password reset failed',
+        details: '${error.code}: ${error.message}',
+        stackTrace: stackTrace.toString(),
+        level: 'ERROR',
+      );
       throw AuthServiceException(friendlyAuthMessage(error));
     }
   }

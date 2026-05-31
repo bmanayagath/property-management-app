@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -7,7 +8,10 @@ import 'firebase_options.dart';
 import 'core/constants/app_permissions.dart';
 import 'core/startup/startup_status.dart';
 import 'core/theme/app_theme.dart';
+import 'data/local/database.dart';
+import 'data/services/logger_service.dart';
 import 'presentation/providers/auth_provider.dart';
+import 'presentation/providers/database_provider.dart';
 import 'presentation/screens/dashboard_screen.dart';
 import 'presentation/screens/auth/login_screen.dart';
 import 'presentation/screens/expenses_screen.dart';
@@ -20,11 +24,14 @@ import 'presentation/providers/navigation_provider.dart';
 Future<void> main() async {
   await runZonedGuarded(() async {
     WidgetsFlutterBinding.ensureInitialized();
+    final database = AppDatabase();
+    LoggerService.initialize(database);
     final startupStatus = await _initializeStartup();
 
     runApp(
       ProviderScope(
         overrides: [
+          databaseProvider.overrideWithValue(database),
           startupStatusProvider.overrideWithValue(startupStatus),
         ],
         child: const MyApp(),
@@ -33,6 +40,15 @@ Future<void> main() async {
   }, (error, stackTrace) {
     debugPrint('[Startup] Unhandled async error: $error');
     debugPrintStack(stackTrace: stackTrace);
+    unawaited(
+      LoggerService.logError(
+        screenName: 'Startup',
+        operation: 'runZonedGuarded',
+        message: 'Unhandled async error',
+        details: error.toString(),
+        stackTrace: stackTrace.toString(),
+      ),
+    );
   });
 }
 
@@ -41,6 +57,29 @@ Future<StartupStatus> _initializeStartup() async {
     FlutterError.presentError(details);
     debugPrint('[Startup] Flutter error: ${details.exceptionAsString()}');
     debugPrintStack(stackTrace: details.stack);
+    unawaited(
+      LoggerService.logError(
+        screenName: 'FlutterError',
+        operation: 'FlutterError.onError',
+        message: details.exceptionAsString(),
+        details: details.library ?? '',
+        stackTrace: details.stack?.toString() ?? '',
+      ),
+    );
+  };
+  PlatformDispatcher.instance.onError = (error, stackTrace) {
+    debugPrint('[Startup] Platform error: $error');
+    debugPrintStack(stackTrace: stackTrace);
+    unawaited(
+      LoggerService.logError(
+        screenName: 'PlatformDispatcher',
+        operation: 'PlatformDispatcher.onError',
+        message: 'Unhandled platform error',
+        details: error.toString(),
+        stackTrace: stackTrace.toString(),
+      ),
+    );
+    return true;
   };
 
   try {
@@ -51,6 +90,14 @@ Future<StartupStatus> _initializeStartup() async {
     }
     debugPrint('[Startup] Firebase initialized successfully.');
     debugPrint('[Startup] Firebase apps: ${Firebase.apps.length}');
+    unawaited(
+      LoggerService.logFirebase(
+        screenName: 'Startup',
+        operation: 'FirebaseInitialize',
+        message: 'Firebase initialized successfully.',
+        level: 'INFO',
+      ),
+    );
     return const StartupStatus(firebaseInitialized: true);
   } on FirebaseException catch (e) {
     if (e.code == 'duplicate-app') {
@@ -59,6 +106,15 @@ Future<StartupStatus> _initializeStartup() async {
     }
     debugPrint('[Startup] Firebase initialization failed: $e');
     debugPrintStack(stackTrace: e.stackTrace);
+    unawaited(
+      LoggerService.logFirebase(
+        screenName: 'Startup',
+        operation: 'FirebaseInitialize',
+        message: 'Firebase initialization failed',
+        details: '${e.code}: ${e.message}',
+        stackTrace: e.stackTrace?.toString() ?? '',
+      ),
+    );
     debugPrint(
       '[Startup] Continuing in offline/local mode. Cloud sync and FCM will be disabled until Firebase initializes.',
     );
@@ -69,6 +125,15 @@ Future<StartupStatus> _initializeStartup() async {
   } catch (error, stackTrace) {
     debugPrint('[Startup] Firebase initialization failed: $error');
     debugPrintStack(stackTrace: stackTrace);
+    unawaited(
+      LoggerService.logError(
+        screenName: 'Startup',
+        operation: 'FirebaseInitialize',
+        message: 'Firebase initialization failed',
+        details: error.toString(),
+        stackTrace: stackTrace.toString(),
+      ),
+    );
     debugPrint(
       '[Startup] Continuing in offline/local mode. Cloud sync and FCM will be disabled until Firebase initializes.',
     );

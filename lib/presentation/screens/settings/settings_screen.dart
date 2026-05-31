@@ -5,6 +5,7 @@ import '../../../core/constants/app_permissions.dart';
 import '../../../core/constants/app_roles.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/sync_provider.dart';
+import 'developer_logs_screen.dart';
 import 'legal_screen.dart';
 import 'sync_status_widget.dart';
 import 'users_screen.dart';
@@ -116,6 +117,22 @@ class SettingsScreen extends ConsumerWidget {
                   context,
                   MaterialPageRoute(
                     builder: (context) => const UsersScreen(),
+                  ),
+                );
+              },
+            ),
+          ],
+          if (user?.role == AppRoles.admin) ...[
+            const SizedBox(height: 10),
+            _SettingsActionTile(
+              icon: Icons.terminal_outlined,
+              title: 'Developer Logs',
+              subtitle: 'View diagnostics, upload failures, and sync issues',
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const DeveloperLogsScreen(),
                   ),
                 );
               },

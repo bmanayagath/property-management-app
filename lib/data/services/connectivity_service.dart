@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/foundation.dart';
 
+import 'logger_service.dart';
+
 class ConnectivityService {
   final Connectivity _connectivity;
 
@@ -15,11 +17,27 @@ class ConnectivityService {
     debugPrint(
       '[Connectivity] initial results=$initialResults, isOnline=$initialIsOnline',
     );
+    unawaited(
+      LoggerService.logNetwork(
+        screenName: 'ConnectivityService',
+        operation: 'InitialStatus',
+        message: initialIsOnline ? 'Device is online' : 'Device is offline',
+        details: initialResults.toString(),
+      ),
+    );
     yield initialIsOnline;
 
     yield* _connectivity.onConnectivityChanged.map((results) {
       final isOnline = _hasConnection(results);
       debugPrint('[Connectivity] changed results=$results, isOnline=$isOnline');
+      unawaited(
+        LoggerService.logNetwork(
+          screenName: 'ConnectivityService',
+          operation: 'ConnectivityChanged',
+          message: isOnline ? 'Device is online' : 'Device is offline',
+          details: results.toString(),
+        ),
+      );
       return isOnline;
     }).distinct();
   }
@@ -28,6 +46,17 @@ class ConnectivityService {
     final results = await _connectivity.checkConnectivity();
     final isOnline = _hasConnection(results);
     debugPrint('[Connectivity] check results=$results, isOnline=$isOnline');
+    if (!isOnline) {
+      unawaited(
+        LoggerService.logNetwork(
+          screenName: 'ConnectivityService',
+          operation: 'CheckConnectivity',
+          message: 'Device is offline',
+          details: results.toString(),
+          level: 'WARNING',
+        ),
+      );
+    }
     return isOnline;
   }
 

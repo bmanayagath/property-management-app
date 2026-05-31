@@ -6,6 +6,7 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/foundation.dart';
 
 import '../../models/room_media.dart';
+import 'logger_service.dart';
 
 class FirebaseStorageService {
   FirebaseStorageService({FirebaseStorage? storage}) : _storage = storage;
@@ -120,6 +121,12 @@ class FirebaseStorageService {
     debugPrint('File exists: $exists');
     debugPrint('File size: $size');
     debugPrint('Storage path: $path');
+    final logDetails = _uploadDetails(
+      path: path,
+      filePath: file.path,
+      fileSize: size,
+      bucketName: storage.bucket,
+    );
 
     if (currentUser == null) {
       throw FirebaseException(
@@ -154,6 +161,12 @@ class FirebaseStorageService {
       final url = await ref.getDownloadURL();
       debugPrint('Upload success URL: $url');
       debugPrint('[RoomMediaStorage] upload success path=$path');
+      await LoggerService.logUpload(
+        screenName: 'FirebaseStorageService',
+        operation: 'RoomMediaUpload',
+        message: 'Room media upload succeeded',
+        details: '$logDetails\nDownloadUrl: $url',
+      );
       return StorageUploadResult(
         storagePath: path,
         downloadUrl: url,
@@ -167,10 +180,34 @@ class FirebaseStorageService {
       debugPrint('Message: ${error.message}');
       debugPrint('Plugin: ${error.plugin}');
       debugPrint('Stack: $stackTrace');
+      await LoggerService.logUpload(
+        screenName: 'FirebaseStorageService',
+        operation: 'RoomMediaUpload',
+        message: 'Firebase Storage upload failed',
+        details:
+            '$logDetails\nCode: ${error.code}\nMessage: ${error.message}\nPlugin: ${error.plugin}',
+        stackTrace: stackTrace.toString(),
+        level: 'ERROR',
+      );
+      await LoggerService.logFirebase(
+        screenName: 'FirebaseStorageService',
+        operation: 'RoomMediaUpload',
+        message: 'Firebase Storage upload failed',
+        details: '${error.code}: ${error.message}',
+        stackTrace: stackTrace.toString(),
+      );
       rethrow;
     } catch (error, stackTrace) {
       debugPrint('Unknown upload error: $error');
       debugPrint('Stack: $stackTrace');
+      await LoggerService.logUpload(
+        screenName: 'FirebaseStorageService',
+        operation: 'RoomMediaUpload',
+        message: 'Room media upload failed',
+        details: '$logDetails\n$error',
+        stackTrace: stackTrace.toString(),
+        level: 'ERROR',
+      );
       rethrow;
     } finally {
       await subscription.cancel();
@@ -223,6 +260,30 @@ class FirebaseStorageService {
     if (value.trim().isEmpty) {
       throw StateError('Room media storage path has an empty $name.');
     }
+  }
+
+  String _uploadDetails({
+    required String path,
+    required String filePath,
+    required int fileSize,
+    required String bucketName,
+  }) {
+    final segments = path.split('/');
+    final villaId = segments.length > 1 ? segments[1] : '';
+    final roomId = segments.length > 3 ? segments[3] : '';
+    final fileName = segments.isNotEmpty ? segments.last : '';
+    final mediaId = fileName.contains('.')
+        ? fileName.substring(0, fileName.lastIndexOf('.'))
+        : fileName;
+    return [
+      'VillaId: $villaId',
+      'RoomId: $roomId',
+      'MediaId: $mediaId',
+      'FilePath: $filePath',
+      'FileSize: $fileSize',
+      'StoragePath: $path',
+      'BucketName: $bucketName',
+    ].join('\n');
   }
 }
 

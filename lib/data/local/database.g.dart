@@ -4019,6 +4019,641 @@ class ExpensesCompanion extends UpdateCompanion<Expense> {
   }
 }
 
+class $AppLogsTable extends AppLogs with TableInfo<$AppLogsTable, AppLog> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $AppLogsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+      'id', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _timestampMeta =
+      const VerificationMeta('timestamp');
+  @override
+  late final GeneratedColumn<String> timestamp = GeneratedColumn<String>(
+      'timestamp', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _categoryMeta =
+      const VerificationMeta('category');
+  @override
+  late final GeneratedColumn<String> category = GeneratedColumn<String>(
+      'category', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _levelMeta = const VerificationMeta('level');
+  @override
+  late final GeneratedColumn<String> level = GeneratedColumn<String>(
+      'level', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _screenNameMeta =
+      const VerificationMeta('screenName');
+  @override
+  late final GeneratedColumn<String> screenName = GeneratedColumn<String>(
+      'screen_name', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _operationMeta =
+      const VerificationMeta('operation');
+  @override
+  late final GeneratedColumn<String> operation = GeneratedColumn<String>(
+      'operation', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _messageMeta =
+      const VerificationMeta('message');
+  @override
+  late final GeneratedColumn<String> message = GeneratedColumn<String>(
+      'message', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _detailsMeta =
+      const VerificationMeta('details');
+  @override
+  late final GeneratedColumn<String> details = GeneratedColumn<String>(
+      'details', aliasedName, false,
+      type: DriftSqlType.string,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(''));
+  static const VerificationMeta _stackTraceMeta =
+      const VerificationMeta('stackTrace');
+  @override
+  late final GeneratedColumn<String> stackTrace = GeneratedColumn<String>(
+      'stack_trace', aliasedName, false,
+      type: DriftSqlType.string,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(''));
+  static const VerificationMeta _userIdMeta = const VerificationMeta('userId');
+  @override
+  late final GeneratedColumn<String> userId = GeneratedColumn<String>(
+      'user_id', aliasedName, false,
+      type: DriftSqlType.string,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(''));
+  static const VerificationMeta _userEmailMeta =
+      const VerificationMeta('userEmail');
+  @override
+  late final GeneratedColumn<String> userEmail = GeneratedColumn<String>(
+      'user_email', aliasedName, false,
+      type: DriftSqlType.string,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(''));
+  static const VerificationMeta _devicePlatformMeta =
+      const VerificationMeta('devicePlatform');
+  @override
+  late final GeneratedColumn<String> devicePlatform = GeneratedColumn<String>(
+      'device_platform', aliasedName, false,
+      type: DriftSqlType.string,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(''));
+  static const VerificationMeta _appVersionMeta =
+      const VerificationMeta('appVersion');
+  @override
+  late final GeneratedColumn<String> appVersion = GeneratedColumn<String>(
+      'app_version', aliasedName, false,
+      type: DriftSqlType.string,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(''));
+  @override
+  List<GeneratedColumn> get $columns => [
+        id,
+        timestamp,
+        category,
+        level,
+        screenName,
+        operation,
+        message,
+        details,
+        stackTrace,
+        userId,
+        userEmail,
+        devicePlatform,
+        appVersion
+      ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'app_logs';
+  @override
+  VerificationContext validateIntegrity(Insertable<AppLog> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('timestamp')) {
+      context.handle(_timestampMeta,
+          timestamp.isAcceptableOrUnknown(data['timestamp']!, _timestampMeta));
+    } else if (isInserting) {
+      context.missing(_timestampMeta);
+    }
+    if (data.containsKey('category')) {
+      context.handle(_categoryMeta,
+          category.isAcceptableOrUnknown(data['category']!, _categoryMeta));
+    } else if (isInserting) {
+      context.missing(_categoryMeta);
+    }
+    if (data.containsKey('level')) {
+      context.handle(
+          _levelMeta, level.isAcceptableOrUnknown(data['level']!, _levelMeta));
+    } else if (isInserting) {
+      context.missing(_levelMeta);
+    }
+    if (data.containsKey('screen_name')) {
+      context.handle(
+          _screenNameMeta,
+          screenName.isAcceptableOrUnknown(
+              data['screen_name']!, _screenNameMeta));
+    } else if (isInserting) {
+      context.missing(_screenNameMeta);
+    }
+    if (data.containsKey('operation')) {
+      context.handle(_operationMeta,
+          operation.isAcceptableOrUnknown(data['operation']!, _operationMeta));
+    } else if (isInserting) {
+      context.missing(_operationMeta);
+    }
+    if (data.containsKey('message')) {
+      context.handle(_messageMeta,
+          message.isAcceptableOrUnknown(data['message']!, _messageMeta));
+    } else if (isInserting) {
+      context.missing(_messageMeta);
+    }
+    if (data.containsKey('details')) {
+      context.handle(_detailsMeta,
+          details.isAcceptableOrUnknown(data['details']!, _detailsMeta));
+    }
+    if (data.containsKey('stack_trace')) {
+      context.handle(
+          _stackTraceMeta,
+          stackTrace.isAcceptableOrUnknown(
+              data['stack_trace']!, _stackTraceMeta));
+    }
+    if (data.containsKey('user_id')) {
+      context.handle(_userIdMeta,
+          userId.isAcceptableOrUnknown(data['user_id']!, _userIdMeta));
+    }
+    if (data.containsKey('user_email')) {
+      context.handle(_userEmailMeta,
+          userEmail.isAcceptableOrUnknown(data['user_email']!, _userEmailMeta));
+    }
+    if (data.containsKey('device_platform')) {
+      context.handle(
+          _devicePlatformMeta,
+          devicePlatform.isAcceptableOrUnknown(
+              data['device_platform']!, _devicePlatformMeta));
+    }
+    if (data.containsKey('app_version')) {
+      context.handle(
+          _appVersionMeta,
+          appVersion.isAcceptableOrUnknown(
+              data['app_version']!, _appVersionMeta));
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  AppLog map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return AppLog(
+      id: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}id'])!,
+      timestamp: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}timestamp'])!,
+      category: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}category'])!,
+      level: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}level'])!,
+      screenName: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}screen_name'])!,
+      operation: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}operation'])!,
+      message: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}message'])!,
+      details: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}details'])!,
+      stackTrace: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}stack_trace'])!,
+      userId: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}user_id'])!,
+      userEmail: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}user_email'])!,
+      devicePlatform: attachedDatabase.typeMapping.read(
+          DriftSqlType.string, data['${effectivePrefix}device_platform'])!,
+      appVersion: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}app_version'])!,
+    );
+  }
+
+  @override
+  $AppLogsTable createAlias(String alias) {
+    return $AppLogsTable(attachedDatabase, alias);
+  }
+}
+
+class AppLog extends DataClass implements Insertable<AppLog> {
+  final String id;
+  final String timestamp;
+  final String category;
+  final String level;
+  final String screenName;
+  final String operation;
+  final String message;
+  final String details;
+  final String stackTrace;
+  final String userId;
+  final String userEmail;
+  final String devicePlatform;
+  final String appVersion;
+  const AppLog(
+      {required this.id,
+      required this.timestamp,
+      required this.category,
+      required this.level,
+      required this.screenName,
+      required this.operation,
+      required this.message,
+      required this.details,
+      required this.stackTrace,
+      required this.userId,
+      required this.userEmail,
+      required this.devicePlatform,
+      required this.appVersion});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['timestamp'] = Variable<String>(timestamp);
+    map['category'] = Variable<String>(category);
+    map['level'] = Variable<String>(level);
+    map['screen_name'] = Variable<String>(screenName);
+    map['operation'] = Variable<String>(operation);
+    map['message'] = Variable<String>(message);
+    map['details'] = Variable<String>(details);
+    map['stack_trace'] = Variable<String>(stackTrace);
+    map['user_id'] = Variable<String>(userId);
+    map['user_email'] = Variable<String>(userEmail);
+    map['device_platform'] = Variable<String>(devicePlatform);
+    map['app_version'] = Variable<String>(appVersion);
+    return map;
+  }
+
+  AppLogsCompanion toCompanion(bool nullToAbsent) {
+    return AppLogsCompanion(
+      id: Value(id),
+      timestamp: Value(timestamp),
+      category: Value(category),
+      level: Value(level),
+      screenName: Value(screenName),
+      operation: Value(operation),
+      message: Value(message),
+      details: Value(details),
+      stackTrace: Value(stackTrace),
+      userId: Value(userId),
+      userEmail: Value(userEmail),
+      devicePlatform: Value(devicePlatform),
+      appVersion: Value(appVersion),
+    );
+  }
+
+  factory AppLog.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return AppLog(
+      id: serializer.fromJson<String>(json['id']),
+      timestamp: serializer.fromJson<String>(json['timestamp']),
+      category: serializer.fromJson<String>(json['category']),
+      level: serializer.fromJson<String>(json['level']),
+      screenName: serializer.fromJson<String>(json['screenName']),
+      operation: serializer.fromJson<String>(json['operation']),
+      message: serializer.fromJson<String>(json['message']),
+      details: serializer.fromJson<String>(json['details']),
+      stackTrace: serializer.fromJson<String>(json['stackTrace']),
+      userId: serializer.fromJson<String>(json['userId']),
+      userEmail: serializer.fromJson<String>(json['userEmail']),
+      devicePlatform: serializer.fromJson<String>(json['devicePlatform']),
+      appVersion: serializer.fromJson<String>(json['appVersion']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'timestamp': serializer.toJson<String>(timestamp),
+      'category': serializer.toJson<String>(category),
+      'level': serializer.toJson<String>(level),
+      'screenName': serializer.toJson<String>(screenName),
+      'operation': serializer.toJson<String>(operation),
+      'message': serializer.toJson<String>(message),
+      'details': serializer.toJson<String>(details),
+      'stackTrace': serializer.toJson<String>(stackTrace),
+      'userId': serializer.toJson<String>(userId),
+      'userEmail': serializer.toJson<String>(userEmail),
+      'devicePlatform': serializer.toJson<String>(devicePlatform),
+      'appVersion': serializer.toJson<String>(appVersion),
+    };
+  }
+
+  AppLog copyWith(
+          {String? id,
+          String? timestamp,
+          String? category,
+          String? level,
+          String? screenName,
+          String? operation,
+          String? message,
+          String? details,
+          String? stackTrace,
+          String? userId,
+          String? userEmail,
+          String? devicePlatform,
+          String? appVersion}) =>
+      AppLog(
+        id: id ?? this.id,
+        timestamp: timestamp ?? this.timestamp,
+        category: category ?? this.category,
+        level: level ?? this.level,
+        screenName: screenName ?? this.screenName,
+        operation: operation ?? this.operation,
+        message: message ?? this.message,
+        details: details ?? this.details,
+        stackTrace: stackTrace ?? this.stackTrace,
+        userId: userId ?? this.userId,
+        userEmail: userEmail ?? this.userEmail,
+        devicePlatform: devicePlatform ?? this.devicePlatform,
+        appVersion: appVersion ?? this.appVersion,
+      );
+  AppLog copyWithCompanion(AppLogsCompanion data) {
+    return AppLog(
+      id: data.id.present ? data.id.value : this.id,
+      timestamp: data.timestamp.present ? data.timestamp.value : this.timestamp,
+      category: data.category.present ? data.category.value : this.category,
+      level: data.level.present ? data.level.value : this.level,
+      screenName:
+          data.screenName.present ? data.screenName.value : this.screenName,
+      operation: data.operation.present ? data.operation.value : this.operation,
+      message: data.message.present ? data.message.value : this.message,
+      details: data.details.present ? data.details.value : this.details,
+      stackTrace:
+          data.stackTrace.present ? data.stackTrace.value : this.stackTrace,
+      userId: data.userId.present ? data.userId.value : this.userId,
+      userEmail: data.userEmail.present ? data.userEmail.value : this.userEmail,
+      devicePlatform: data.devicePlatform.present
+          ? data.devicePlatform.value
+          : this.devicePlatform,
+      appVersion:
+          data.appVersion.present ? data.appVersion.value : this.appVersion,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AppLog(')
+          ..write('id: $id, ')
+          ..write('timestamp: $timestamp, ')
+          ..write('category: $category, ')
+          ..write('level: $level, ')
+          ..write('screenName: $screenName, ')
+          ..write('operation: $operation, ')
+          ..write('message: $message, ')
+          ..write('details: $details, ')
+          ..write('stackTrace: $stackTrace, ')
+          ..write('userId: $userId, ')
+          ..write('userEmail: $userEmail, ')
+          ..write('devicePlatform: $devicePlatform, ')
+          ..write('appVersion: $appVersion')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+      id,
+      timestamp,
+      category,
+      level,
+      screenName,
+      operation,
+      message,
+      details,
+      stackTrace,
+      userId,
+      userEmail,
+      devicePlatform,
+      appVersion);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is AppLog &&
+          other.id == this.id &&
+          other.timestamp == this.timestamp &&
+          other.category == this.category &&
+          other.level == this.level &&
+          other.screenName == this.screenName &&
+          other.operation == this.operation &&
+          other.message == this.message &&
+          other.details == this.details &&
+          other.stackTrace == this.stackTrace &&
+          other.userId == this.userId &&
+          other.userEmail == this.userEmail &&
+          other.devicePlatform == this.devicePlatform &&
+          other.appVersion == this.appVersion);
+}
+
+class AppLogsCompanion extends UpdateCompanion<AppLog> {
+  final Value<String> id;
+  final Value<String> timestamp;
+  final Value<String> category;
+  final Value<String> level;
+  final Value<String> screenName;
+  final Value<String> operation;
+  final Value<String> message;
+  final Value<String> details;
+  final Value<String> stackTrace;
+  final Value<String> userId;
+  final Value<String> userEmail;
+  final Value<String> devicePlatform;
+  final Value<String> appVersion;
+  final Value<int> rowid;
+  const AppLogsCompanion({
+    this.id = const Value.absent(),
+    this.timestamp = const Value.absent(),
+    this.category = const Value.absent(),
+    this.level = const Value.absent(),
+    this.screenName = const Value.absent(),
+    this.operation = const Value.absent(),
+    this.message = const Value.absent(),
+    this.details = const Value.absent(),
+    this.stackTrace = const Value.absent(),
+    this.userId = const Value.absent(),
+    this.userEmail = const Value.absent(),
+    this.devicePlatform = const Value.absent(),
+    this.appVersion = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  AppLogsCompanion.insert({
+    required String id,
+    required String timestamp,
+    required String category,
+    required String level,
+    required String screenName,
+    required String operation,
+    required String message,
+    this.details = const Value.absent(),
+    this.stackTrace = const Value.absent(),
+    this.userId = const Value.absent(),
+    this.userEmail = const Value.absent(),
+    this.devicePlatform = const Value.absent(),
+    this.appVersion = const Value.absent(),
+    this.rowid = const Value.absent(),
+  })  : id = Value(id),
+        timestamp = Value(timestamp),
+        category = Value(category),
+        level = Value(level),
+        screenName = Value(screenName),
+        operation = Value(operation),
+        message = Value(message);
+  static Insertable<AppLog> custom({
+    Expression<String>? id,
+    Expression<String>? timestamp,
+    Expression<String>? category,
+    Expression<String>? level,
+    Expression<String>? screenName,
+    Expression<String>? operation,
+    Expression<String>? message,
+    Expression<String>? details,
+    Expression<String>? stackTrace,
+    Expression<String>? userId,
+    Expression<String>? userEmail,
+    Expression<String>? devicePlatform,
+    Expression<String>? appVersion,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (timestamp != null) 'timestamp': timestamp,
+      if (category != null) 'category': category,
+      if (level != null) 'level': level,
+      if (screenName != null) 'screen_name': screenName,
+      if (operation != null) 'operation': operation,
+      if (message != null) 'message': message,
+      if (details != null) 'details': details,
+      if (stackTrace != null) 'stack_trace': stackTrace,
+      if (userId != null) 'user_id': userId,
+      if (userEmail != null) 'user_email': userEmail,
+      if (devicePlatform != null) 'device_platform': devicePlatform,
+      if (appVersion != null) 'app_version': appVersion,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  AppLogsCompanion copyWith(
+      {Value<String>? id,
+      Value<String>? timestamp,
+      Value<String>? category,
+      Value<String>? level,
+      Value<String>? screenName,
+      Value<String>? operation,
+      Value<String>? message,
+      Value<String>? details,
+      Value<String>? stackTrace,
+      Value<String>? userId,
+      Value<String>? userEmail,
+      Value<String>? devicePlatform,
+      Value<String>? appVersion,
+      Value<int>? rowid}) {
+    return AppLogsCompanion(
+      id: id ?? this.id,
+      timestamp: timestamp ?? this.timestamp,
+      category: category ?? this.category,
+      level: level ?? this.level,
+      screenName: screenName ?? this.screenName,
+      operation: operation ?? this.operation,
+      message: message ?? this.message,
+      details: details ?? this.details,
+      stackTrace: stackTrace ?? this.stackTrace,
+      userId: userId ?? this.userId,
+      userEmail: userEmail ?? this.userEmail,
+      devicePlatform: devicePlatform ?? this.devicePlatform,
+      appVersion: appVersion ?? this.appVersion,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (timestamp.present) {
+      map['timestamp'] = Variable<String>(timestamp.value);
+    }
+    if (category.present) {
+      map['category'] = Variable<String>(category.value);
+    }
+    if (level.present) {
+      map['level'] = Variable<String>(level.value);
+    }
+    if (screenName.present) {
+      map['screen_name'] = Variable<String>(screenName.value);
+    }
+    if (operation.present) {
+      map['operation'] = Variable<String>(operation.value);
+    }
+    if (message.present) {
+      map['message'] = Variable<String>(message.value);
+    }
+    if (details.present) {
+      map['details'] = Variable<String>(details.value);
+    }
+    if (stackTrace.present) {
+      map['stack_trace'] = Variable<String>(stackTrace.value);
+    }
+    if (userId.present) {
+      map['user_id'] = Variable<String>(userId.value);
+    }
+    if (userEmail.present) {
+      map['user_email'] = Variable<String>(userEmail.value);
+    }
+    if (devicePlatform.present) {
+      map['device_platform'] = Variable<String>(devicePlatform.value);
+    }
+    if (appVersion.present) {
+      map['app_version'] = Variable<String>(appVersion.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AppLogsCompanion(')
+          ..write('id: $id, ')
+          ..write('timestamp: $timestamp, ')
+          ..write('category: $category, ')
+          ..write('level: $level, ')
+          ..write('screenName: $screenName, ')
+          ..write('operation: $operation, ')
+          ..write('message: $message, ')
+          ..write('details: $details, ')
+          ..write('stackTrace: $stackTrace, ')
+          ..write('userId: $userId, ')
+          ..write('userEmail: $userEmail, ')
+          ..write('devicePlatform: $devicePlatform, ')
+          ..write('appVersion: $appVersion, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -4026,12 +4661,13 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $RoomsTable rooms = $RoomsTable(this);
   late final $IncomesTable incomes = $IncomesTable(this);
   late final $ExpensesTable expenses = $ExpensesTable(this);
+  late final $AppLogsTable appLogs = $AppLogsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
   @override
   List<DatabaseSchemaEntity> get allSchemaEntities =>
-      [villas, rooms, incomes, expenses];
+      [villas, rooms, incomes, expenses, appLogs];
 }
 
 typedef $$VillasTableCreateCompanionBuilder = VillasCompanion Function({
@@ -6253,6 +6889,293 @@ typedef $$ExpensesTableProcessedTableManager = ProcessedTableManager<
     (Expense, $$ExpensesTableReferences),
     Expense,
     PrefetchHooks Function({bool villaId})>;
+typedef $$AppLogsTableCreateCompanionBuilder = AppLogsCompanion Function({
+  required String id,
+  required String timestamp,
+  required String category,
+  required String level,
+  required String screenName,
+  required String operation,
+  required String message,
+  Value<String> details,
+  Value<String> stackTrace,
+  Value<String> userId,
+  Value<String> userEmail,
+  Value<String> devicePlatform,
+  Value<String> appVersion,
+  Value<int> rowid,
+});
+typedef $$AppLogsTableUpdateCompanionBuilder = AppLogsCompanion Function({
+  Value<String> id,
+  Value<String> timestamp,
+  Value<String> category,
+  Value<String> level,
+  Value<String> screenName,
+  Value<String> operation,
+  Value<String> message,
+  Value<String> details,
+  Value<String> stackTrace,
+  Value<String> userId,
+  Value<String> userEmail,
+  Value<String> devicePlatform,
+  Value<String> appVersion,
+  Value<int> rowid,
+});
+
+class $$AppLogsTableFilterComposer
+    extends Composer<_$AppDatabase, $AppLogsTable> {
+  $$AppLogsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get timestamp => $composableBuilder(
+      column: $table.timestamp, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get category => $composableBuilder(
+      column: $table.category, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get level => $composableBuilder(
+      column: $table.level, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get screenName => $composableBuilder(
+      column: $table.screenName, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get operation => $composableBuilder(
+      column: $table.operation, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get message => $composableBuilder(
+      column: $table.message, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get details => $composableBuilder(
+      column: $table.details, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get stackTrace => $composableBuilder(
+      column: $table.stackTrace, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get userId => $composableBuilder(
+      column: $table.userId, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get userEmail => $composableBuilder(
+      column: $table.userEmail, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get devicePlatform => $composableBuilder(
+      column: $table.devicePlatform,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get appVersion => $composableBuilder(
+      column: $table.appVersion, builder: (column) => ColumnFilters(column));
+}
+
+class $$AppLogsTableOrderingComposer
+    extends Composer<_$AppDatabase, $AppLogsTable> {
+  $$AppLogsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get timestamp => $composableBuilder(
+      column: $table.timestamp, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get category => $composableBuilder(
+      column: $table.category, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get level => $composableBuilder(
+      column: $table.level, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get screenName => $composableBuilder(
+      column: $table.screenName, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get operation => $composableBuilder(
+      column: $table.operation, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get message => $composableBuilder(
+      column: $table.message, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get details => $composableBuilder(
+      column: $table.details, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get stackTrace => $composableBuilder(
+      column: $table.stackTrace, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get userId => $composableBuilder(
+      column: $table.userId, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get userEmail => $composableBuilder(
+      column: $table.userEmail, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get devicePlatform => $composableBuilder(
+      column: $table.devicePlatform,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get appVersion => $composableBuilder(
+      column: $table.appVersion, builder: (column) => ColumnOrderings(column));
+}
+
+class $$AppLogsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $AppLogsTable> {
+  $$AppLogsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get timestamp =>
+      $composableBuilder(column: $table.timestamp, builder: (column) => column);
+
+  GeneratedColumn<String> get category =>
+      $composableBuilder(column: $table.category, builder: (column) => column);
+
+  GeneratedColumn<String> get level =>
+      $composableBuilder(column: $table.level, builder: (column) => column);
+
+  GeneratedColumn<String> get screenName => $composableBuilder(
+      column: $table.screenName, builder: (column) => column);
+
+  GeneratedColumn<String> get operation =>
+      $composableBuilder(column: $table.operation, builder: (column) => column);
+
+  GeneratedColumn<String> get message =>
+      $composableBuilder(column: $table.message, builder: (column) => column);
+
+  GeneratedColumn<String> get details =>
+      $composableBuilder(column: $table.details, builder: (column) => column);
+
+  GeneratedColumn<String> get stackTrace => $composableBuilder(
+      column: $table.stackTrace, builder: (column) => column);
+
+  GeneratedColumn<String> get userId =>
+      $composableBuilder(column: $table.userId, builder: (column) => column);
+
+  GeneratedColumn<String> get userEmail =>
+      $composableBuilder(column: $table.userEmail, builder: (column) => column);
+
+  GeneratedColumn<String> get devicePlatform => $composableBuilder(
+      column: $table.devicePlatform, builder: (column) => column);
+
+  GeneratedColumn<String> get appVersion => $composableBuilder(
+      column: $table.appVersion, builder: (column) => column);
+}
+
+class $$AppLogsTableTableManager extends RootTableManager<
+    _$AppDatabase,
+    $AppLogsTable,
+    AppLog,
+    $$AppLogsTableFilterComposer,
+    $$AppLogsTableOrderingComposer,
+    $$AppLogsTableAnnotationComposer,
+    $$AppLogsTableCreateCompanionBuilder,
+    $$AppLogsTableUpdateCompanionBuilder,
+    (AppLog, BaseReferences<_$AppDatabase, $AppLogsTable, AppLog>),
+    AppLog,
+    PrefetchHooks Function()> {
+  $$AppLogsTableTableManager(_$AppDatabase db, $AppLogsTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$AppLogsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$AppLogsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$AppLogsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback: ({
+            Value<String> id = const Value.absent(),
+            Value<String> timestamp = const Value.absent(),
+            Value<String> category = const Value.absent(),
+            Value<String> level = const Value.absent(),
+            Value<String> screenName = const Value.absent(),
+            Value<String> operation = const Value.absent(),
+            Value<String> message = const Value.absent(),
+            Value<String> details = const Value.absent(),
+            Value<String> stackTrace = const Value.absent(),
+            Value<String> userId = const Value.absent(),
+            Value<String> userEmail = const Value.absent(),
+            Value<String> devicePlatform = const Value.absent(),
+            Value<String> appVersion = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              AppLogsCompanion(
+            id: id,
+            timestamp: timestamp,
+            category: category,
+            level: level,
+            screenName: screenName,
+            operation: operation,
+            message: message,
+            details: details,
+            stackTrace: stackTrace,
+            userId: userId,
+            userEmail: userEmail,
+            devicePlatform: devicePlatform,
+            appVersion: appVersion,
+            rowid: rowid,
+          ),
+          createCompanionCallback: ({
+            required String id,
+            required String timestamp,
+            required String category,
+            required String level,
+            required String screenName,
+            required String operation,
+            required String message,
+            Value<String> details = const Value.absent(),
+            Value<String> stackTrace = const Value.absent(),
+            Value<String> userId = const Value.absent(),
+            Value<String> userEmail = const Value.absent(),
+            Value<String> devicePlatform = const Value.absent(),
+            Value<String> appVersion = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              AppLogsCompanion.insert(
+            id: id,
+            timestamp: timestamp,
+            category: category,
+            level: level,
+            screenName: screenName,
+            operation: operation,
+            message: message,
+            details: details,
+            stackTrace: stackTrace,
+            userId: userId,
+            userEmail: userEmail,
+            devicePlatform: devicePlatform,
+            appVersion: appVersion,
+            rowid: rowid,
+          ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ));
+}
+
+typedef $$AppLogsTableProcessedTableManager = ProcessedTableManager<
+    _$AppDatabase,
+    $AppLogsTable,
+    AppLog,
+    $$AppLogsTableFilterComposer,
+    $$AppLogsTableOrderingComposer,
+    $$AppLogsTableAnnotationComposer,
+    $$AppLogsTableCreateCompanionBuilder,
+    $$AppLogsTableUpdateCompanionBuilder,
+    (AppLog, BaseReferences<_$AppDatabase, $AppLogsTable, AppLog>),
+    AppLog,
+    PrefetchHooks Function()>;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -6265,4 +7188,6 @@ class $AppDatabaseManager {
       $$IncomesTableTableManager(_db, _db.incomes);
   $$ExpensesTableTableManager get expenses =>
       $$ExpensesTableTableManager(_db, _db.expenses);
+  $$AppLogsTableTableManager get appLogs =>
+      $$AppLogsTableTableManager(_db, _db.appLogs);
 }

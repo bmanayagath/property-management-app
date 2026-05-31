@@ -22,6 +22,7 @@ import '../../domain/models/room.dart';
 import '../../domain/models/villa_model.dart';
 import '../repositories/local_database_repository.dart';
 import 'connectivity_service.dart';
+import 'logger_service.dart';
 
 class FirebaseSyncService {
   static const _pendingSyncKey = 'villabooks_pending_sync_queue';
@@ -64,6 +65,16 @@ class FirebaseSyncService {
     }, onError: (Object error, StackTrace stackTrace) {
       debugPrint('[FirebaseSync] connectivity listener failed: $error');
       debugPrintStack(stackTrace: stackTrace);
+      unawaited(
+        LoggerService.logSync(
+          screenName: 'FirebaseSyncService',
+          operation: 'ConnectivityListener',
+          message: 'Connectivity listener failed',
+          details: error.toString(),
+          stackTrace: stackTrace.toString(),
+          level: 'ERROR',
+        ),
+      );
     });
 
     _syncAllPendingDataInBackground('startup');
@@ -264,6 +275,16 @@ class FirebaseSyncService {
       syncAllPendingData().catchError((Object error, StackTrace stackTrace) {
         debugPrint('[FirebaseSync] background sync failed ($reason): $error');
         debugPrintStack(stackTrace: stackTrace);
+        unawaited(
+          LoggerService.logSync(
+            screenName: 'FirebaseSyncService',
+            operation: 'BackgroundSync',
+            message: 'Background sync failed',
+            details: '$reason: $error',
+            stackTrace: stackTrace.toString(),
+            level: 'ERROR',
+          ),
+        );
       }),
     );
   }
@@ -726,9 +747,19 @@ class FirebaseSyncService {
         debugPrint(
           '[FirebaseSync] synced ${record.collection}/${record.id}; syncStatus=synced',
         );
-      } catch (error) {
+      } catch (error, stackTrace) {
         debugPrint(
           '[FirebaseSync] failed ${record.collection}/${record.id}: $error',
+        );
+        unawaited(
+          LoggerService.logSync(
+            screenName: 'FirebaseSyncService',
+            operation: 'FirestoreSync',
+            message: 'Firestore sync failed',
+            details: '${record.collection}/${record.id}: $error',
+            stackTrace: stackTrace.toString(),
+            level: 'ERROR',
+          ),
         );
         remaining.add(record);
       }
@@ -782,6 +813,16 @@ class FirebaseSyncService {
           '[FirebaseSync] REST failed ${record.collection}/${record.id}: $error',
         );
         debugPrintStack(stackTrace: stackTrace);
+        unawaited(
+          LoggerService.logSync(
+            screenName: 'FirebaseSyncService',
+            operation: 'FirestoreRestSync',
+            message: 'Firestore REST sync failed',
+            details: '${record.collection}/${record.id}: $error',
+            stackTrace: stackTrace.toString(),
+            level: 'ERROR',
+          ),
+        );
         remaining.add(record);
       }
     }

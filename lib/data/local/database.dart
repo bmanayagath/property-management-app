@@ -126,12 +126,36 @@ class Expenses extends Table {
   Set<Column> get primaryKey => {id};
 }
 
-@DriftDatabase(tables: [Villas, Rooms, Incomes, Expenses])
+class AppLogs extends Table {
+  TextColumn get id => text()();
+  TextColumn get timestamp => text()();
+  TextColumn get category => text()();
+  TextColumn get level => text()();
+  TextColumn get screenName => text().named('screen_name')();
+  TextColumn get operation => text()();
+  TextColumn get message => text()();
+  TextColumn get details => text().withDefault(const Constant(''))();
+  TextColumn get stackTrace =>
+      text().named('stack_trace').withDefault(const Constant(''))();
+  TextColumn get userId =>
+      text().named('user_id').withDefault(const Constant(''))();
+  TextColumn get userEmail =>
+      text().named('user_email').withDefault(const Constant(''))();
+  TextColumn get devicePlatform =>
+      text().named('device_platform').withDefault(const Constant(''))();
+  TextColumn get appVersion =>
+      text().named('app_version').withDefault(const Constant(''))();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+@DriftDatabase(tables: [Villas, Rooms, Incomes, Expenses, AppLogs])
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 5;
+  int get schemaVersion => 6;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -192,6 +216,9 @@ class AppDatabase extends _$AppDatabase {
           }
           if (from < 5) {
             await _addVillaLocationColumns();
+          }
+          if (from < 6) {
+            await migrator.createTable(appLogs);
           }
         },
       );
