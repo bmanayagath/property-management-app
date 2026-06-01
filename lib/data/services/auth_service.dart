@@ -10,8 +10,24 @@ import 'logger_service.dart';
 
 class AuthServiceException implements Exception {
   final String message;
+  final String? code;
+  final String? firebaseMessage;
 
-  const AuthServiceException(this.message);
+  const AuthServiceException(
+    this.message, {
+    this.code,
+    this.firebaseMessage,
+  });
+
+  String get displayMessage {
+    if (code == null && firebaseMessage == null) return message;
+    final details = [
+      if (code != null && code!.isNotEmpty) 'code: $code',
+      if (firebaseMessage != null && firebaseMessage!.isNotEmpty)
+        'message: $firebaseMessage',
+    ].join(', ');
+    return '$message\nFirebase Auth error: $details';
+  }
 
   @override
   String toString() => message;
@@ -41,9 +57,20 @@ class AuthService {
     required String email,
     required String password,
   }) async {
+    final normalizedEmail = email.trim().toLowerCase();
+    final projectId = Firebase.app().options.projectId;
+    await _logLoginDebug(
+      message: 'Login started',
+      details: {
+        'enteredEmail': normalizedEmail,
+        'firebaseProjectId': projectId,
+        'currentFirebaseUserBeforeLogin': _firebaseUserDebug(_auth.currentUser),
+      },
+    );
+
     try {
       final credential = await _auth.signInWithEmailAndPassword(
-        email: email.trim().toLowerCase(),
+        email: normalizedEmail,
         password: password,
       );
       final firebaseUser = credential.user;
@@ -51,17 +78,39 @@ class AuthService {
         throw const AuthServiceException(
             'Unable to sign in. Please try again.');
       }
+      await _logLoginDebug(
+        message: 'Firebase authentication succeeded',
+        details: {
+          'enteredEmail': normalizedEmail,
+          'firebaseProjectId': projectId,
+          'currentFirebaseUserAfterLogin': _firebaseUserDebug(
+            _auth.currentUser,
+          ),
+        },
+      );
       return _loadProfile(firebaseUser);
     } on firebase_auth.FirebaseAuthException catch (error, stackTrace) {
       await LoggerService.logAuth(
         screenName: 'AuthService',
         operation: 'Login',
         message: 'Firebase authentication failed',
-        details: '${error.code}: ${error.message}',
+        details: _formatDebugDetails({
+          'enteredEmail': normalizedEmail,
+          'firebaseProjectId': projectId,
+          'firebaseAuthExceptionCode': error.code,
+          'firebaseAuthExceptionMessage': error.message ?? '',
+          'currentFirebaseUserAfterFailure': _firebaseUserDebug(
+            _auth.currentUser,
+          ),
+        }),
         stackTrace: stackTrace.toString(),
         level: 'ERROR',
       );
-      throw AuthServiceException(friendlyAuthMessage(error));
+      throw AuthServiceException(
+        friendlyAuthMessage(error),
+        code: error.code,
+        firebaseMessage: error.message,
+      );
     }
   }
 
@@ -170,13 +219,55 @@ class AuthService {
   }
 
   Future<AppUser> _loadProfile(firebase_auth.User firebaseUser) async {
-    final doc =
-        await _firestore.collection('users').doc(firebaseUser.uid).get();
+    DocumentSnapshot<Map<String, dynamic>> doc;
+    try {
+      doc = await _firestore.collection('users').doc(firebaseUser.uid).get();
+    } on FirebaseException catch (error, stackTrace) {
+      await LoggerService.logAuth(
+        screenName: 'AuthService',
+        operation: 'LoadUserProfile',
+        message: 'Unable to read Firestore user profile',
+        details: _formatDebugDetails({
+          'firebaseProjectId': Firebase.app().options.projectId,
+          'currentFirebaseUserAfterLogin': _firebaseUserDebug(
+            _auth.currentUser,
+          ),
+          'usersDocumentPath': 'users/${firebaseUser.uid}',
+          'usersDocumentExists': 'unknown',
+          'firestoreExceptionCode': error.code,
+          'firestoreExceptionMessage': error.message ?? '',
+        }),
+        stackTrace: stackTrace.toString(),
+        level: 'ERROR',
+      );
+      if (error.code == 'permission-denied') {
+        await _auth.signOut();
+        throw const AuthServiceException(
+          'User profile cannot be accessed. Contact admin.',
+        );
+      }
+      rethrow;
+    }
+
+    await _logLoginDebug(
+      message: 'Firestore user profile read',
+      details: {
+        'firebaseProjectId': Firebase.app().options.projectId,
+        'currentFirebaseUserAfterLogin': _firebaseUserDebug(_auth.currentUser),
+        'usersDocumentPath': 'users/${firebaseUser.uid}',
+        'usersDocumentExists': doc.exists,
+        'isActive': doc.data()?['isActive'] ?? '',
+        'role': doc.data()?['role'] ?? '',
+      },
+    );
+
     if (doc.exists && doc.data() != null) {
       final user = _appUserFromCloud(doc.id, doc.data()!);
       if (!user.isActive) {
         await _auth.signOut();
-        throw const AuthServiceException('This account has been disabled.');
+        throw const AuthServiceException(
+          'This account is disabled. Contact admin.',
+        );
       }
       return user;
     }
@@ -270,13 +361,14 @@ class AuthService {
       case 'invalid-email':
         return 'Enter a valid email address.';
       case 'user-disabled':
-        return 'This account has been disabled.';
+        return 'This account is disabled. Contact admin.';
       case 'user-not-found':
+        return 'No account found for this email.';
       case 'wrong-password':
       case 'invalid-credential':
         return 'Invalid email or password.';
       case 'network-request-failed':
-        return 'No internet connection. Try again when you are online.';
+        return 'Network error. Check internet connection.';
       case 'too-many-requests':
         return 'Too many attempts. Please wait a moment and try again.';
       default:
@@ -301,5 +393,28 @@ class AuthService {
       default:
         return 'Unable to create user. Please try again.';
     }
+  }
+
+  Future<void> _logLoginDebug({
+    required String message,
+    required Map<String, Object?> details,
+  }) {
+    return LoggerService.logAuth(
+      screenName: 'AuthService',
+      operation: 'LoginDebug',
+      message: message,
+      details: _formatDebugDetails(details),
+    );
+  }
+
+  static String _firebaseUserDebug(firebase_auth.User? user) {
+    if (user == null) return 'null';
+    return 'uid=${user.uid}, email=${user.email ?? ''}';
+  }
+
+  static String _formatDebugDetails(Map<String, Object?> details) {
+    return details.entries
+        .map((entry) => '${entry.key}: ${entry.value}')
+        .join('\n');
   }
 }

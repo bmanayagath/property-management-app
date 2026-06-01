@@ -119,7 +119,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
     } on AuthServiceException catch (error) {
       state = AuthState.ready(
         users: state.users,
-        errorMessage: error.message,
+        errorMessage: error.displayMessage,
       );
       return false;
     } catch (error, stackTrace) {

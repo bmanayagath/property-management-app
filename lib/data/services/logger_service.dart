@@ -236,6 +236,10 @@ class LoggerService {
     String details = '',
     String stackTrace = '',
   }) async {
+    debugPrint('[$category][$level][$screenName][$operation] $message');
+    if (details.isNotEmpty) {
+      debugPrint(details);
+    }
     final dao = _dao;
     if (dao == null) {
       debugPrint('[LoggerService] skipped log before initialization: $message');
