@@ -23,9 +23,9 @@ import '../providers/income_provider.dart';
 import '../providers/room_media_provider.dart';
 import '../providers/villa_provider.dart';
 import '../providers/room_provider.dart';
+import '../screens/room_media_screen.dart';
 import '../screens/room_media_preview_screen.dart';
 import '../widgets/room_card.dart';
-import '../widgets/room_media_gallery_widget.dart';
 import 'add_edit_villa_screen.dart';
 import 'add_edit_room_screen.dart';
 
@@ -759,17 +759,13 @@ class VillaDetailScreen extends ConsumerWidget {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => Scaffold(
-          appBar: AppBar(
-            title: Text('${room.displayName} Media'),
-          ),
-          body: RoomMediaGalleryWidget(
-            villaId: room.villaId,
-            roomId: room.id,
-            canUpload: canManageRoomMedia,
-            canDelete: canManageRoomMedia,
-            canShare: canShareRoomMedia,
-          ),
+        builder: (context) => RoomMediaScreen(
+          villaId: room.villaId,
+          roomId: room.id,
+          roomName: room.displayName,
+          canUpload: canManageRoomMedia,
+          canDelete: canManageRoomMedia,
+          canShare: canShareRoomMedia,
         ),
       ),
     );

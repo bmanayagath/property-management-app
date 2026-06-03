@@ -6,7 +6,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:share_plus/share_plus.dart';
-import 'package:video_player/video_player.dart';
 
 import '../../core/constants/app_colors.dart';
 import '../../data/services/firebase_storage_service.dart';
@@ -16,11 +15,13 @@ import '../providers/auth_provider.dart';
 import '../providers/room_media_provider.dart';
 import '../providers/room_provider.dart';
 import '../providers/villa_provider.dart';
+import '../screens/room_media_fullscreen_viewer.dart';
 import '../screens/room_media_preview_screen.dart';
 
 class RoomMediaGalleryWidget extends ConsumerStatefulWidget {
   final String villaId;
   final String roomId;
+  final String roomName;
   final bool canUpload;
   final bool canDelete;
   final bool canShare;
@@ -29,6 +30,7 @@ class RoomMediaGalleryWidget extends ConsumerStatefulWidget {
     super.key,
     required this.villaId,
     required this.roomId,
+    this.roomName = 'Room',
     required this.canUpload,
     required this.canDelete,
     required this.canShare,
@@ -147,7 +149,7 @@ class _RoomMediaGalleryWidgetState
                           canDelete: widget.canDelete,
                           canRetry: widget.canUpload,
                           canShare: widget.canShare,
-                          onTap: () => _openMedia(media),
+                          onTap: () => _openMedia(items, index),
                           onDelete: () => _deleteMedia(media),
                           onShare: () => _shareMedia([media]),
                           onRetry: () => _retryUpload(media),
@@ -411,13 +413,15 @@ class _RoomMediaGalleryWidgetState
     _showMessage('No shareable media is available yet.');
   }
 
-  void _openMedia(RoomMedia media) {
+  void _openMedia(List<RoomMedia> media, int initialIndex) {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => media.isVideo
-            ? _VideoViewer(media: media)
-            : _ImageViewer(media: media),
+        builder: (context) => RoomMediaFullscreenViewer(
+          media: media,
+          initialIndex: initialIndex,
+          roomName: widget.roomName,
+        ),
       ),
     );
   }
@@ -635,109 +639,6 @@ class _MediaPreview extends StatelessWidget {
     return const ColoredBox(
       color: Color(0xFF111827),
       child: Icon(Icons.videocam_outlined, color: Colors.white),
-    );
-  }
-}
-
-class _ImageViewer extends StatelessWidget {
-  final RoomMedia media;
-
-  const _ImageViewer({required this.media});
-
-  @override
-  Widget build(BuildContext context) {
-    final localPath = media.localPath.trim();
-    final hasLocal = localPath.isNotEmpty && File(localPath).existsSync();
-
-    return Scaffold(
-      backgroundColor: Colors.black,
-      appBar: AppBar(backgroundColor: Colors.black),
-      body: Center(
-        child: InteractiveViewer(
-          child: hasLocal
-              ? Image.file(File(localPath))
-              : CachedNetworkImage(imageUrl: media.downloadUrl),
-        ),
-      ),
-    );
-  }
-}
-
-class _VideoViewer extends StatefulWidget {
-  final RoomMedia media;
-
-  const _VideoViewer({required this.media});
-
-  @override
-  State<_VideoViewer> createState() => _VideoViewerState();
-}
-
-class _VideoViewerState extends State<_VideoViewer> {
-  VideoPlayerController? _controller;
-  bool _ready = false;
-
-  @override
-  void initState() {
-    super.initState();
-    final localPath = widget.media.localPath.trim();
-    final localFile = localPath.isNotEmpty ? File(localPath) : null;
-    if (localFile != null && localFile.existsSync()) {
-      _controller = VideoPlayerController.file(localFile);
-    } else if (widget.media.downloadUrl.trim().isNotEmpty) {
-      _controller =
-          VideoPlayerController.networkUrl(Uri.parse(widget.media.downloadUrl));
-    }
-    _controller?.initialize().then((_) {
-      if (!mounted) return;
-      setState(() => _ready = true);
-      _controller?.play();
-    });
-  }
-
-  @override
-  void dispose() {
-    _controller?.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final controller = _controller;
-    return Scaffold(
-      backgroundColor: Colors.black,
-      appBar: AppBar(backgroundColor: Colors.black),
-      body: Center(
-        child: controller == null
-            ? const Text(
-                'Video is not available yet.',
-                style: TextStyle(color: Colors.white),
-              )
-            : !_ready
-                ? const CircularProgressIndicator()
-                : AspectRatio(
-                    aspectRatio: controller.value.aspectRatio,
-                    child: Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        VideoPlayer(controller),
-                        IconButton.filled(
-                          onPressed: () {
-                            setState(() {
-                              controller.value.isPlaying
-                                  ? controller.pause()
-                                  : controller.play();
-                            });
-                          },
-                          icon: Icon(
-                            controller.value.isPlaying
-                                ? Icons.pause
-                                : Icons.play_arrow,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-      ),
     );
   }
 }
