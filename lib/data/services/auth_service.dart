@@ -6,6 +6,7 @@ import 'package:uuid/uuid.dart';
 
 import '../../core/constants/app_roles.dart';
 import '../../domain/models/app_user.dart';
+import 'firebase_sync_service.dart';
 import 'logger_service.dart';
 
 class AuthServiceException implements Exception {
@@ -37,11 +38,14 @@ class AuthService {
   AuthService({
     firebase_auth.FirebaseAuth? firebaseAuth,
     FirebaseFirestore? firestore,
+    FirebaseSyncService? firebaseSyncService,
   })  : _auth = firebaseAuth ?? firebase_auth.FirebaseAuth.instance,
-        _firestore = firestore ?? FirebaseFirestore.instance;
+        _firestore = firestore ?? FirebaseFirestore.instance,
+        _firebaseSyncService = firebaseSyncService;
 
   final firebase_auth.FirebaseAuth _auth;
   final FirebaseFirestore _firestore;
+  final FirebaseSyncService? _firebaseSyncService;
 
   Stream<firebase_auth.User?> authStateChanges() {
     return _auth.authStateChanges();
@@ -115,7 +119,10 @@ class AuthService {
   }
 
   Future<void> logout() async {
+    debugPrint('[AuthService] logout started.');
+    await _firebaseSyncService?.stopAllListeners();
     await _auth.signOut();
+    debugPrint('[AuthService] Firebase signOut completed.');
   }
 
   Future<AppUser> createUser({

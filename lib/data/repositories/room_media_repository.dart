@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as path;
@@ -49,6 +50,7 @@ class RoomMediaRepository {
     required String villaId,
     required String roomId,
   }) {
+    _requireLoggedIn();
     final collection = _collection;
     if (collection == null) return Stream.value(const []);
 
@@ -72,6 +74,7 @@ class RoomMediaRepository {
     required String villaId,
     required String roomId,
   }) async {
+    _requireLoggedIn();
     final collection = _collection;
     if (collection == null) return const [];
 
@@ -94,6 +97,7 @@ class RoomMediaRepository {
   }
 
   Future<RoomMedia?> getMediaById(String mediaId) async {
+    _requireLoggedIn();
     final collection = _collection;
     if (collection == null || mediaId.trim().isEmpty) return null;
     final snapshot = await collection.doc(mediaId).get();
@@ -333,11 +337,19 @@ class RoomMediaRepository {
   }
 
   CollectionReference<Map<String, dynamic>> _requireCollection() {
+    _requireLoggedIn();
     final collection = _collection;
     if (collection == null) {
       throw StateError('Firestore is unavailable.');
     }
     return collection;
+  }
+
+  void _requireLoggedIn() {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      throw Exception('User not logged in. Skipping room media query.');
+    }
   }
 
   Future<bool> _trySaveMedia(RoomMedia media) async {

@@ -9,17 +9,28 @@ import '../../core/constants/app_roles.dart';
 import '../../core/startup/startup_status.dart';
 import '../../data/services/auth_service.dart';
 import '../../domain/models/app_user.dart';
+import 'dashboard_provider.dart';
+import 'expense_provider.dart';
+import 'income_provider.dart';
+import 'notification_provider.dart';
+import 'room_media_provider.dart';
+import 'room_provider.dart';
+import 'sync_provider.dart';
+import 'villa_provider.dart';
 
 final authServiceProvider = Provider<AuthService?>((ref) {
   final startupStatus = ref.watch(startupStatusProvider);
   if (!startupStatus.firebaseInitialized || Firebase.apps.isEmpty) {
     return null;
   }
-  return AuthService();
+  return AuthService(
+    firebaseSyncService: ref.read(firebaseSyncServiceProvider),
+  );
 });
 
 final authProvider = StateNotifierProvider<AuthNotifier, AuthState>((ref) {
   return AuthNotifier(
+    ref: ref,
     service: ref.watch(authServiceProvider),
     startupStatus: ref.watch(startupStatusProvider),
   );
@@ -69,14 +80,17 @@ class AuthState {
 
 class AuthNotifier extends StateNotifier<AuthState> {
   AuthNotifier({
+    required Ref ref,
     required AuthService? service,
     required StartupStatus startupStatus,
-  })  : _service = service,
+  })  : _ref = ref,
+        _service = service,
         _startupStatus = startupStatus,
         super(const AuthState.loading()) {
     _listenToFirebaseAuth();
   }
 
+  final Ref _ref;
   final AuthService? _service;
   final StartupStatus _startupStatus;
   StreamSubscription<Object?>? _authSubscription;
@@ -134,14 +148,63 @@ class AuthNotifier extends StateNotifier<AuthState> {
   }
 
   Future<void> logout() async {
+    debugPrint('[Auth] logout started.');
     try {
+      await _cancelFirestoreProviderListeners();
       await _service?.logout();
+      _invalidateAppProviders();
+      debugPrint('[Auth] providers invalidated.');
     } catch (error, stackTrace) {
       debugPrint('[Auth] Logout failed: $error');
       debugPrintStack(stackTrace: stackTrace);
     } finally {
       state = const AuthState.ready(users: []);
     }
+  }
+
+  Future<void> _cancelFirestoreProviderListeners() async {
+    _ref.invalidate(roomMediaProvider);
+    _ref.invalidate(villasProvider);
+    _ref.invalidate(villaListProvider);
+    _ref.invalidate(activeVillaListProvider);
+    _ref.invalidate(allRoomsProvider);
+    _ref.invalidate(roomListProvider);
+    _ref.invalidate(activeRoomListProvider);
+    _ref.invalidate(incomeListProvider);
+    _ref.invalidate(expenseListProvider);
+    _ref.invalidate(userNotificationsProvider);
+    _ref.invalidate(unreadNotificationCountProvider);
+    _ref.invalidate(pendingSyncCountProvider);
+    _ref.invalidate(pendingDeleteCountProvider);
+    _ref.invalidate(lastSyncedAtProvider);
+    _ref.invalidate(firebaseSyncServiceProvider);
+    await Future<void>.delayed(Duration.zero);
+  }
+
+  void _invalidateAppProviders() {
+    _ref.invalidate(roomMediaProvider);
+    _ref.invalidate(roomMediaAuthStateProvider);
+    _ref.invalidate(villasProvider);
+    _ref.invalidate(villaListProvider);
+    _ref.invalidate(activeVillaListProvider);
+    _ref.invalidate(villaByIdProvider);
+    _ref.invalidate(allRoomsProvider);
+    _ref.invalidate(roomListProvider);
+    _ref.invalidate(activeRoomListProvider);
+    _ref.invalidate(roomByIdProvider);
+    _ref.invalidate(roomsByVillaProvider);
+    _ref.invalidate(watchRoomsByVillaProvider);
+    _ref.invalidate(incomeListProvider);
+    _ref.invalidate(expenseListProvider);
+    _ref.invalidate(expenseProvider);
+    _ref.invalidate(dashboardSummaryProvider);
+    _ref.invalidate(userNotificationsProvider);
+    _ref.invalidate(unreadNotificationCountProvider);
+    _ref.invalidate(syncRefreshProvider);
+    _ref.invalidate(pendingSyncCountProvider);
+    _ref.invalidate(pendingDeleteCountProvider);
+    _ref.invalidate(lastSyncedAtProvider);
+    _ref.invalidate(firebaseSyncServiceProvider);
   }
 
   Future<void> loadSession() async {

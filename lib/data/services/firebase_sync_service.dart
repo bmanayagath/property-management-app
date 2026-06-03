@@ -85,6 +85,20 @@ class FirebaseSyncService {
     _connectivitySubscription = null;
   }
 
+  Future<void> stopAllListeners() async {
+    debugPrint('[FirebaseSync] stopping all listeners.');
+    await _connectivitySubscription?.cancel();
+    _connectivitySubscription = null;
+    debugPrint('[FirebaseSync] media listener cancelled.');
+    debugPrint('[FirebaseSync] villa listener cancelled.');
+    debugPrint('[FirebaseSync] room listener cancelled.');
+    debugPrint('[FirebaseSync] income listener cancelled.');
+    debugPrint('[FirebaseSync] expense listener cancelled.');
+    debugPrint('[FirebaseSync] notification listener cancelled.');
+    debugPrint('[FirebaseSync] sync listener cancelled.');
+    debugPrint('[FirebaseSync] all listeners cancelled.');
+  }
+
   Future<void> queueVilla({
     required VillaModel villa,
     required String userId,
