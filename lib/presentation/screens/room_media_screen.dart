@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../widgets/premium_widgets.dart';
 import '../widgets/room_media_gallery_widget.dart';
 
 class RoomMediaScreen extends StatelessWidget {
@@ -22,7 +23,7 @@ class RoomMediaScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return PremiumScaffold(
       appBar: AppBar(
         title: Text('$roomName Media'),
       ),

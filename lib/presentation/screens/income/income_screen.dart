@@ -9,6 +9,7 @@ import '../../providers/auth_provider.dart';
 import '../../providers/dashboard_provider.dart';
 import '../../providers/income_provider.dart';
 import '../../widgets/income_card.dart';
+import '../../widgets/premium_widgets.dart';
 import 'add_edit_income_screen.dart';
 import 'income_detail_screen.dart';
 
@@ -31,154 +32,129 @@ class _IncomeScreenState extends ConsumerState<IncomeScreen> {
     final canManageIncome =
         authState.hasPermission(AppPermissions.manageIncome);
 
-    return Scaffold(
-      backgroundColor: const Color(0xFFFCFCFD),
-      appBar: AppBar(
-        title: const Text('Income'),
-        elevation: 0,
-        actions: [
-          if (canManageIncome)
-            Padding(
-              padding: const EdgeInsets.only(right: 16),
-              child: FilledButton.icon(
-                onPressed: _openAddIncome,
-                icon: const Icon(Icons.add_rounded),
-                label: const Text('Add Income'),
-                style: FilledButton.styleFrom(
-                  backgroundColor: const Color(0xFF12B76A),
-                  foregroundColor: Colors.white,
-                ),
+    return PremiumScaffold(
+      body: incomeAsync.when(
+        data: (incomes) {
+          final filteredIncomes = incomes.where((income) {
+            final sameMonth = income.paymentDate.year == selectedMonth.year &&
+                income.paymentDate.month == selectedMonth.month;
+            final matchesType =
+                _selectedType == 'All' || income.incomeType == _selectedType;
+            final query = _searchQuery.toLowerCase().trim();
+            final matchesSearch = query.isEmpty ||
+                income.incomeType.toLowerCase().contains(query) ||
+                income.villaName.toLowerCase().contains(query) ||
+                income.paymentMethod.toLowerCase().contains(query) ||
+                income.notes.toLowerCase().contains(query);
+
+            return sameMonth && matchesType && matchesSearch;
+          }).toList()
+            ..sort((a, b) => b.paymentDate.compareTo(a.paymentDate));
+
+          final total = filteredIncomes.fold<double>(
+            0,
+            (sum, income) => sum + income.amount,
+          );
+
+          return ListView(
+            padding: PremiumTokens.pagePadding,
+            children: [
+              PremiumPageHeader(
+                title: 'Income',
+                subtitle: 'Track rent and other received payments',
+                actions: [
+                  if (canManageIncome)
+                    PremiumButton(
+                      onPressed: _openAddIncome,
+                      icon: Icons.add_rounded,
+                      label: 'Add Income',
+                    ),
+                ],
               ),
-            ),
-        ],
-      ),
-      body: SafeArea(
-        child: incomeAsync.when(
-          data: (incomes) {
-            final filteredIncomes = incomes.where((income) {
-              final sameMonth = income.paymentDate.year == selectedMonth.year &&
-                  income.paymentDate.month == selectedMonth.month;
-              final matchesType =
-                  _selectedType == 'All' || income.incomeType == _selectedType;
-              final query = _searchQuery.toLowerCase().trim();
-              final matchesSearch = query.isEmpty ||
-                  income.incomeType.toLowerCase().contains(query) ||
-                  income.villaName.toLowerCase().contains(query) ||
-                  income.paymentMethod.toLowerCase().contains(query) ||
-                  income.notes.toLowerCase().contains(query);
-
-              return sameMonth && matchesType && matchesSearch;
-            }).toList()
-              ..sort((a, b) => b.paymentDate.compareTo(a.paymentDate));
-
-            final total = filteredIncomes.fold<double>(
-              0,
-              (sum, income) => sum + income.amount,
-            );
-
-            return ListView(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 150),
-              children: [
-                _MonthSelector(
-                  month: selectedMonth,
-                  onPrevious: () => _changeMonth(selectedMonth, -1),
-                  onNext: () => _changeMonth(selectedMonth, 1),
-                ),
-                const SizedBox(height: 14),
-                _SummaryCard(total: total, month: selectedMonth),
-                const SizedBox(height: 16),
-                TextField(
-                  onChanged: (value) => setState(() => _searchQuery = value),
-                  decoration: InputDecoration(
-                    hintText: 'Search income...',
-                    prefixIcon: const Icon(Icons.search_rounded),
-                    filled: true,
-                    fillColor: Colors.white,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(16),
-                      borderSide: const BorderSide(color: Color(0xFFE8EAF0)),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(16),
-                      borderSide: const BorderSide(color: Color(0xFFE8EAF0)),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(16),
-                      borderSide: const BorderSide(
-                          color: Color(0xFF12B76A), width: 1.5),
-                    ),
+              const SizedBox(height: 18),
+              _MonthSelector(
+                month: selectedMonth,
+                onPrevious: () => _changeMonth(selectedMonth, -1),
+                onNext: () => _changeMonth(selectedMonth, 1),
+              ),
+              const SizedBox(height: 14),
+              _SummaryCard(total: total, month: selectedMonth),
+              const SizedBox(height: 16),
+              PremiumSearchBar(
+                onChanged: (value) => setState(() => _searchQuery = value),
+                hintText: 'Search income...',
+                value: _searchQuery,
+                onClear: () => setState(() => _searchQuery = ''),
+              ),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<String>(
+                initialValue: _selectedType,
+                decoration: InputDecoration(
+                  labelText: 'Income Type',
+                  filled: true,
+                  fillColor: Colors.white,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: const BorderSide(color: Color(0xFFE8EAF0)),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: const BorderSide(color: Color(0xFFE8EAF0)),
                   ),
                 ),
-                const SizedBox(height: 12),
-                DropdownButtonFormField<String>(
-                  initialValue: _selectedType,
-                  decoration: InputDecoration(
-                    labelText: 'Income Type',
-                    filled: true,
-                    fillColor: Colors.white,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(16),
-                      borderSide: const BorderSide(color: Color(0xFFE8EAF0)),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(16),
-                      borderSide: const BorderSide(color: Color(0xFFE8EAF0)),
+                items: [
+                  const DropdownMenuItem(
+                      value: 'All', child: Text('All Income')),
+                  ...IncomeTypes.values.map(
+                    (type) => DropdownMenuItem(
+                      value: type,
+                      child: Text(type),
                     ),
                   ),
-                  items: [
-                    const DropdownMenuItem(
-                        value: 'All', child: Text('All Income')),
-                    ...IncomeTypes.values.map(
-                      (type) => DropdownMenuItem(
-                        value: type,
-                        child: Text(type),
+                ],
+                onChanged: (value) {
+                  if (value == null) return;
+                  setState(() => _selectedType = value);
+                },
+              ),
+              const SizedBox(height: 18),
+              if (filteredIncomes.isEmpty)
+                const _EmptyIncome()
+              else
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    return GridView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: filteredIncomes.length,
+                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 1,
+                        crossAxisSpacing: 12,
+                        mainAxisSpacing: 12,
+                        mainAxisExtent: 76,
                       ),
-                    ),
-                  ],
-                  onChanged: (value) {
-                    if (value == null) return;
-                    setState(() => _selectedType = value);
+                      itemBuilder: (context, index) {
+                        final income = filteredIncomes[index];
+
+                        return IncomeCard(
+                          income: income,
+                          onTap: () => _openDetail(income),
+                          onEdit: canManageIncome
+                              ? () => _openEditIncome(income)
+                              : null,
+                          onDelete: canManageIncome
+                              ? () => _confirmDelete(income)
+                              : null,
+                        );
+                      },
+                    );
                   },
                 ),
-                const SizedBox(height: 18),
-                if (filteredIncomes.isEmpty)
-                  const _EmptyIncome()
-                else
-                  LayoutBuilder(
-                    builder: (context, constraints) {
-                      return GridView.builder(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        itemCount: filteredIncomes.length,
-                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 1,
-                          crossAxisSpacing: 12,
-                          mainAxisSpacing: 12,
-                          mainAxisExtent: 76,
-                        ),
-                        itemBuilder: (context, index) {
-                          final income = filteredIncomes[index];
-
-                          return IncomeCard(
-                            income: income,
-                            onTap: () => _openDetail(income),
-                            onEdit: canManageIncome
-                                ? () => _openEditIncome(income)
-                                : null,
-                            onDelete: canManageIncome
-                                ? () => _confirmDelete(income)
-                                : null,
-                          );
-                        },
-                      );
-                    },
-                  ),
-              ],
-            );
-          },
-          error: (error, _) => Center(child: Text(error.toString())),
-          loading: () => const Center(child: CircularProgressIndicator()),
-        ),
+            ],
+          );
+        },
+        error: (error, _) => Center(child: Text(error.toString())),
+        loading: () => const Center(child: CircularProgressIndicator()),
       ),
       floatingActionButton: canManageIncome
           ? Padding(

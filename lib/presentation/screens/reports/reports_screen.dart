@@ -19,6 +19,7 @@ import '../../providers/income_provider.dart';
 import '../../providers/room_provider.dart';
 import '../../providers/villa_provider.dart';
 import '../common/access_denied_screen.dart';
+import '../../widgets/premium_widgets.dart';
 import '../../widgets/reports/expense_report_view.dart';
 import '../../widgets/reports/income_report_view.dart';
 import '../../widgets/reports/monthly_summary_report.dart';
@@ -71,98 +72,92 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
       return const AccessDeniedScreen();
     }
 
-    return Scaffold(
-      backgroundColor: const Color(0xFFFCFCFD),
-      appBar: AppBar(
-        title: const Text('Reports'),
-        elevation: 0,
-        actions: [
-          if (canExportReports)
-            Padding(
-              padding: const EdgeInsets.only(right: 16),
-              child: Center(
-                child: OutlinedButton.icon(
-                  onPressed: _isExporting
-                      ? null
-                      : () => _export(
-                            villasAsync.valueOrNull ?? const [],
-                            roomsAsync.valueOrNull ?? const [],
-                            incomesAsync.valueOrNull ?? const [],
-                            expenses,
-                            ExportFormat.pdf,
-                          ),
-                  icon: const Icon(Icons.picture_as_pdf_rounded),
-                  label: const Text('Export PDF'),
-                ),
-              ),
-            ),
-        ],
-      ),
-      body: SafeArea(
-        child: villasAsync.when(
-          data: (villas) => roomsAsync.when(
-            data: (rooms) => incomesAsync.when(
-              data: (incomes) {
-                final reportData =
-                    _buildReportData(villas, rooms, incomes, expenses);
+    return PremiumScaffold(
+      body: villasAsync.when(
+        data: (villas) => roomsAsync.when(
+          data: (rooms) => incomesAsync.when(
+            data: (incomes) {
+              final reportData =
+                  _buildReportData(villas, rooms, incomes, expenses);
 
-                return ListView(
-                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 150),
-                  children: [
-                    _Filters(
-                      selectedMonth: _selectedMonth,
-                      selectedYear: _selectedYear,
-                      selectedReportType: _selectedReportType,
-                      villas: villas,
-                      rooms: rooms,
-                      selectedVillaId: _selectedVillaId,
-                      selectedRoomId: _selectedRoomId,
-                      selectedStatus: _selectedStatus,
-                      onPreviousMonth: () => _changeMonth(-1),
-                      onNextMonth: () => _changeMonth(1),
-                      onYearChanged: (year) {
-                        if (year == null) return;
-                        setState(() => _selectedYear = year);
-                      },
-                      onReportTypeChanged: (type) {
-                        if (type == null) return;
-                        setState(() => _selectedReportType = type);
-                      },
-                      onVillaChanged: (villaId) {
-                        setState(() {
-                          _selectedVillaId = villaId;
-                          _selectedRoomId = null;
-                        });
-                      },
-                      onRoomChanged: (roomId) {
-                        setState(() => _selectedRoomId = roomId);
-                      },
-                      onStatusChanged: (status) {
-                        if (status == null) return;
-                        setState(() => _selectedStatus = status);
-                      },
-                    ),
-                    const SizedBox(height: 16),
-                    _ReportHeader(
-                      title: _selectedReportType.label,
-                      subtitle: _selectedReportType == ReportType.yearlySummary
-                          ? '$_selectedYear'
-                          : _monthFormat.format(_selectedMonth),
-                    ),
-                    const SizedBox(height: 14),
-                    _buildReportView(reportData),
-                  ],
-                );
-              },
-              error: (error, _) => Center(child: Text(error.toString())),
-              loading: () => const Center(child: CircularProgressIndicator()),
-            ),
+              return ListView(
+                padding: PremiumTokens.pagePadding,
+                children: [
+                  PremiumPageHeader(
+                    title: 'Reports',
+                    subtitle: 'Profit, rent, vacancy, income, and expenses',
+                    actions: [
+                      if (canExportReports)
+                        PremiumButton(
+                          onPressed: _isExporting
+                              ? null
+                              : () => _export(
+                                    villasAsync.valueOrNull ?? const [],
+                                    roomsAsync.valueOrNull ?? const [],
+                                    incomesAsync.valueOrNull ?? const [],
+                                    expenses,
+                                    ExportFormat.pdf,
+                                  ),
+                          icon: Icons.picture_as_pdf_rounded,
+                          label: 'Export PDF',
+                          filled: false,
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 18),
+                  _Filters(
+                    selectedMonth: _selectedMonth,
+                    selectedYear: _selectedYear,
+                    selectedReportType: _selectedReportType,
+                    villas: villas,
+                    rooms: rooms,
+                    selectedVillaId: _selectedVillaId,
+                    selectedRoomId: _selectedRoomId,
+                    selectedStatus: _selectedStatus,
+                    onPreviousMonth: () => _changeMonth(-1),
+                    onNextMonth: () => _changeMonth(1),
+                    onYearChanged: (year) {
+                      if (year == null) return;
+                      setState(() => _selectedYear = year);
+                    },
+                    onReportTypeChanged: (type) {
+                      if (type == null) return;
+                      setState(() => _selectedReportType = type);
+                    },
+                    onVillaChanged: (villaId) {
+                      setState(() {
+                        _selectedVillaId = villaId;
+                        _selectedRoomId = null;
+                      });
+                    },
+                    onRoomChanged: (roomId) {
+                      setState(() => _selectedRoomId = roomId);
+                    },
+                    onStatusChanged: (status) {
+                      if (status == null) return;
+                      setState(() => _selectedStatus = status);
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  _ReportHeader(
+                    title: _selectedReportType.label,
+                    subtitle: _selectedReportType == ReportType.yearlySummary
+                        ? '$_selectedYear'
+                        : _monthFormat.format(_selectedMonth),
+                  ),
+                  const SizedBox(height: 14),
+                  _buildReportView(reportData),
+                ],
+              );
+            },
             error: (error, _) => Center(child: Text(error.toString())),
             loading: () => const Center(child: CircularProgressIndicator()),
           ),
           error: (error, _) => Center(child: Text(error.toString())),
           loading: () => const Center(child: CircularProgressIndicator()),
         ),
+        error: (error, _) => Center(child: Text(error.toString())),
+        loading: () => const Center(child: CircularProgressIndicator()),
       ),
     );
   }

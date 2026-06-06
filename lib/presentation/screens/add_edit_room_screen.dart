@@ -8,6 +8,7 @@ import '../providers/dashboard_provider.dart';
 import '../providers/room_provider.dart';
 import '../providers/villa_provider.dart';
 import '../widgets/app_text_field.dart';
+import '../widgets/premium_widgets.dart';
 import '../widgets/app_date_picker_field.dart';
 import '../widgets/app_dropdown.dart';
 
@@ -229,14 +230,14 @@ class _AddEditRoomScreenState extends ConsumerState<AddEditRoomScreen> {
     final isEditing = widget.room != null;
     final villas = ref.watch(villasProvider);
 
-    return Scaffold(
+    return PremiumScaffold(
       appBar: AppBar(
         title: Text(isEditing ? 'Edit Room' : 'Add New Room'),
         elevation: 0,
       ),
       body: SingleChildScrollView(
         child: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: PremiumTokens.pagePadding,
           child: Form(
             key: _formKey,
             child: Column(

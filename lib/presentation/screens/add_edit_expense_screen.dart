@@ -18,6 +18,7 @@ import '../providers/expense_provider.dart';
 import '../providers/notification_provider.dart';
 import '../providers/villa_provider.dart';
 import '../providers/room_provider.dart';
+import '../widgets/premium_widgets.dart';
 
 class AddEditExpenseScreen extends ConsumerStatefulWidget {
   final Expense? expense;
@@ -81,8 +82,7 @@ class _AddEditExpenseScreenState extends ConsumerState<AddEditExpenseScreen> {
     final villasAsync = ref.watch(villaListProvider);
     final roomsAsync = ref.watch(roomListProvider);
 
-    return Scaffold(
-      backgroundColor: const Color(0xFFFCFCFD),
+    return PremiumScaffold(
       appBar: AppBar(
         title: Text(_isEditing ? 'Edit Expense' : 'Add Expense'),
         elevation: 0,
@@ -114,7 +114,7 @@ class _AddEditExpenseScreenState extends ConsumerState<AddEditExpenseScreen> {
             return Form(
               key: _formKey,
               child: ListView(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+                padding: PremiumTokens.pagePadding,
                 children: [
                   _FormPanel(
                     children: [

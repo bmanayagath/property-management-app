@@ -5,6 +5,7 @@ import '../../../core/constants/app_permissions.dart';
 import '../../../core/constants/app_roles.dart';
 import '../../../domain/models/app_user.dart';
 import '../../providers/auth_provider.dart';
+import '../../widgets/premium_widgets.dart';
 import '../common/access_denied_screen.dart';
 import 'add_edit_user_screen.dart';
 
@@ -22,14 +23,13 @@ class UsersScreen extends ConsumerWidget {
     final users = [...authState.users]
       ..sort((a, b) => a.username.compareTo(b.username));
 
-    return Scaffold(
-      backgroundColor: const Color(0xFFFCFCFD),
+    return PremiumScaffold(
       appBar: AppBar(
         title: const Text('Users'),
         elevation: 0,
       ),
       body: ListView.separated(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 116),
+        padding: PremiumTokens.pagePadding,
         itemCount: users.length,
         separatorBuilder: (_, __) => const SizedBox(height: 12),
         itemBuilder: (context, index) {

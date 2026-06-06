@@ -9,6 +9,7 @@ import '../providers/auth_provider.dart';
 import '../providers/dashboard_provider.dart';
 import '../providers/expense_provider.dart';
 import '../widgets/expense_card.dart';
+import '../widgets/premium_widgets.dart';
 import 'add_edit_expense_screen.dart';
 import 'expense_detail_screen.dart';
 
@@ -50,127 +51,102 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
     }).toList()
       ..sort((a, b) => b.expenseDate.compareTo(a.expenseDate));
 
-    return Scaffold(
-      backgroundColor: const Color(0xFFFCFCFD),
-      appBar: AppBar(
-        title: const Text('Expenses'),
-        elevation: 0,
-        actions: [
-          if (canManageExpenses)
-            Padding(
-              padding: const EdgeInsets.only(right: 16),
-              child: FilledButton.icon(
-                onPressed: _openAddExpense,
-                icon: const Icon(Icons.add_rounded),
-                label: const Text('Add Expense'),
-                style: FilledButton.styleFrom(
-                  backgroundColor: const Color(0xFFF04438),
-                  foregroundColor: Colors.white,
+    return PremiumScaffold(
+      body: ListView(
+        padding: PremiumTokens.pagePadding,
+        children: [
+          PremiumPageHeader(
+            title: 'Expenses',
+            subtitle: 'Track upkeep, payments, and property costs',
+            actions: [
+              if (canManageExpenses)
+                PremiumButton(
+                  onPressed: _openAddExpense,
+                  icon: Icons.add_rounded,
+                  label: 'Add Expense',
                 ),
+            ],
+          ),
+          const SizedBox(height: 18),
+          _MonthSelector(
+            month: selectedMonth,
+            onPrevious: () => _changeMonth(selectedMonth, -1),
+            onNext: () => _changeMonth(selectedMonth, 1),
+          ),
+          const SizedBox(height: 14),
+          _SummaryCard(total: total, month: selectedMonth),
+          const SizedBox(height: 16),
+          PremiumSearchBar(
+            onChanged: (value) => setState(() => _searchQuery = value),
+            hintText: 'Search expenses...',
+            value: _searchQuery,
+            onClear: () => setState(() => _searchQuery = ''),
+          ),
+          const SizedBox(height: 12),
+          DropdownButtonFormField<String>(
+            initialValue: _selectedCategory,
+            decoration: InputDecoration(
+              labelText: 'Category',
+              filled: true,
+              fillColor: Colors.white,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: const BorderSide(color: Color(0xFFE8EAF0)),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: const BorderSide(color: Color(0xFFE8EAF0)),
               ),
             ),
-        ],
-      ),
-      body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 150),
-          children: [
-            _MonthSelector(
-              month: selectedMonth,
-              onPrevious: () => _changeMonth(selectedMonth, -1),
-              onNext: () => _changeMonth(selectedMonth, 1),
-            ),
-            const SizedBox(height: 14),
-            _SummaryCard(total: total, month: selectedMonth),
-            const SizedBox(height: 16),
-            TextField(
-              onChanged: (value) => setState(() => _searchQuery = value),
-              decoration: InputDecoration(
-                hintText: 'Search expenses...',
-                prefixIcon: const Icon(Icons.search_rounded),
-                filled: true,
-                fillColor: Colors.white,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  borderSide: const BorderSide(color: Color(0xFFE8EAF0)),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  borderSide: const BorderSide(color: Color(0xFFE8EAF0)),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  borderSide:
-                      const BorderSide(color: Color(0xFFF04438), width: 1.5),
+            items: [
+              const DropdownMenuItem(
+                  value: 'All', child: Text('All Categories')),
+              ...ExpenseCategories.values.map(
+                (category) => DropdownMenuItem(
+                  value: category,
+                  child: Text(category),
                 ),
               ),
-            ),
-            const SizedBox(height: 12),
-            DropdownButtonFormField<String>(
-              initialValue: _selectedCategory,
-              decoration: InputDecoration(
-                labelText: 'Category',
-                filled: true,
-                fillColor: Colors.white,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  borderSide: const BorderSide(color: Color(0xFFE8EAF0)),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  borderSide: const BorderSide(color: Color(0xFFE8EAF0)),
-                ),
-              ),
-              items: [
-                const DropdownMenuItem(
-                    value: 'All', child: Text('All Categories')),
-                ...ExpenseCategories.values.map(
-                  (category) => DropdownMenuItem(
-                    value: category,
-                    child: Text(category),
+            ],
+            onChanged: (value) {
+              if (value == null) return;
+              setState(() => _selectedCategory = value);
+            },
+          ),
+          const SizedBox(height: 18),
+          if (filteredExpenses.isEmpty)
+            const _EmptyExpenses()
+          else
+            LayoutBuilder(
+              builder: (context, constraints) {
+                return GridView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: filteredExpenses.length,
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 1,
+                    crossAxisSpacing: 12,
+                    mainAxisSpacing: 12,
+                    mainAxisExtent: 76,
                   ),
-                ),
-              ],
-              onChanged: (value) {
-                if (value == null) return;
-                setState(() => _selectedCategory = value);
+                  itemBuilder: (context, index) {
+                    final expense = filteredExpenses[index];
+
+                    return ExpenseCard(
+                      expense: expense,
+                      onTap: () => _openDetail(expense),
+                      onEdit: canManageExpenses
+                          ? () => _openEditExpense(expense)
+                          : null,
+                      onDelete: canManageExpenses
+                          ? () => _confirmDelete(expense)
+                          : null,
+                    );
+                  },
+                );
               },
             ),
-            const SizedBox(height: 18),
-            if (filteredExpenses.isEmpty)
-              const _EmptyExpenses()
-            else
-              LayoutBuilder(
-                builder: (context, constraints) {
-                  return GridView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemCount: filteredExpenses.length,
-                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 1,
-                      crossAxisSpacing: 12,
-                      mainAxisSpacing: 12,
-                      mainAxisExtent: 76,
-                    ),
-                    itemBuilder: (context, index) {
-                      final expense = filteredExpenses[index];
-
-                      return ExpenseCard(
-                        expense: expense,
-                        onTap: () => _openDetail(expense),
-                        onEdit: canManageExpenses
-                            ? () => _openEditExpense(expense)
-                            : null,
-                        onDelete: canManageExpenses
-                            ? () => _confirmDelete(expense)
-                            : null,
-                      );
-                    },
-                  );
-                },
-              ),
-          ],
-        ),
+        ],
       ),
       floatingActionButton: canManageExpenses
           ? Padding(

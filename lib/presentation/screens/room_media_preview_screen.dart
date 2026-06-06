@@ -14,6 +14,7 @@ import '../providers/auth_provider.dart';
 import '../providers/room_media_provider.dart';
 import '../providers/room_provider.dart';
 import '../providers/villa_provider.dart';
+import '../widgets/premium_widgets.dart';
 
 class RoomMediaPreviewScreen extends ConsumerStatefulWidget {
   final String villaId;
@@ -79,7 +80,7 @@ class _RoomMediaPreviewScreenState
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return PremiumScaffold(
       appBar: AppBar(
         title: const Text('Preview Media'),
         actions: [

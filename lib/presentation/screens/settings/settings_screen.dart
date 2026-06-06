@@ -5,6 +5,7 @@ import '../../../core/constants/app_permissions.dart';
 import '../../../core/constants/app_roles.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/sync_provider.dart';
+import '../../widgets/premium_widgets.dart';
 import 'developer_logs_screen.dart';
 import 'legal_screen.dart';
 import 'sync_status_widget.dart';
@@ -18,29 +19,16 @@ class SettingsScreen extends ConsumerWidget {
     final authState = ref.watch(authProvider);
     final user = authState.currentUser;
 
-    return Scaffold(
-      backgroundColor: const Color(0xFFFCFCFD),
-      appBar: AppBar(
-        title: const Text('Settings'),
-        elevation: 0,
-      ),
+    return PremiumScaffold(
       body: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 116),
+        padding: PremiumTokens.pagePadding,
         children: [
-          Container(
-            padding: const EdgeInsets.all(18),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: const Color(0xFFE8EAF0)),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.06),
-                  blurRadius: 18,
-                  offset: const Offset(0, 8),
-                ),
-              ],
-            ),
+          const PremiumPageHeader(
+            title: 'Settings',
+            subtitle: 'Account, permissions, sync, and app diagnostics',
+          ),
+          const SizedBox(height: 18),
+          PremiumCard(
             child: Row(
               children: [
                 Container(

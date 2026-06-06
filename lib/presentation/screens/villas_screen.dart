@@ -14,8 +14,7 @@ import '../providers/income_provider.dart';
 import '../providers/room_provider.dart';
 import '../providers/villa_provider.dart';
 import '../widgets/villa_card.dart';
-import '../widgets/empty_state.dart';
-import '../widgets/summary_card.dart';
+import '../widgets/premium_widgets.dart';
 import 'add_edit_villa_screen.dart';
 import 'villa_detail_screen.dart';
 
@@ -41,231 +40,209 @@ class _VillasScreenState extends ConsumerState<VillasScreen> {
     final canDeleteVillas = canManageVillas &&
         authState.hasPermission(AppPermissions.deleteRecords);
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Villas'),
-        elevation: 0,
-        actions: [
-          if (canManageVillas)
-            Padding(
-              padding: const EdgeInsets.only(right: 16),
-              child: FilledButton.icon(
-                onPressed: _openAddVillaScreen,
-                icon: const Icon(Icons.add),
-                label: const Text('Add Villa'),
-              ),
-            ),
-        ],
-      ),
-      body: SafeArea(
-        child: villasAsync.when(
-          data: (villas) => roomsAsync.when(
-            data: (rooms) {
-              final activeVillas = villas;
-              final activeRooms = activeRoomsOnly(
-                rooms: rooms,
-                villas: activeVillas,
-              );
-              _logRoomSummaryOnce(
-                rawRoomsFromProvider: rooms,
-                activeRooms: activeRooms,
-                activeVillas: activeVillas,
-              );
-              final rentReceivedByRoom = _rentReceivedByRoom(
-                incomesAsync.valueOrNull ?? const <Income>[],
-                DateTime.now(),
-                activeRoomIds: activeRooms.map((room) => room.id).toSet(),
-              );
-              final roomsByVilla = <String, List<Room>>{};
-              for (final room in activeRooms) {
-                roomsByVilla.putIfAbsent(room.villaId, () => []).add(room);
-              }
+    return PremiumScaffold(
+      body: villasAsync.when(
+        data: (villas) => roomsAsync.when(
+          data: (rooms) {
+            final activeVillas = villas;
+            final activeRooms = activeRoomsOnly(
+              rooms: rooms,
+              villas: activeVillas,
+            );
+            _logRoomSummaryOnce(
+              rawRoomsFromProvider: rooms,
+              activeRooms: activeRooms,
+              activeVillas: activeVillas,
+            );
+            final rentReceivedByRoom = _rentReceivedByRoom(
+              incomesAsync.valueOrNull ?? const <Income>[],
+              DateTime.now(),
+              activeRoomIds: activeRooms.map((room) => room.id).toSet(),
+            );
+            final roomsByVilla = <String, List<Room>>{};
+            for (final room in activeRooms) {
+              roomsByVilla.putIfAbsent(room.villaId, () => []).add(room);
+            }
 
-              final filteredVillas = activeVillas
-                  .where((villa) =>
-                      villa.villaName
-                          .toLowerCase()
-                          .contains(_searchQuery.toLowerCase()) ||
-                      _villaRooms(villa, roomsByVilla).any(
-                        (room) =>
-                            room.tenantName
-                                .toLowerCase()
-                                .contains(_searchQuery.toLowerCase()) ||
-                            room.roomName
-                                .toLowerCase()
-                                .contains(_searchQuery.toLowerCase()),
-                      ))
-                  .toList();
+            final filteredVillas = activeVillas
+                .where((villa) =>
+                    villa.villaName
+                        .toLowerCase()
+                        .contains(_searchQuery.toLowerCase()) ||
+                    _villaRooms(villa, roomsByVilla).any(
+                      (room) =>
+                          room.tenantName
+                              .toLowerCase()
+                              .contains(_searchQuery.toLowerCase()) ||
+                          room.roomName
+                              .toLowerCase()
+                              .contains(_searchQuery.toLowerCase()),
+                    ))
+                .toList();
 
-              final occupiedRooms =
-                  activeRooms.where((room) => room.isOccupied).length;
-              final vacantRooms =
-                  activeRooms.where((room) => room.isVacant).length;
-              final totalRoomRent = activeRooms.fold<double>(
-                0,
-                (sum, room) => sum + room.monthlyRent,
-              );
+            final occupiedRooms =
+                activeRooms.where((room) => room.isOccupied).length;
+            final vacantRooms =
+                activeRooms.where((room) => room.isVacant).length;
+            final totalRoomRent = activeRooms.fold<double>(
+              0,
+              (sum, room) => sum + room.monthlyRent,
+            );
 
-              return SingleChildScrollView(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 150),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Summary Cards
-                      Row(
-                        children: [
-                          Expanded(
-                            child: SummaryCard(
-                              title: 'Total Villas',
-                              value: activeVillas.length.toString(),
-                              color: AppColors.primary,
-                              icon: Icons.home,
-                            ),
+            return SingleChildScrollView(
+              child: Padding(
+                padding: PremiumTokens.pagePadding,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    PremiumPageHeader(
+                      title: 'Villas',
+                      subtitle: 'Homes, rooms, tenants, and rent at a glance',
+                      actions: [
+                        if (canManageVillas)
+                          PremiumButton(
+                            onPressed: _openAddVillaScreen,
+                            icon: Icons.add_rounded,
+                            label: 'Add Villa',
                           ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: SummaryCard(
-                              title: 'Occupied Rooms',
-                              value: occupiedRooms.toString(),
-                              color: AppColors.success,
-                              icon: Icons.check_circle,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: SummaryCard(
-                              title: 'Vacant Rooms',
-                              value: vacantRooms.toString(),
-                              color: AppColors.warning,
-                              icon: Icons.home_outlined,
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: SummaryCard(
-                              title: 'Total Room Rent',
-                              value: CurrencyFormatter.format(totalRoomRent),
-                              color: AppColors.profit,
-                              icon: Icons.trending_up,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 24),
-
-                      // Search Bar
-                      TextField(
-                        onChanged: (value) {
-                          setState(() => _searchQuery = value);
-                        },
-                        decoration: InputDecoration(
-                          hintText: 'Search villas or tenants...',
-                          prefixIcon: const Icon(Icons.search),
-                          suffixIcon: _searchQuery.isNotEmpty
-                              ? IconButton(
-                                  icon: const Icon(Icons.clear),
-                                  onPressed: () {
-                                    setState(() => _searchQuery = '');
-                                  },
-                                )
-                              : null,
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 12,
+                      ],
+                    ),
+                    const SizedBox(height: 18),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: SoftStatCard(
+                            title: 'Total Villas',
+                            value: activeVillas.length.toString(),
+                            color: AppColors.primary,
+                            icon: Icons.home,
                           ),
                         ),
-                      ),
-                      const SizedBox(height: 24),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: SoftStatCard(
+                            title: 'Occupied Rooms',
+                            value: occupiedRooms.toString(),
+                            color: AppColors.success,
+                            icon: Icons.check_circle,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: SoftStatCard(
+                            title: 'Vacant Rooms',
+                            value: vacantRooms.toString(),
+                            color: AppColors.warning,
+                            icon: Icons.home_outlined,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: SoftStatCard(
+                            title: 'Total Room Rent',
+                            value: CurrencyFormatter.format(totalRoomRent),
+                            color: AppColors.profit,
+                            icon: Icons.trending_up,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
 
-                      // Villas List - Grid Layout
-                      if (filteredVillas.isEmpty)
-                        EmptyState(
-                          icon: Icons.home_outlined,
-                          title:
-                              _searchQuery.isEmpty ? 'No Villas' : 'No Results',
-                          subtitle: _searchQuery.isEmpty
-                              ? 'Create your first villa to get started'
-                              : 'Try a different search term',
-                        )
-                      else
-                        Column(
-                          children: List.generate(
-                            filteredVillas.length,
-                            (index) {
-                              final villa = filteredVillas[index];
+                    PremiumSearchBar(
+                      onChanged: (value) {
+                        setState(() => _searchQuery = value);
+                      },
+                      hintText: 'Search villas or tenants...',
+                      value: _searchQuery,
+                      onClear: () => setState(() => _searchQuery = ''),
+                    ),
+                    const SizedBox(height: 24),
 
-                              return Padding(
-                                padding: const EdgeInsets.only(bottom: 12),
-                                child: VillaCard(
-                                  villa: villa,
-                                  rooms: _villaRooms(villa, roomsByVilla),
-                                  rentReceivedByRoom: rentReceivedByRoom,
-                                  onTap: () {
-                                    Navigator.of(context).push(
-                                      MaterialPageRoute(
-                                        builder: (context) => VillaDetailScreen(
-                                          villaId: villa.id,
-                                        ),
+                    // Villas List - Grid Layout
+                    if (filteredVillas.isEmpty)
+                      EmptyStateCard(
+                        icon: Icons.home_outlined,
+                        title:
+                            _searchQuery.isEmpty ? 'No Villas' : 'No Results',
+                        subtitle: _searchQuery.isEmpty
+                            ? 'Create your first villa to get started'
+                            : 'Try a different search term',
+                      )
+                    else
+                      Column(
+                        children: List.generate(
+                          filteredVillas.length,
+                          (index) {
+                            final villa = filteredVillas[index];
+
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 12),
+                              child: VillaCard(
+                                villa: villa,
+                                rooms: _villaRooms(villa, roomsByVilla),
+                                rentReceivedByRoom: rentReceivedByRoom,
+                                onTap: () {
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                      builder: (context) => VillaDetailScreen(
+                                        villaId: villa.id,
                                       ),
-                                    );
-                                  },
-                                  onDelete: canDeleteVillas
-                                      ? () {
-                                          _showDeleteConfirmation(
-                                            context,
-                                            villa.id,
-                                          );
-                                        }
-                                      : null,
-                                ),
-                              );
-                            },
-                          ),
+                                    ),
+                                  );
+                                },
+                                onDelete: canDeleteVillas
+                                    ? () {
+                                        _showDeleteConfirmation(
+                                          context,
+                                          villa.id,
+                                        );
+                                      }
+                                    : null,
+                              ),
+                            );
+                          },
                         ),
-                    ],
-                  ),
+                      ),
+                  ],
                 ),
-              );
-            },
-            error: (error, stack) => _ErrorView(error: error),
-            loading: () => const Center(
-              child: CircularProgressIndicator(),
-            ),
-          ),
-          error: (error, stack) => Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  Icons.error_outline,
-                  size: 48,
-                  color: AppColors.error,
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  'Error loading villas',
-                  style: AppStyles.titleMedium,
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  error.toString(),
-                  style: AppStyles.bodySmall,
-                  textAlign: TextAlign.center,
-                ),
-              ],
-            ),
-          ),
+              ),
+            );
+          },
+          error: (error, stack) => _ErrorView(error: error),
           loading: () => const Center(
             child: CircularProgressIndicator(),
           ),
+        ),
+        error: (error, stack) => Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.error_outline,
+                size: 48,
+                color: AppColors.error,
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Error loading villas',
+                style: AppStyles.titleMedium,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                error.toString(),
+                style: AppStyles.bodySmall,
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
+        loading: () => const Center(
+          child: CircularProgressIndicator(),
         ),
       ),
       floatingActionButton: canManageVillas

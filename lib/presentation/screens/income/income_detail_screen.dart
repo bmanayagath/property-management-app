@@ -7,6 +7,7 @@ import '../../../core/utils/currency_formatter.dart';
 import '../../../domain/models/income.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/income_provider.dart';
+import '../../widgets/premium_widgets.dart';
 import 'add_edit_income_screen.dart';
 
 class IncomeDetailScreen extends ConsumerWidget {
@@ -27,8 +28,7 @@ class IncomeDetailScreen extends ConsumerWidget {
     final canManageIncome =
         authState.hasPermission(AppPermissions.manageIncome);
 
-    return Scaffold(
-      backgroundColor: const Color(0xFFFCFCFD),
+    return PremiumScaffold(
       appBar: AppBar(
         title: const Text('Income Details'),
         elevation: 0,
@@ -43,7 +43,7 @@ class IncomeDetailScreen extends ConsumerWidget {
           }
 
           return ListView(
-            padding: const EdgeInsets.all(16),
+            padding: PremiumTokens.pagePadding,
             children: [
               Container(
                 padding: const EdgeInsets.all(20),

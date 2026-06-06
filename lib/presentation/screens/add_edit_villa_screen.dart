@@ -14,6 +14,7 @@ import '../widgets/app_date_picker_field.dart';
 import '../widgets/app_dropdown.dart';
 import '../widgets/app_text_field.dart';
 import '../widgets/room_card.dart';
+import '../widgets/premium_widgets.dart';
 import 'location_picker_screen.dart';
 
 class AddEditVillaScreen extends ConsumerStatefulWidget {
@@ -442,14 +443,14 @@ class _AddEditVillaScreenState extends ConsumerState<AddEditVillaScreen> {
       });
     }
 
-    return Scaffold(
+    return PremiumScaffold(
       appBar: AppBar(
         title: Text(_isEditing ? 'Edit Villa' : 'Add New Villa'),
         elevation: 0,
       ),
       body: SingleChildScrollView(
         child: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: PremiumTokens.pagePadding,
           child: Form(
             key: _formKey,
             child: Column(

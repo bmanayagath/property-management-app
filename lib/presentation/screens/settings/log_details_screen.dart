@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 
 import '../../../models/app_log.dart';
+import '../../widgets/premium_widgets.dart';
 
 class LogDetailsScreen extends StatelessWidget {
   final AppLog log;
@@ -18,7 +19,7 @@ class LogDetailsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final timestamp = _formatTimestamp(log.timestamp);
 
-    return Scaffold(
+    return PremiumScaffold(
       appBar: AppBar(
         title: const Text('Log Details'),
         actions: [
@@ -35,7 +36,7 @@ class LogDetailsScreen extends StatelessWidget {
         ],
       ),
       body: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+        padding: PremiumTokens.pagePadding,
         children: [
           _DetailRow(label: 'Timestamp', value: timestamp),
           _DetailRow(label: 'Category', value: log.category),

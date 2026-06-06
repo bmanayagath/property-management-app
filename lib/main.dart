@@ -20,6 +20,7 @@ import 'presentation/screens/reports/reports_screen.dart';
 import 'presentation/screens/settings/settings_screen.dart';
 import 'presentation/screens/villas_screen.dart';
 import 'presentation/providers/navigation_provider.dart';
+import 'presentation/widgets/premium_widgets.dart';
 
 Future<void> main() async {
   await runZonedGuarded(() async {
@@ -265,65 +266,17 @@ class _VillaBooksBottomNav extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bottomPadding = MediaQuery.paddingOf(context).bottom;
-
-    return Padding(
-      padding: EdgeInsets.fromLTRB(10, 0, 10, bottomPadding > 0 ? 8 : 12),
-      child: Container(
-        height: 76,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(31),
-          border: Border.all(color: const Color(0xFFE8EAF0)),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.11),
-              blurRadius: 24,
-              offset: const Offset(0, 8),
-            ),
-          ],
-        ),
-        child: Row(
-          children: List.generate(items.length, (index) {
-            final item = items[index];
-            final isSelected = index == selectedIndex;
-
-            return Expanded(
-              child: InkWell(
-                borderRadius: BorderRadius.circular(28),
-                onTap: () => onTap(index),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      isSelected ? item.activeIcon : item.icon,
-                      size: 28,
-                      color: isSelected
-                          ? const Color(0xFF5549DE)
-                          : const Color(0xFF626978),
-                    ),
-                    const SizedBox(height: 5),
-                    FittedBox(
-                      fit: BoxFit.scaleDown,
-                      child: Text(
-                        item.label,
-                        style: TextStyle(
-                          color: isSelected
-                              ? const Color(0xFF5549DE)
-                              : const Color(0xFF626978),
-                          fontSize: 12,
-                          fontWeight:
-                              isSelected ? FontWeight.w800 : FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            );
-          }),
-        ),
-      ),
+    return FloatingBottomNav(
+      selectedIndex: selectedIndex,
+      items: [
+        for (final item in items)
+          FloatingBottomNavItem(
+            activeIcon: item.activeIcon,
+            icon: item.icon,
+            label: item.label,
+          ),
+      ],
+      onTap: onTap,
     );
   }
 }

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../widgets/premium_widgets.dart';
+
 const _supportEmail = 'villabooksapp@gmail.com';
 const _supportSubject = 'VillaBooks Support Request';
 const _privacyPolicyUrl =
@@ -49,14 +51,13 @@ class LegalScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFFCFCFD),
+    return PremiumScaffold(
       appBar: AppBar(
         title: const Text('Terms & Privacy'),
         elevation: 0,
       ),
       body: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
+        padding: PremiumTokens.pagePadding,
         children: [
           _LegalSection(
             title: 'Terms of Use',

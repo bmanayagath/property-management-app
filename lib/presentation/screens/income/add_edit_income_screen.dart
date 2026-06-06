@@ -17,6 +17,7 @@ import '../../providers/income_provider.dart';
 import '../../providers/notification_provider.dart';
 import '../../providers/villa_provider.dart';
 import '../../providers/room_provider.dart';
+import '../../widgets/premium_widgets.dart';
 
 class AddEditIncomeScreen extends ConsumerStatefulWidget {
   final Income? income;
@@ -76,8 +77,7 @@ class _AddEditIncomeScreenState extends ConsumerState<AddEditIncomeScreen> {
     final roomsAsync = ref.watch(roomListProvider);
     final controllerState = ref.watch(incomeControllerProvider);
 
-    return Scaffold(
-      backgroundColor: const Color(0xFFFCFCFD),
+    return PremiumScaffold(
       appBar: AppBar(
         title: Text(_isEditing ? 'Edit Income' : 'Add Income'),
         elevation: 0,
@@ -108,7 +108,7 @@ class _AddEditIncomeScreenState extends ConsumerState<AddEditIncomeScreen> {
             return Form(
               key: _formKey,
               child: ListView(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+                padding: PremiumTokens.pagePadding,
                 children: [
                   _FormPanel(
                     children: [

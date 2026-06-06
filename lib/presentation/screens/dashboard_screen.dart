@@ -17,6 +17,7 @@ import '../providers/navigation_provider.dart';
 import '../providers/notification_provider.dart';
 import '../providers/room_provider.dart';
 import '../providers/villa_provider.dart';
+import '../widgets/premium_widgets.dart';
 import 'notifications/notifications_screen.dart';
 import 'villa_detail_screen.dart';
 
@@ -36,72 +37,67 @@ class DashboardScreen extends ConsumerWidget {
     final canManageVillas =
         authState.hasPermission(AppPermissions.manageVillas);
 
-    return Scaffold(
-      backgroundColor: const Color(0xFFFCFCFD),
-      body: SafeArea(
-        bottom: false,
-        child: RefreshIndicator(
-          onRefresh: () async {
-            ref.invalidate(villaListProvider);
-            ref.invalidate(roomListProvider);
-            ref.invalidate(incomeListProvider);
-            ref.invalidate(expenseListProvider);
-            ref.invalidate(dashboardSummaryProvider);
-          },
-          child: ListView(
-            padding: const EdgeInsets.fromLTRB(18, 8, 18, 150),
-            children: [
-              const _DashboardHeader(),
-              const SizedBox(height: 24),
-              _MonthFilter(
-                selectedMonth: selectedMonth,
-                onTap: () => _showMonthFilter(context, ref, selectedMonth),
-              ),
-              const SizedBox(height: 14),
-              _MetricGrid(
-                totalRooms: dashboard.totalRooms,
-                occupiedRooms: dashboard.occupiedRooms,
-                vacantRooms: dashboard.vacantRooms,
-                totalIncome: summary.totalIncome,
-                actualNetProfit: summary.totalIncome - summary.totalExpense,
-                pendingRent: dashboard.pendingRent,
-                pendingRooms: dashboard.pendingRooms,
-                vacancyLoss: dashboard.vacancyLoss,
-              ),
-              const SizedBox(height: 12),
-              _QuickActions(
-                onAddIncome: canManageIncome
-                    ? () => ref.read(selectedTabProvider.notifier).state = 2
-                    : null,
-                onAddExpense: canManageExpenses
-                    ? () => ref.read(selectedTabProvider.notifier).state = 3
-                    : null,
-                onAddVilla: canManageVillas
-                    ? () => ref.read(selectedTabProvider.notifier).state = 1
-                    : null,
-              ),
-              const SizedBox(height: 16),
-              _RentCollectionCard(
-                totalRoomRent: dashboard.totalRoomRent,
-                expectedRent: dashboard.expectedRent,
-                collected: dashboard.rentReceived,
-                pending: dashboard.pendingRent,
-                paidRooms: dashboard.paidRooms,
-                totalOccupiedRooms: dashboard.occupiedRooms,
-                progress: dashboard.rentCollectionProgress,
-              ),
-              const SizedBox(height: 22),
-              _VillaSummary(
-                villas: summary.villas,
-                rooms: summary.rooms,
-                expenses: summary.expenses,
-                rentReceivedByRoom: summary.rentReceivedByRoom,
-                selectedMonth: summary.selectedMonth,
-                onViewAll: () =>
-                    ref.read(selectedTabProvider.notifier).state = 1,
-              ),
-            ],
-          ),
+    return PremiumScaffold(
+      body: RefreshIndicator(
+        onRefresh: () async {
+          ref.invalidate(villaListProvider);
+          ref.invalidate(roomListProvider);
+          ref.invalidate(incomeListProvider);
+          ref.invalidate(expenseListProvider);
+          ref.invalidate(dashboardSummaryProvider);
+        },
+        child: ListView(
+          padding: PremiumTokens.pagePadding,
+          children: [
+            const _DashboardHeader(),
+            const SizedBox(height: 24),
+            _MonthFilter(
+              selectedMonth: selectedMonth,
+              onTap: () => _showMonthFilter(context, ref, selectedMonth),
+            ),
+            const SizedBox(height: 14),
+            _MetricGrid(
+              totalRooms: dashboard.totalRooms,
+              occupiedRooms: dashboard.occupiedRooms,
+              vacantRooms: dashboard.vacantRooms,
+              totalIncome: summary.totalIncome,
+              actualNetProfit: summary.totalIncome - summary.totalExpense,
+              pendingRent: dashboard.pendingRent,
+              pendingRooms: dashboard.pendingRooms,
+              vacancyLoss: dashboard.vacancyLoss,
+            ),
+            const SizedBox(height: 12),
+            _QuickActions(
+              onAddIncome: canManageIncome
+                  ? () => ref.read(selectedTabProvider.notifier).state = 2
+                  : null,
+              onAddExpense: canManageExpenses
+                  ? () => ref.read(selectedTabProvider.notifier).state = 3
+                  : null,
+              onAddVilla: canManageVillas
+                  ? () => ref.read(selectedTabProvider.notifier).state = 1
+                  : null,
+            ),
+            const SizedBox(height: 16),
+            _RentCollectionCard(
+              totalRoomRent: dashboard.totalRoomRent,
+              expectedRent: dashboard.expectedRent,
+              collected: dashboard.rentReceived,
+              pending: dashboard.pendingRent,
+              paidRooms: dashboard.paidRooms,
+              totalOccupiedRooms: dashboard.occupiedRooms,
+              progress: dashboard.rentCollectionProgress,
+            ),
+            const SizedBox(height: 22),
+            _VillaSummary(
+              villas: summary.villas,
+              rooms: summary.rooms,
+              expenses: summary.expenses,
+              rentReceivedByRoom: summary.rentReceivedByRoom,
+              selectedMonth: summary.selectedMonth,
+              onViewAll: () => ref.read(selectedTabProvider.notifier).state = 1,
+            ),
+          ],
         ),
       ),
     );

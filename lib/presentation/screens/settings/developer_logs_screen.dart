@@ -6,6 +6,7 @@ import '../../../core/constants/app_roles.dart';
 import '../../../data/services/logger_service.dart';
 import '../../../models/app_log.dart';
 import '../../providers/auth_provider.dart';
+import '../../widgets/premium_widgets.dart';
 import 'log_details_screen.dart';
 
 class DeveloperLogsScreen extends ConsumerStatefulWidget {
@@ -31,12 +32,12 @@ class _DeveloperLogsScreenState extends ConsumerState<DeveloperLogsScreen> {
   Widget build(BuildContext context) {
     final user = ref.watch(authProvider).currentUser;
     if (user?.role != AppRoles.admin) {
-      return const Scaffold(
+      return const PremiumScaffold(
         body: Center(child: Text('Access denied.')),
       );
     }
 
-    return Scaffold(
+    return PremiumScaffold(
       appBar: AppBar(
         title: const Text('Developer Logs'),
         actions: [
@@ -138,13 +139,14 @@ class _DeveloperLogsScreenState extends ConsumerState<DeveloperLogsScreen> {
                   onRefresh: () async => setState(() {}),
                   child: logs.isEmpty
                       ? ListView(
+                          padding: PremiumTokens.pagePadding,
                           children: const [
                             SizedBox(height: 180),
                             Center(child: Text('No logs found.')),
                           ],
                         )
                       : ListView.separated(
-                          padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+                          padding: PremiumTokens.pagePadding,
                           itemCount: logs.length,
                           separatorBuilder: (_, __) =>
                               const SizedBox(height: 8),

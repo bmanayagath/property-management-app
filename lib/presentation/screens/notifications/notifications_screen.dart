@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/notification_provider.dart';
 import '../../widgets/notification_card.dart';
+import '../../widgets/premium_widgets.dart';
 
 class NotificationsScreen extends ConsumerWidget {
   const NotificationsScreen({super.key});
@@ -16,19 +17,10 @@ class NotificationsScreen extends ConsumerWidget {
         ref.watch(unreadNotificationCountProvider).valueOrNull ?? 0;
     final controller = ref.watch(notificationControllerProvider);
 
-    return Scaffold(
-      backgroundColor: const Color(0xFFFCFCFD),
+    return PremiumScaffold(
       appBar: AppBar(
-        title: Text(
-          unreadCount == 0 ? 'Notifications' : 'Notifications ($unreadCount)',
-        ),
-        actions: [
-          if (unreadCount > 0)
-            TextButton(
-              onPressed: controller.markAllAsRead,
-              child: const Text('Mark all read'),
-            ),
-        ],
+        title: const Text(''),
+        actions: const [],
       ),
       body: currentUser == null
           ? const _EmptyNotifications()
@@ -43,18 +35,37 @@ class NotificationsScreen extends ConsumerWidget {
                   return const _EmptyNotifications();
                 }
 
-                return ListView.separated(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: visibleNotifications.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 10),
-                  itemBuilder: (context, index) {
-                    final notification = visibleNotifications[index];
-                    return NotificationCard(
-                      notification: notification,
-                      currentUserId: currentUser.id,
-                      onTap: () => controller.markAsRead(notification.id),
-                    );
-                  },
+                return ListView(
+                  padding: PremiumTokens.pagePadding,
+                  children: [
+                    PremiumPageHeader(
+                      title: unreadCount == 0
+                          ? 'Notifications'
+                          : 'Notifications ($unreadCount)',
+                      subtitle: 'Updates from activity across VillaBooks',
+                      actions: [
+                        if (unreadCount > 0)
+                          PremiumButton(
+                            onPressed: controller.markAllAsRead,
+                            icon: Icons.done_all_rounded,
+                            label: 'Mark all read',
+                            filled: false,
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 18),
+                    ...List.generate(visibleNotifications.length, (index) {
+                      final notification = visibleNotifications[index];
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 10),
+                        child: NotificationCard(
+                          notification: notification,
+                          currentUserId: currentUser.id,
+                          onTap: () => controller.markAsRead(notification.id),
+                        ),
+                      );
+                    }),
+                  ],
                 );
               },
               error: (error, _) => Center(child: Text(error.toString())),
@@ -69,38 +80,13 @@ class _EmptyNotifications extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Center(
-      child: Padding(
-        padding: EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.notifications_none_rounded,
-              color: Color(0xFF89909E),
-              size: 44,
-            ),
-            SizedBox(height: 12),
-            Text(
-              'No notifications yet',
-              style: TextStyle(
-                color: Color(0xFF060B26),
-                fontSize: 18,
-                fontWeight: FontWeight.w900,
-              ),
-            ),
-            SizedBox(height: 6),
-            Text(
-              'Updates from income, expenses, villas, rent, and leases will appear here.',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: Color(0xFF596070),
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ],
-        ),
+    return const Padding(
+      padding: PremiumTokens.pagePadding,
+      child: EmptyStateCard(
+        icon: Icons.notifications_none_rounded,
+        title: 'No notifications yet',
+        subtitle:
+            'Updates from income, expenses, villas, rent, and leases will appear here.',
       ),
     );
   }

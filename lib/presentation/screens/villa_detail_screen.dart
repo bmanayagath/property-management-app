@@ -25,6 +25,7 @@ import '../providers/villa_provider.dart';
 import '../providers/room_provider.dart';
 import '../screens/room_media_screen.dart';
 import '../screens/room_media_preview_screen.dart';
+import '../widgets/premium_widgets.dart';
 import '../widgets/room_card.dart';
 import 'add_edit_villa_screen.dart';
 import 'add_edit_room_screen.dart';
@@ -111,7 +112,7 @@ class VillaDetailScreen extends ConsumerWidget {
     final canManageRoomMedia = _canManageRoomMedia(authState);
     final canShareRoomMedia = _canShareRoomMedia(authState);
 
-    return Scaffold(
+    return PremiumScaffold(
       appBar: AppBar(
         title: const Text('Villa Details'),
         elevation: 0,
@@ -140,7 +141,7 @@ class VillaDetailScreen extends ConsumerWidget {
 
           return SingleChildScrollView(
             child: Padding(
-              padding: const EdgeInsets.all(16),
+              padding: PremiumTokens.pagePadding,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [

@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/constants/app_roles.dart';
 import '../../../domain/models/app_user.dart';
 import '../../providers/auth_provider.dart';
+import '../../widgets/premium_widgets.dart';
 
 class AddEditUserScreen extends ConsumerStatefulWidget {
   final AppUser? user;
@@ -52,8 +53,7 @@ class _AddEditUserScreenState extends ConsumerState<AddEditUserScreen> {
   Widget build(BuildContext context) {
     final users = ref.watch(authProvider).users;
 
-    return Scaffold(
-      backgroundColor: const Color(0xFFFCFCFD),
+    return PremiumScaffold(
       appBar: AppBar(
         title: Text(_isEditing ? 'Edit User' : 'Add User'),
         elevation: 0,
@@ -61,7 +61,7 @@ class _AddEditUserScreenState extends ConsumerState<AddEditUserScreen> {
       body: Form(
         key: _formKey,
         child: ListView(
-          padding: const EdgeInsets.all(16),
+          padding: PremiumTokens.pagePadding,
           children: [
             Container(
               padding: const EdgeInsets.all(16),

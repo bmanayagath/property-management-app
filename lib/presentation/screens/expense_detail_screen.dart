@@ -8,6 +8,7 @@ import '../../domain/models/expense.dart';
 import '../providers/auth_provider.dart';
 import '../providers/dashboard_provider.dart';
 import '../providers/expense_provider.dart';
+import '../widgets/premium_widgets.dart';
 import 'add_edit_expense_screen.dart';
 
 class ExpenseDetailScreen extends ConsumerWidget {
@@ -28,8 +29,7 @@ class ExpenseDetailScreen extends ConsumerWidget {
     final canManageExpenses =
         authState.hasPermission(AppPermissions.manageExpenses);
 
-    return Scaffold(
-      backgroundColor: const Color(0xFFFCFCFD),
+    return PremiumScaffold(
       appBar: AppBar(
         title: const Text('Expense Details'),
         elevation: 0,
@@ -37,7 +37,7 @@ class ExpenseDetailScreen extends ConsumerWidget {
       body: expense == null
           ? const Center(child: Text('Expense not found'))
           : ListView(
-              padding: const EdgeInsets.all(16),
+              padding: PremiumTokens.pagePadding,
               children: [
                 Container(
                   padding: const EdgeInsets.all(20),
