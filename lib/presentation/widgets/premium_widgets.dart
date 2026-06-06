@@ -400,6 +400,70 @@ class PremiumButton extends StatelessWidget {
   }
 }
 
+class RoundedActionButton extends StatelessWidget {
+  final VoidCallback? onPressed;
+  final IconData icon;
+  final String? label;
+  final Color color;
+  final bool filled;
+  final String? tooltip;
+
+  const RoundedActionButton({
+    super.key,
+    required this.onPressed,
+    required this.icon,
+    this.label,
+    this.color = AppColors.primary,
+    this.filled = true,
+    this.tooltip,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final content = label == null
+        ? Icon(icon, size: 20)
+        : Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 18),
+              const SizedBox(width: 7),
+              Text(label!),
+            ],
+          );
+    final button = Material(
+      color: filled ? color : color.withValues(alpha: 0.10),
+      borderRadius: BorderRadius.circular(999),
+      child: InkWell(
+        onTap: onPressed,
+        borderRadius: BorderRadius.circular(999),
+        child: Container(
+          height: 42,
+          constraints: BoxConstraints(
+            minWidth: label == null ? 42 : 0,
+          ),
+          padding: label == null
+              ? EdgeInsets.zero
+              : const EdgeInsets.symmetric(horizontal: 15),
+          alignment: Alignment.center,
+          child: DefaultTextStyle(
+            style: TextStyle(
+              color: filled ? Colors.white : color,
+              fontWeight: FontWeight.w900,
+              fontSize: 13,
+            ),
+            child: IconTheme(
+              data: IconThemeData(color: filled ? Colors.white : color),
+              child: content,
+            ),
+          ),
+        ),
+      ),
+    );
+    if (tooltip == null) return button;
+    return Tooltip(message: tooltip!, child: button);
+  }
+}
+
 class FloatingBottomNav extends StatelessWidget {
   final int selectedIndex;
   final List<FloatingBottomNavItem> items;
@@ -432,34 +496,61 @@ class FloatingBottomNav extends StatelessWidget {
             final isSelected = index == selectedIndex;
 
             return Expanded(
-              child: InkWell(
-                borderRadius: BorderRadius.circular(28),
-                onTap: () => onTap(index),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      isSelected ? item.activeIcon : item.icon,
-                      size: 27,
-                      color:
-                          isSelected ? AppColors.primary : PremiumTokens.muted,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 7),
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? AppColors.primary.withValues(alpha: 0.08)
+                        : Colors.transparent,
+                    borderRadius: BorderRadius.circular(24),
+                    border: Border.all(
+                      color: isSelected
+                          ? AppColors.primary.withValues(alpha: 0.22)
+                          : Colors.transparent,
                     ),
-                    const SizedBox(height: 5),
-                    FittedBox(
-                      fit: BoxFit.scaleDown,
-                      child: Text(
-                        item.label,
-                        style: TextStyle(
+                    boxShadow: isSelected
+                        ? [
+                            BoxShadow(
+                              color: AppColors.primary.withValues(alpha: 0.15),
+                              blurRadius: 18,
+                              offset: const Offset(0, 6),
+                            ),
+                          ]
+                        : null,
+                  ),
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(24),
+                    onTap: () => onTap(index),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          isSelected ? item.activeIcon : item.icon,
+                          size: 25,
                           color: isSelected
                               ? AppColors.primary
                               : PremiumTokens.muted,
-                          fontSize: 12,
-                          fontWeight:
-                              isSelected ? FontWeight.w800 : FontWeight.w600,
                         ),
-                      ),
+                        const SizedBox(height: 4),
+                        FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            item.label,
+                            style: TextStyle(
+                              color: isSelected
+                                  ? AppColors.primary
+                                  : PremiumTokens.muted,
+                              fontSize: 11,
+                              fontWeight: isSelected
+                                  ? FontWeight.w900
+                                  : FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
               ),
             );

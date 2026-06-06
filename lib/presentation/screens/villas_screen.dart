@@ -13,8 +13,8 @@ import '../providers/database_provider.dart';
 import '../providers/income_provider.dart';
 import '../providers/room_provider.dart';
 import '../providers/villa_provider.dart';
-import '../widgets/villa_card.dart';
 import '../widgets/premium_widgets.dart';
+import '../widgets/villa_summary_card.dart';
 import 'add_edit_villa_screen.dart';
 import 'villa_detail_screen.dart';
 
@@ -181,8 +181,8 @@ class _VillasScreenState extends ConsumerState<VillasScreen> {
                             final villa = filteredVillas[index];
 
                             return Padding(
-                              padding: const EdgeInsets.only(bottom: 12),
-                              child: VillaCard(
+                              padding: const EdgeInsets.only(bottom: 14),
+                              child: VillaSummaryCard(
                                 villa: villa,
                                 rooms: _villaRooms(villa, roomsByVilla),
                                 rentReceivedByRoom: rentReceivedByRoom,
@@ -195,6 +195,9 @@ class _VillasScreenState extends ConsumerState<VillasScreen> {
                                     ),
                                   );
                                 },
+                                onEdit: canManageVillas
+                                    ? () => _openEditVillaScreen(villa)
+                                    : null,
                                 onDelete: canDeleteVillas
                                     ? () {
                                         _showDeleteConfirmation(
@@ -260,6 +263,14 @@ class _VillasScreenState extends ConsumerState<VillasScreen> {
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (context) => const AddEditVillaScreen(),
+      ),
+    );
+  }
+
+  void _openEditVillaScreen(VillaModel villa) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => AddEditVillaScreen(villa: villa),
       ),
     );
   }
