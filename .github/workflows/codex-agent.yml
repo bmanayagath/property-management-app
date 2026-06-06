@@ -2,12 +2,12 @@ name: Codex Agent
 
 on:
   issues:
-    types: [opened]
+    types: [opened, edited, labeled]
   workflow_dispatch:
     inputs:
       issue_number:
         description: "GitHub issue number to implement"
-        required: false
+        required: true
 
 permissions:
   contents: write
@@ -16,11 +16,35 @@ permissions:
 
 jobs:
   codex-agent:
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'issues' && contains(github.event.issue.labels.*.name, 'codex'))
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Get issue details
+        id: issue
+        uses: actions/github-script@v7
+        with:
+          script: |
+            let issueNumber;
+
+            if (context.eventName === 'workflow_dispatch') {
+              issueNumber = Number(core.getInput('issue_number'));
+            } else {
+              issueNumber = context.payload.issue.number;
+            }
+
+            const { data: issue } = await github.rest.issues.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issueNumber
+            });
+
+            core.setOutput('number', issue.number);
+            core.setOutput('title', issue.title);
+            core.setOutput('body', issue.body || '');
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
@@ -31,45 +55,105 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
+      - name: Verify agent instructions exist
+        run: |
+          if [ -f AGENTS.md ]; then
+            echo "AGENT_INSTRUCTIONS=AGENTS.md" >> "$GITHUB_ENV"
+          elif [ -f agents.md ]; then
+            echo "AGENT_INSTRUCTIONS=agents.md" >> "$GITHUB_ENV"
+          else
+            echo "AGENTS.md or agents.md not found"
+            exit 1
+          fi
+
       - name: Run Codex
         uses: openai/codex-action@v1
         with:
           openai-api-key: ${{ secrets.OPENAI_API_KEY }}
           prompt: |
-            You are working on the VillaBooks Flutter app.
+            Read ${{ env.AGENT_INSTRUCTIONS }} first and follow all instructions.
 
-            Read the GitHub issue title and body.
-            Implement the requested Flutter change.
+            GitHub Issue:
+            #${{ steps.issue.outputs.number }}
+            Title:
+            ${{ steps.issue.outputs.title }}
 
-            Rules:
-            - Modify only relevant files.
-            - Keep existing architecture.
-            - Do not push directly to main.
-            - Do not make unrelated refactoring.
-            - If Drift/Riverpod generated files are needed, update source files first.
-            - Ensure code is clean and compile-ready.
+            Description:
+            ${{ steps.issue.outputs.body }}
 
-      - name: Generate files
-        run: |
-          dart run build_runner clean
-          dart run build_runner build --delete-conflicting-outputs
+            Requirements:
+
+            1. Follow ${{ env.AGENT_INSTRUCTIONS }} completely.
+            2. Preserve VillaBooks architecture.
+            3. Do not modify unrelated modules.
+            4. Do not change Firestore schema unless explicitly requested.
+            5. Do not add unnecessary Firestore fields.
+            6. Do not break Firebase Auth.
+            7. Do not break Firestore sync.
+            8. Do not break Firebase Storage integration.
+            9. Do not break Drift database.
+            10. Do not break Riverpod providers.
+            11. Preserve existing UI unless issue requires UI change.
+            12. Keep changes minimal and focused.
+            13. Update tests if required.
+            14. Ensure code compiles.
+
+            Output:
+            - Implement requested change.
+            - Generate/update files as needed.
+            - Prepare code for Pull Request review.
+
+      - name: Generate build_runner files
+        run: dart run build_runner build --delete-conflicting-outputs
         continue-on-error: true
 
-      - name: Flutter analyze
+      - name: Flutter Analyze
         run: flutter analyze
         continue-on-error: true
 
+      - name: Flutter Test
+        run: flutter test
+        continue-on-error: true
+
+      - name: Check for changes
+        id: changes
+        run: |
+          if [ -z "$(git status --porcelain)" ]; then
+            echo "has_changes=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_changes=true" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Create Pull Request
+        if: steps.changes.outputs.has_changes == 'true'
         uses: peter-evans/create-pull-request@v6
         with:
-          commit-message: "Codex automated update"
-          title: "Codex: Automated Flutter update"
+          branch: codex/issue-${{ steps.issue.outputs.number }}
+          commit-message: |
+            Codex: implement issue #${{ steps.issue.outputs.number }}
+          title: |
+            Codex: ${{ steps.issue.outputs.title }}
           body: |
-            Automated changes generated by Codex.
+            ## Automated Codex Pull Request
 
-            Notes:
-            - Review generated code before merging.
-            - Check build_runner output.
-            - Run app locally before merge.
-          branch: codex/${{ github.run_id }}
+            Issue:
+            #${{ steps.issue.outputs.number }}
+
+            ### Summary
+            Automated implementation generated by Codex.
+
+            ### Validation
+            - Flutter Analyze executed
+            - Build Runner executed
+            - Flutter Tests executed (if available)
+
+            ### Review Checklist
+            - Verify architecture compliance
+            - Verify Firestore schema unchanged unless required
+            - Verify Firebase sync
+            - Verify UI behavior
+            - Verify role-based security
+
+            Human review required before merge.
           delete-branch: true
+          draft: false
