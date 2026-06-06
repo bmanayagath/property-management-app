@@ -41,6 +41,14 @@ class VillaSummaryCard extends StatelessWidget {
     return _occupiedRooms / _totalRooms;
   }
 
+  int get _occupancyPercentage => (_occupancyProgress * 100).round();
+
+  Color get _occupancyColor {
+    if (_occupancyPercentage >= 75) return AppColors.success;
+    if (_occupancyPercentage >= 50) return AppColors.warning;
+    return AppColors.error;
+  }
+
   double get _totalRoomRent {
     return _activeRooms.fold<double>(0, (sum, room) => sum + room.monthlyRent);
   }
@@ -195,7 +203,7 @@ class VillaSummaryCard extends StatelessWidget {
                 ),
               ),
               Text(
-                '$_occupiedRooms / $_totalRooms rooms',
+                '$_occupiedRooms / $_totalRooms rooms | $_occupancyPercentage%',
                 style: Theme.of(context).textTheme.labelMedium?.copyWith(
                       color: PremiumTokens.ink,
                       fontWeight: FontWeight.w900,
@@ -204,7 +212,10 @@ class VillaSummaryCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 8),
-          GradientProgressBar(value: _occupancyProgress),
+          _OccupancyProgressBar(
+            value: _occupancyProgress,
+            color: _occupancyColor,
+          ),
           const SizedBox(height: 14),
           Wrap(
             spacing: 8,
@@ -298,6 +309,45 @@ class VillaSummaryCard extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _OccupancyProgressBar extends StatelessWidget {
+  final double value;
+  final Color color;
+
+  const _OccupancyProgressBar({
+    required this.value,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final clamped = value.clamp(0.0, 1.0).toDouble();
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return Container(
+          height: 10,
+          width: double.infinity,
+          decoration: BoxDecoration(
+            color: AppColors.border,
+            borderRadius: BorderRadius.circular(999),
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: SizedBox(
+              width: constraints.maxWidth * clamped,
+              height: double.infinity,
+              child: DecoratedBox(
+                decoration: BoxDecoration(color: color),
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }
