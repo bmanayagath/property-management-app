@@ -46,6 +46,7 @@ class _AddEditIncomeScreenState extends ConsumerState<AddEditIncomeScreen> {
   late DateTime _paymentDate;
   late DateTime _monthCovered;
   String? _lastRentAutofillKey;
+  late bool _shouldAutofillRentAmount;
 
   bool get _isEditing => widget.income != null;
 
@@ -65,6 +66,7 @@ class _AddEditIncomeScreenState extends ConsumerState<AddEditIncomeScreen> {
     _amountController.text =
         income == null ? '' : income.amount.toStringAsFixed(0);
     _notesController.text = income?.notes ?? '';
+    _shouldAutofillRentAmount = income == null;
   }
 
   @override
@@ -147,7 +149,7 @@ class _AddEditIncomeScreenState extends ConsumerState<AddEditIncomeScreen> {
                           setState(() {
                             _selectedVillaId = value;
                             _selectedRoomId = null; // Reset room selection
-                            _lastRentAutofillKey = null;
+                            _resetRentCalculation(autofillRent: _isRentIncome);
                           });
                         },
                       ),
@@ -187,7 +189,8 @@ class _AddEditIncomeScreenState extends ConsumerState<AddEditIncomeScreen> {
                           onChanged: (value) {
                             setState(() {
                               _selectedRoomId = value;
-                              _lastRentAutofillKey = null;
+                              _resetRentCalculation(
+                                  autofillRent: _isRentIncome);
                             });
                           },
                         ),
@@ -210,8 +213,15 @@ class _AddEditIncomeScreenState extends ConsumerState<AddEditIncomeScreen> {
                         onChanged: (value) {
                           if (value == null) return;
                           setState(() {
+                            final wasRentIncome = _isRentIncome;
                             _selectedIncomeType = value;
-                            _lastRentAutofillKey = null;
+                            if (wasRentIncome && !_isRentIncome) {
+                              _clearRentAmountAndCalculation();
+                            } else {
+                              _resetRentCalculation(
+                                autofillRent: _isRentIncome,
+                              );
+                            }
                           });
                         },
                       ),
@@ -287,7 +297,7 @@ class _AddEditIncomeScreenState extends ConsumerState<AddEditIncomeScreen> {
                           initialDate: _monthCovered,
                           onPicked: (date) => setState(() {
                             _monthCovered = DateTime(date.year, date.month, 1);
-                            _lastRentAutofillKey = null;
+                            _resetRentCalculation(autofillRent: _isRentIncome);
                           }),
                         ),
                       ),
@@ -384,8 +394,8 @@ class _AddEditIncomeScreenState extends ConsumerState<AddEditIncomeScreen> {
     required Room? selectedRoom,
     required RentPaymentSummary? rentSummary,
   }) {
-    if (_isEditing ||
-        !_isRentIncome ||
+    if (!_isRentIncome ||
+        !_shouldAutofillRentAmount ||
         selectedRoom == null ||
         selectedRoom.isVacant ||
         rentSummary == null ||
@@ -408,7 +418,18 @@ class _AddEditIncomeScreenState extends ConsumerState<AddEditIncomeScreen> {
       _amountController.selection = TextSelection.collapsed(
         offset: _amountController.text.length,
       );
+      _shouldAutofillRentAmount = false;
     });
+  }
+
+  void _resetRentCalculation({required bool autofillRent}) {
+    _lastRentAutofillKey = null;
+    _shouldAutofillRentAmount = autofillRent;
+  }
+
+  void _clearRentAmountAndCalculation() {
+    _amountController.clear();
+    _resetRentCalculation(autofillRent: false);
   }
 
   bool _isRentSaveBlocked({
