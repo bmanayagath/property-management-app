@@ -8,6 +8,7 @@ on:
       issue_number:
         description: "GitHub issue number to implement"
         required: true
+        type: string
 
 permissions:
   contents: write
@@ -31,7 +32,15 @@ jobs:
             let issueNumber;
 
             if (context.eventName === 'workflow_dispatch') {
-              issueNumber = Number(core.getInput('issue_number'));
+              const issueNumberInput =
+                (context.payload.inputs?.issue_number || '').trim();
+              if (!/^[1-9]\d*$/.test(issueNumberInput)) {
+                core.setFailed(
+                  'workflow_dispatch requires a valid positive issue_number input.'
+                );
+                return;
+              }
+              issueNumber = Number(issueNumberInput);
             } else {
               issueNumber = context.payload.issue.number;
             }
