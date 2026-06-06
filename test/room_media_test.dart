@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:villabooks/data/services/firebase_storage_service.dart';
+import 'package:villabooks/data/services/room_media_picker_service.dart';
 import 'package:villabooks/models/room_media.dart';
 
 void main() {
@@ -21,6 +22,37 @@ void main() {
 
     expect(media.toJson()['localPath'], isNotEmpty);
     expect(media.toFirestoreJson().containsKey('localPath'), isFalse);
+    expect(media.toFirestoreJson()['mediaId'], 'media-1');
+    expect(media.toFirestoreJson()['type'], 'photo');
+    expect(media.toFirestoreJson()['fileName'], 'media-1.jpg');
+    expect(media.toFirestoreJson()['uploadedBy'], isNull);
+  });
+
+  test('Firestore aliases support the room media metadata schema', () {
+    final uploadedAt = DateTime(2026, 6, 6);
+    final media = RoomMedia.fromJson({
+      'mediaId': 'media-2',
+      'villaId': 'villa-1',
+      'roomId': 'room-1',
+      'type': 'video',
+      'downloadUrl': 'https://example.com/video.mp4',
+      'thumbnailUrl': '',
+      'fileName': 'video.mp4',
+      'uploadedBy': 'user-1',
+      'uploadedAt': uploadedAt,
+      'caption': 'Balcony view',
+    });
+
+    expect(media.id, 'media-2');
+    expect(media.fileType, RoomMediaFileType.video);
+    expect(media.createdBy, 'user-1');
+    expect(media.createdAt, uploadedAt);
+    expect(media.uploadedAt, uploadedAt);
+  });
+
+  test('Room media limits allow 20 photos and 10 videos', () {
+    expect(RoomMediaPickerService.maxPhotosPerRoom, 20);
+    expect(RoomMediaPickerService.maxVideosPerRoom, 10);
   });
 
   test('Firebase Storage paths use villa room media format', () {

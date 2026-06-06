@@ -47,6 +47,13 @@ class RoomMedia {
 
   String get shareUrl => downloadUrl.trim();
 
+  String get fileName {
+    final source = storagePath.trim().isNotEmpty ? storagePath : localPath;
+    if (source.trim().isEmpty) return '';
+    final normalized = source.replaceAll(r'\', '/');
+    return normalized.split('/').last;
+  }
+
   RoomMedia copyWith({
     String? id,
     String? villaId,
@@ -92,16 +99,20 @@ class RoomMedia {
   Map<String, dynamic> toJson() {
     return {
       'id': id,
+      'mediaId': id,
       'villaId': villaId,
       'roomId': roomId,
       'fileType': fileType,
+      'type': fileType == RoomMediaFileType.image ? 'photo' : fileType,
       'localPath': localPath,
       'storagePath': storagePath,
       'downloadUrl': downloadUrl,
       'thumbnailUrl': thumbnailUrl,
+      'fileName': fileName,
       'caption': caption,
       'createdAt': Timestamp.fromDate(createdAt),
       'createdBy': createdBy,
+      'uploadedBy': createdBy,
       'isDeleted': isDeleted,
       'deletedAt': deletedAt == null ? null : Timestamp.fromDate(deletedAt!),
       'deletedBy': deletedBy,
@@ -117,23 +128,33 @@ class RoomMedia {
   }
 
   factory RoomMedia.fromJson(Map<String, dynamic> json) {
+    final id = json['id'] as String? ?? json['mediaId'] as String? ?? '';
+    final rawType =
+        json['fileType'] as String? ?? json['type'] as String? ?? '';
+    final fileType = rawType == 'photo'
+        ? RoomMediaFileType.image
+        : rawType == RoomMediaFileType.video
+            ? RoomMediaFileType.video
+            : RoomMediaFileType.image;
+    final uploadedAt = _dateFromJson(json['uploadedAt']);
     return RoomMedia(
-      id: json['id'] as String? ?? '',
+      id: id,
       villaId: json['villaId'] as String? ?? '',
       roomId: json['roomId'] as String? ?? '',
-      fileType: json['fileType'] as String? ?? RoomMediaFileType.image,
+      fileType: fileType,
       localPath: json['localPath'] as String? ?? '',
       storagePath: json['storagePath'] as String? ?? '',
       downloadUrl: json['downloadUrl'] as String? ?? '',
       thumbnailUrl: json['thumbnailUrl'] as String? ?? '',
       caption: json['caption'] as String? ?? '',
-      createdAt: _dateFromJson(json['createdAt']) ?? DateTime.now(),
-      createdBy: json['createdBy'] as String?,
+      createdAt:
+          _dateFromJson(json['createdAt']) ?? uploadedAt ?? DateTime.now(),
+      createdBy: json['createdBy'] as String? ?? json['uploadedBy'] as String?,
       isDeleted: json['isDeleted'] as bool? ?? false,
       deletedAt: _dateFromJson(json['deletedAt']),
       deletedBy: json['deletedBy'] as String?,
       syncStatus: json['syncStatus'] as String? ?? RoomMediaSyncStatus.synced,
-      uploadedAt: _dateFromJson(json['uploadedAt']),
+      uploadedAt: uploadedAt,
     );
   }
 

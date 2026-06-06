@@ -12,8 +12,8 @@ import '../../models/room_media.dart';
 class RoomMediaPickerService {
   RoomMediaPickerService({ImagePicker? picker}) : _picker = picker;
 
-  static const maxPhotosPerRoom = 10;
-  static const maxVideosPerRoom = 2;
+  static const maxPhotosPerRoom = 20;
+  static const maxVideosPerRoom = 10;
   static const maxImageWidth = 1200;
   static const maxImageBytes = 1024 * 1024;
   static const maxVideoBytes = 50 * 1024 * 1024;

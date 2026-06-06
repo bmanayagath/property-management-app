@@ -55,6 +55,7 @@ class RoomMediaRepository {
     if (collection == null) return Stream.value(const []);
 
     return collection
+        .where('villaId', isEqualTo: villaId)
         .where('roomId', isEqualTo: roomId)
         .where('isDeleted', isEqualTo: false)
         .snapshots()
@@ -79,6 +80,7 @@ class RoomMediaRepository {
     if (collection == null) return const [];
 
     final snapshot = await collection
+        .where('villaId', isEqualTo: villaId)
         .where('roomId', isEqualTo: roomId)
         .where('isDeleted', isEqualTo: false)
         .get();

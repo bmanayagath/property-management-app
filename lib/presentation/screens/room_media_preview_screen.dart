@@ -71,6 +71,12 @@ class _RoomMediaPreviewScreenState
 
   int get _totalUploads => _media.length;
 
+  bool get _photoLimitReached =>
+      _photoCount >= RoomMediaPickerService.maxPhotosPerRoom;
+
+  bool get _videoLimitReached =>
+      _videoCount >= RoomMediaPickerService.maxVideosPerRoom;
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -118,6 +124,26 @@ class _RoomMediaPreviewScreenState
               ),
             ),
           Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'Photos: $_photoCount / ${RoomMediaPickerService.maxPhotosPerRoom}',
+                    style: const TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                ),
+                Expanded(
+                  child: Text(
+                    'Videos: $_videoCount / ${RoomMediaPickerService.maxVideosPerRoom}',
+                    style: const TextStyle(fontWeight: FontWeight.w700),
+                    textAlign: TextAlign.end,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Padding(
             padding: const EdgeInsets.all(16),
             child: TextField(
               controller: _captionController,
@@ -164,20 +190,22 @@ class _RoomMediaPreviewScreenState
                 children: [
                   Expanded(
                     child: OutlinedButton.icon(
-                      onPressed: _isUploading ? null : _addPhoto,
+                      onPressed:
+                          _isUploading || _photoLimitReached ? null : _addPhoto,
                       icon: const Icon(Icons.add_photo_alternate_outlined),
                       label: Text(
-                        'Add Photo ($_photoCount/${RoomMediaPickerService.maxPhotosPerRoom})',
+                        'Add Photo',
                       ),
                     ),
                   ),
                   const SizedBox(width: 10),
                   Expanded(
                     child: OutlinedButton.icon(
-                      onPressed: _isUploading ? null : _addVideo,
+                      onPressed:
+                          _isUploading || _videoLimitReached ? null : _addVideo,
                       icon: const Icon(Icons.video_call_outlined),
                       label: Text(
-                        'Add Video ($_videoCount/${RoomMediaPickerService.maxVideosPerRoom})',
+                        'Add Video',
                       ),
                     ),
                   ),
@@ -192,7 +220,7 @@ class _RoomMediaPreviewScreenState
 
   Future<void> _addPhoto() async {
     if (_photoCount >= RoomMediaPickerService.maxPhotosPerRoom) {
-      _showMessage('Maximum 10 photos allowed per room.');
+      _showMessage('Maximum 20 photos allowed for a room.');
       return;
     }
     final source = await _chooseSource();
@@ -204,7 +232,7 @@ class _RoomMediaPreviewScreenState
 
   Future<void> _addVideo() async {
     if (_videoCount >= RoomMediaPickerService.maxVideosPerRoom) {
-      _showMessage('Maximum 2 videos allowed per room.');
+      _showMessage('Maximum 10 videos allowed for a room.');
       return;
     }
     final source = await _chooseSource();
@@ -354,10 +382,10 @@ class _RoomMediaPreviewScreenState
       return 'This villa has been deleted. Media cannot be uploaded.';
     }
     if (_photoCount > RoomMediaPickerService.maxPhotosPerRoom) {
-      return 'Maximum 10 photos allowed per room.';
+      return 'Maximum 20 photos allowed for a room.';
     }
     if (_videoCount > RoomMediaPickerService.maxVideosPerRoom) {
-      return 'Maximum 2 videos allowed per room.';
+      return 'Maximum 10 videos allowed for a room.';
     }
 
     final seen = <String>{};

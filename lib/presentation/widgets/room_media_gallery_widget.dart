@@ -66,31 +66,42 @@ class _RoomMediaGalleryWidgetState
       data: (items) {
         final photos = items.where((item) => item.isImage).toList();
         final videos = items.where((item) => item.isVideo).toList();
+        final photoLimitReached =
+            photos.length >= RoomMediaPickerService.maxPhotosPerRoom;
+        final videoLimitReached =
+            videos.length >= RoomMediaPickerService.maxVideosPerRoom;
 
         return Column(
           children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+              child: _HeaderSummary(
+                photoCount: photos.length,
+                videoCount: videos.length,
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+              child: _MediaStatsCard(
+                photoCount: photos.length,
+                videoCount: videos.length,
+              ),
+            ),
             if (widget.canUpload || widget.canShare)
               Padding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
                 child: Row(
                   children: [
                     if (widget.canUpload) ...[
                       Expanded(
                         child: OutlinedButton.icon(
-                          onPressed: () {
-                            if (photos.length >=
-                                RoomMediaPickerService.maxPhotosPerRoom) {
-                              _showMessage(
-                                'Maximum 10 photos allowed per room.',
-                              );
-                              return;
-                            }
-                            _addMedia(
-                              fileType: RoomMediaFileType.image,
-                              existingPhotoCount: photos.length,
-                              existingVideoCount: videos.length,
-                            );
-                          },
+                          onPressed: photoLimitReached
+                              ? null
+                              : () => _addMedia(
+                                    fileType: RoomMediaFileType.image,
+                                    existingPhotoCount: photos.length,
+                                    existingVideoCount: videos.length,
+                                  ),
                           icon: const Icon(Icons.add_photo_alternate_outlined),
                           label: const Text('Add Photo'),
                         ),
@@ -98,20 +109,13 @@ class _RoomMediaGalleryWidgetState
                       const SizedBox(width: 8),
                       Expanded(
                         child: OutlinedButton.icon(
-                          onPressed: () {
-                            if (videos.length >=
-                                RoomMediaPickerService.maxVideosPerRoom) {
-                              _showMessage(
-                                'Maximum 2 videos allowed per room.',
-                              );
-                              return;
-                            }
-                            _addMedia(
-                              fileType: RoomMediaFileType.video,
-                              existingPhotoCount: photos.length,
-                              existingVideoCount: videos.length,
-                            );
-                          },
+                          onPressed: videoLimitReached
+                              ? null
+                              : () => _addMedia(
+                                    fileType: RoomMediaFileType.video,
+                                    existingPhotoCount: photos.length,
+                                    existingVideoCount: videos.length,
+                                  ),
                           icon: const Icon(Icons.video_call_outlined),
                           label: const Text('Add Video'),
                         ),
@@ -302,6 +306,10 @@ class _RoomMediaGalleryWidgetState
     );
     if (confirmed != true) return;
 
+    await _softDeleteMedia(media);
+  }
+
+  Future<void> _softDeleteMedia(RoomMedia media) async {
     final userId = ref.read(authProvider).currentUser?.id;
     await ref
         .read(roomMediaRepositoryProvider)
@@ -421,6 +429,8 @@ class _RoomMediaGalleryWidgetState
           media: media,
           initialIndex: initialIndex,
           roomName: widget.roomName,
+          canDelete: widget.canDelete,
+          onDelete: _softDeleteMedia,
         ),
       ),
     );
@@ -438,6 +448,122 @@ class _RoomMediaGalleryWidgetState
       return 'Please login again to upload media.';
     }
     return 'Upload failed: ${error.code}';
+  }
+}
+
+class _HeaderSummary extends StatelessWidget {
+  final int photoCount;
+  final int videoCount;
+
+  const _HeaderSummary({
+    required this.photoCount,
+    required this.videoCount,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final textStyle = Theme.of(context).textTheme.titleSmall?.copyWith(
+          fontWeight: FontWeight.w700,
+        );
+    return Row(
+      children: [
+        Expanded(
+          child: Text(
+            'Photos: $photoCount / ${RoomMediaPickerService.maxPhotosPerRoom}',
+            style: textStyle,
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Text(
+            'Videos: $videoCount / ${RoomMediaPickerService.maxVideosPerRoom}',
+            style: textStyle,
+            textAlign: TextAlign.end,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _MediaStatsCard extends StatelessWidget {
+  final int photoCount;
+  final int videoCount;
+
+  const _MediaStatsCard({
+    required this.photoCount,
+    required this.videoCount,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        child: Row(
+          children: [
+            Expanded(
+              child: _StatItem(
+                icon: Icons.photo_library_outlined,
+                label: 'Total Photos',
+                value: '$photoCount',
+              ),
+            ),
+            Expanded(
+              child: _StatItem(
+                icon: Icons.video_library_outlined,
+                label: 'Total Videos',
+                value: '$videoCount',
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _StatItem extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String value;
+
+  const _StatItem({
+    required this.icon,
+    required this.label,
+    required this.value,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Icon(icon, size: 22, color: AppColors.primary),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: TextStyle(
+                  color: AppColors.textSecondary,
+                  fontSize: 12,
+                ),
+              ),
+              Text(
+                value,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 18,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
   }
 }
 
@@ -485,18 +611,16 @@ class _MediaTile extends StatelessWidget {
             left: 6,
             bottom: 6,
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+              width: 28,
+              height: 28,
               decoration: BoxDecoration(
                 color: _statusColor(media.syncStatus).withValues(alpha: 0.86),
-                borderRadius: BorderRadius.circular(6),
+                shape: BoxShape.circle,
               ),
-              child: Text(
-                _statusLabel(media.syncStatus),
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 10,
-                  fontWeight: FontWeight.w700,
-                ),
+              child: Icon(
+                _statusIcon(media.syncStatus),
+                color: Colors.white,
+                size: 16,
               ),
             ),
           ),
@@ -572,17 +696,17 @@ class _MediaTile extends StatelessWidget {
     );
   }
 
-  String _statusLabel(String status) {
+  IconData _statusIcon(String status) {
     switch (status) {
       case RoomMediaSyncStatus.uploading:
-        return 'Uploading';
+        return Icons.file_upload_outlined;
       case RoomMediaSyncStatus.synced:
-        return 'Synced';
+        return Icons.cloud_done_outlined;
       case RoomMediaSyncStatus.failed:
-        return 'Failed';
+        return Icons.warning_amber_outlined;
       case RoomMediaSyncStatus.pending:
       default:
-        return 'Pending';
+        return Icons.file_upload_outlined;
     }
   }
 

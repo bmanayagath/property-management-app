@@ -10,12 +10,16 @@ class RoomMediaFullscreenViewer extends StatefulWidget {
   final List<RoomMedia> media;
   final int initialIndex;
   final String roomName;
+  final bool canDelete;
+  final Future<void> Function(RoomMedia media)? onDelete;
 
   const RoomMediaFullscreenViewer({
     super.key,
     required this.media,
     required this.initialIndex,
     required this.roomName,
+    this.canDelete = false,
+    this.onDelete,
   });
 
   @override
@@ -25,12 +29,16 @@ class RoomMediaFullscreenViewer extends StatefulWidget {
 
 class _RoomMediaFullscreenViewerState extends State<RoomMediaFullscreenViewer> {
   late final PageController _pageController;
+  late final List<RoomMedia> _media;
   late int _currentIndex;
+  bool _isDeleting = false;
 
   @override
   void initState() {
     super.initState();
-    _currentIndex = widget.initialIndex.clamp(0, widget.media.length - 1);
+    _media = List<RoomMedia>.from(widget.media);
+    _currentIndex =
+        _media.isEmpty ? 0 : widget.initialIndex.clamp(0, _media.length - 1);
     _pageController = PageController(initialPage: _currentIndex);
   }
 
@@ -42,7 +50,26 @@ class _RoomMediaFullscreenViewerState extends State<RoomMediaFullscreenViewer> {
 
   @override
   Widget build(BuildContext context) {
-    final mediaCount = widget.media.length;
+    final mediaCount = _media.length;
+
+    if (mediaCount == 0) {
+      return Scaffold(
+        backgroundColor: Colors.black,
+        body: Stack(
+          children: [
+            const Center(child: _UnableToLoadMedia()),
+            _TopOverlay(
+              roomName: widget.roomName,
+              counter: '0 / 0',
+              canDelete: false,
+              isDeleting: false,
+              onBack: () => Navigator.pop(context),
+              onDelete: null,
+            ),
+          ],
+        ),
+      );
+    }
 
     return Scaffold(
       backgroundColor: Colors.black,
@@ -55,7 +82,7 @@ class _RoomMediaFullscreenViewerState extends State<RoomMediaFullscreenViewer> {
               setState(() => _currentIndex = index);
             },
             itemBuilder: (context, index) {
-              final item = widget.media[index];
+              final item = _media[index];
               if (item.isVideo) {
                 return _VideoMediaPage(
                   media: item,
@@ -68,7 +95,10 @@ class _RoomMediaFullscreenViewerState extends State<RoomMediaFullscreenViewer> {
           _TopOverlay(
             roomName: widget.roomName,
             counter: '${_currentIndex + 1} / $mediaCount',
+            canDelete: widget.canDelete && widget.onDelete != null,
+            isDeleting: _isDeleting,
             onBack: () => Navigator.pop(context),
+            onDelete: _deleteCurrent,
           ),
           if (mediaCount > 1) ...[
             _ArrowButton(
@@ -98,23 +128,74 @@ class _RoomMediaFullscreenViewerState extends State<RoomMediaFullscreenViewer> {
   }
 
   void _next() {
-    if (_currentIndex >= widget.media.length - 1) return;
+    if (_currentIndex >= _media.length - 1) return;
     _pageController.nextPage(
       duration: const Duration(milliseconds: 220),
       curve: Curves.easeOut,
     );
+  }
+
+  Future<void> _deleteCurrent() async {
+    if (!widget.canDelete || widget.onDelete == null || _media.isEmpty) return;
+    final item = _media[_currentIndex];
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Remove media?'),
+          content: const Text('This hides the media from the room gallery.'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Remove'),
+            ),
+          ],
+        );
+      },
+    );
+    if (confirmed != true || !mounted) return;
+    setState(() => _isDeleting = true);
+    try {
+      await widget.onDelete!(item);
+      if (!mounted) return;
+      setState(() {
+        _media.removeAt(_currentIndex);
+        if (_currentIndex >= _media.length && _media.isNotEmpty) {
+          _currentIndex = _media.length - 1;
+        }
+      });
+      if (_media.isEmpty && mounted) {
+        Navigator.pop(context);
+      } else if (mounted) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) _pageController.jumpToPage(_currentIndex);
+        });
+      }
+    } finally {
+      if (mounted) setState(() => _isDeleting = false);
+    }
   }
 }
 
 class _TopOverlay extends StatelessWidget {
   final String roomName;
   final String counter;
+  final bool canDelete;
+  final bool isDeleting;
   final VoidCallback onBack;
+  final VoidCallback? onDelete;
 
   const _TopOverlay({
     required this.roomName,
     required this.counter,
+    required this.canDelete,
+    required this.isDeleting,
     required this.onBack,
+    required this.onDelete,
   });
 
   @override
@@ -166,6 +247,20 @@ class _TopOverlay extends StatelessWidget {
                     fontWeight: FontWeight.w700,
                   ),
                 ),
+                if (canDelete) ...[
+                  const SizedBox(width: 4),
+                  IconButton(
+                    onPressed: isDeleting ? null : onDelete,
+                    icon: isDeleting
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.delete_outline, color: Colors.white),
+                    tooltip: 'Remove',
+                  ),
+                ],
               ],
             ),
           ),

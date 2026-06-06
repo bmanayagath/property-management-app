@@ -809,7 +809,9 @@ class VillaDetailScreen extends ConsumerWidget {
         photos >= RoomMediaPickerService.maxPhotosPerRoom) {
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Maximum 10 photos allowed per room.')),
+        const SnackBar(
+          content: Text('Maximum 20 photos allowed for a room.'),
+        ),
       );
       return;
     }
@@ -817,7 +819,9 @@ class VillaDetailScreen extends ConsumerWidget {
         videos >= RoomMediaPickerService.maxVideosPerRoom) {
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Maximum 2 videos allowed per room.')),
+        const SnackBar(
+          content: Text('Maximum 10 videos allowed for a room.'),
+        ),
       );
       return;
     }
