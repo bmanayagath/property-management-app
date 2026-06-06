@@ -161,20 +161,16 @@ class BusinessValidationService {
     required Room room,
     Income? originalIncome,
   }) {
-    final existingRentReceived = existingIncomes
-        .where(
-          (existing) =>
-              existing.id != originalIncome?.id &&
-              existing.roomId == room.id &&
-              _isRentIncome(existing) &&
-              !existing.isDeleted &&
-              _isSameMonth(existing.monthCovered, income.monthCovered),
-        )
-        .fold<double>(0, (sum, existing) => sum + existing.amount);
+    final existingRentReceived = rentAlreadyRecordedForRoomMonth(
+      roomId: room.id,
+      month: income.monthCovered,
+      existingIncomes: existingIncomes,
+      originalIncome: originalIncome,
+    );
 
     if (existingRentReceived >= room.monthlyRent) {
       return const ValidationResult.invalid(
-        'Rent for this room is already fully recorded for this month.',
+        'Rent is already fully recorded for this room and month.',
       );
     }
 
@@ -186,6 +182,24 @@ class BusinessValidationService {
     }
 
     return const ValidationResult.valid();
+  }
+
+  double rentAlreadyRecordedForRoomMonth({
+    required String roomId,
+    required DateTime month,
+    required List<Income> existingIncomes,
+    Income? originalIncome,
+  }) {
+    return existingIncomes
+        .where(
+          (existing) =>
+              existing.id != originalIncome?.id &&
+              existing.roomId == roomId &&
+              _isRentIncome(existing) &&
+              !existing.isDeleted &&
+              _isSameMonth(existing.monthCovered, month),
+        )
+        .fold<double>(0, (sum, existing) => sum + existing.amount);
   }
 
   ValidationResult validateExpense({

@@ -45,8 +45,11 @@ class _AddEditIncomeScreenState extends ConsumerState<AddEditIncomeScreen> {
   late String _selectedPaymentMethod;
   late DateTime _paymentDate;
   late DateTime _monthCovered;
+  String? _lastRentAutofillKey;
 
   bool get _isEditing => widget.income != null;
+
+  bool get _isRentIncome => _selectedIncomeType == IncomeTypes.rent;
 
   @override
   void initState() {
@@ -94,16 +97,24 @@ class _AddEditIncomeScreenState extends ConsumerState<AddEditIncomeScreen> {
                 .where((room) => room.villaId == _selectedVillaId)
                 .toList()
               ..sort(compareRoomsNaturally);
-            final selectableRooms = roomsForSelectedVilla
-                .where((room) => _selectedIncomeType == IncomeTypes.rent
-                    ? room.isOccupied
-                    : true)
-                .toList();
+            final selectableRooms = roomsForSelectedVilla;
             final selectedVillaIsValid =
                 activeVillas.any((villa) => villa.id == _selectedVillaId);
+            final selectedRoom = roomsForSelectedVilla
+                .where((room) => room.id == _selectedRoomId)
+                .firstOrNull;
             final selectedRoomIsValid =
                 selectableRooms.any((room) => room.id == _selectedRoomId);
             _clearInvalidSelectedRoom(selectedRoomIsValid);
+            final rentSummary = _rentSummaryFor(selectedRoom);
+            _autoPopulateRentAmount(
+              selectedRoom: selectedRoom,
+              rentSummary: rentSummary,
+            );
+            final saveBlocked = _isRentSaveBlocked(
+              selectedRoom: selectedRoom,
+              rentSummary: rentSummary,
+            );
 
             return Form(
               key: _formKey,
@@ -136,6 +147,7 @@ class _AddEditIncomeScreenState extends ConsumerState<AddEditIncomeScreen> {
                           setState(() {
                             _selectedVillaId = value;
                             _selectedRoomId = null; // Reset room selection
+                            _lastRentAutofillKey = null;
                           });
                         },
                       ),
@@ -173,7 +185,10 @@ class _AddEditIncomeScreenState extends ConsumerState<AddEditIncomeScreen> {
                             return null;
                           },
                           onChanged: (value) {
-                            setState(() => _selectedRoomId = value);
+                            setState(() {
+                              _selectedRoomId = value;
+                              _lastRentAutofillKey = null;
+                            });
                           },
                         ),
                       ],
@@ -196,15 +211,7 @@ class _AddEditIncomeScreenState extends ConsumerState<AddEditIncomeScreen> {
                           if (value == null) return;
                           setState(() {
                             _selectedIncomeType = value;
-                            if (value == IncomeTypes.rent) {
-                              final selectedRoom = roomsForSelectedVilla
-                                  .where((room) => room.id == _selectedRoomId)
-                                  .firstOrNull;
-                              if (selectedRoom == null ||
-                                  !selectedRoom.isOccupied) {
-                                _selectedRoomId = null;
-                              }
-                            }
+                            _lastRentAutofillKey = null;
                           });
                         },
                       ),
@@ -213,15 +220,33 @@ class _AddEditIncomeScreenState extends ConsumerState<AddEditIncomeScreen> {
                         controller: _amountController,
                         keyboardType: const TextInputType.numberWithOptions(
                             decimal: true),
-                        decoration: _decoration('Amount', prefixText: 'QAR '),
+                        decoration: _decoration(
+                          'Amount',
+                          prefixText: 'QAR ',
+                          helperText: _isRentIncome
+                              ? 'Auto-filled from pending rent. You can enter a lower partial payment.'
+                              : null,
+                        ),
                         validator: (value) {
                           final amount = double.tryParse(value?.trim() ?? '');
                           if (amount == null) return 'Amount is required';
                           if (amount <= 0)
                             return 'Amount must be greater than 0';
+                          if (_isRentIncome &&
+                              rentSummary != null &&
+                              amount > rentSummary.remainingRent) {
+                            return 'Amount exceeds pending rent. Remaining rent is ${CurrencyFormatter.formatQAR(rentSummary.remainingRent)}.';
+                          }
                           return null;
                         },
                       ),
+                      if (_isRentIncome) ...[
+                        const SizedBox(height: 10),
+                        _RentInformation(
+                          room: selectedRoom,
+                          summary: rentSummary,
+                        ),
+                      ],
                       const SizedBox(height: 14),
                       _DateField(
                         label: 'Payment Date',
@@ -260,10 +285,10 @@ class _AddEditIncomeScreenState extends ConsumerState<AddEditIncomeScreen> {
                         formatter: DateFormat('MMMM yyyy'),
                         onTap: () => _pickDate(
                           initialDate: _monthCovered,
-                          onPicked: (date) => setState(
-                            () => _monthCovered =
-                                DateTime(date.year, date.month, 1),
-                          ),
+                          onPicked: (date) => setState(() {
+                            _monthCovered = DateTime(date.year, date.month, 1);
+                            _lastRentAutofillKey = null;
+                          }),
                         ),
                       ),
                       const SizedBox(height: 14),
@@ -280,7 +305,7 @@ class _AddEditIncomeScreenState extends ConsumerState<AddEditIncomeScreen> {
                   ),
                   const SizedBox(height: 22),
                   FilledButton.icon(
-                    onPressed: controllerState.isLoading
+                    onPressed: controllerState.isLoading || saveBlocked
                         ? null
                         : () => _save(activeVillas),
                     icon: controllerState.isLoading
@@ -313,10 +338,15 @@ class _AddEditIncomeScreenState extends ConsumerState<AddEditIncomeScreen> {
     );
   }
 
-  InputDecoration _decoration(String label, {String? prefixText}) {
+  InputDecoration _decoration(
+    String label, {
+    String? prefixText,
+    String? helperText,
+  }) {
     return InputDecoration(
       labelText: label,
       prefixText: prefixText,
+      helperText: helperText,
       filled: true,
       fillColor: const Color(0xFFFBFFFC),
       border: OutlineInputBorder(
@@ -332,6 +362,68 @@ class _AddEditIncomeScreenState extends ConsumerState<AddEditIncomeScreen> {
         borderSide: const BorderSide(color: Color(0xFF12B76A), width: 1.5),
       ),
     );
+  }
+
+  RentPaymentSummary? _rentSummaryFor(Room? selectedRoom) {
+    if (!_isRentIncome || selectedRoom == null) return null;
+    return ref
+        .watch(
+          rentPaymentSummaryProvider(
+            RentPaymentSummaryRequest(
+              roomId: selectedRoom.id,
+              monthlyRent: selectedRoom.monthlyRent,
+              month: _monthCovered,
+              excludedIncomeId: widget.income?.id,
+            ),
+          ),
+        )
+        .valueOrNull;
+  }
+
+  void _autoPopulateRentAmount({
+    required Room? selectedRoom,
+    required RentPaymentSummary? rentSummary,
+  }) {
+    if (_isEditing ||
+        !_isRentIncome ||
+        selectedRoom == null ||
+        selectedRoom.isVacant ||
+        rentSummary == null ||
+        rentSummary.isFullyPaid) {
+      return;
+    }
+
+    final key = [
+      selectedRoom.id,
+      _monthCovered.year,
+      _monthCovered.month,
+      rentSummary.paidAmount,
+      rentSummary.remainingRent,
+    ].join(':');
+    if (_lastRentAutofillKey == key) return;
+    _lastRentAutofillKey = key;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _amountController.text = _formatAmountInput(rentSummary.remainingRent);
+      _amountController.selection = TextSelection.collapsed(
+        offset: _amountController.text.length,
+      );
+    });
+  }
+
+  bool _isRentSaveBlocked({
+    required Room? selectedRoom,
+    required RentPaymentSummary? rentSummary,
+  }) {
+    if (!_isRentIncome) return false;
+    if (selectedRoom == null) return false;
+    if (selectedRoom.isVacant) return true;
+    return rentSummary?.isFullyPaid == true;
+  }
+
+  String _formatAmountInput(double value) {
+    if (value == value.roundToDouble()) return value.toStringAsFixed(0);
+    return value.toStringAsFixed(2);
   }
 
   Future<void> _pickDate({
@@ -364,6 +456,40 @@ class _AddEditIncomeScreenState extends ConsumerState<AddEditIncomeScreen> {
     if (_selectedIncomeType == IncomeTypes.rent && _selectedRoomId == null) {
       _showMessage('Room is required for rent income.');
       return;
+    }
+
+    if (_selectedIncomeType == IncomeTypes.rent) {
+      final selectedRoom = allRooms
+          .where((room) => !room.isDeleted && room.id == _selectedRoomId)
+          .firstOrNull;
+      if (selectedRoom != null && selectedRoom.isVacant) {
+        _showMessage('Cannot record rent for a vacant room.');
+        return;
+      }
+      if (selectedRoom != null) {
+        final paidAmount = _validationService.rentAlreadyRecordedForRoomMonth(
+          roomId: selectedRoom.id,
+          month: _monthCovered,
+          existingIncomes: existingIncomes,
+          originalIncome: widget.income,
+        );
+        final remainingRent =
+            (selectedRoom.monthlyRent - paidAmount).clamp(0.0, double.infinity);
+        if (remainingRent <= 0) {
+          _showMessage(
+            'Rent is already fully recorded for this room and month.',
+          );
+          return;
+        }
+        final enteredAmount =
+            double.tryParse(_amountController.text.trim()) ?? 0;
+        if (enteredAmount > remainingRent) {
+          _showMessage(
+            'Amount exceeds pending rent. Remaining rent is ${CurrencyFormatter.formatQAR(remainingRent.toDouble())}.',
+          );
+          return;
+        }
+      }
     }
 
     String roomName = '';
@@ -538,6 +664,159 @@ class _DateField extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _RentInformation extends StatelessWidget {
+  final Room? room;
+  final RentPaymentSummary? summary;
+
+  const _RentInformation({
+    required this.room,
+    required this.summary,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (room == null) {
+      return const _RentMessage(
+        icon: Icons.meeting_room_outlined,
+        message: 'Select an occupied room to calculate rent.',
+      );
+    }
+    if (room!.isVacant) {
+      return const _RentMessage(
+        icon: Icons.warning_amber_rounded,
+        message: 'Cannot record rent for a vacant room.',
+        isWarning: true,
+      );
+    }
+    final rentSummary = summary;
+    if (rentSummary == null) {
+      return const _RentMessage(
+        icon: Icons.hourglass_empty_rounded,
+        message: 'Loading rent information...',
+      );
+    }
+    if (rentSummary.remainingRent <= 0) {
+      return const _RentMessage(
+        icon: Icons.check_circle_outline_rounded,
+        message: 'Rent is already fully recorded for this room and month.',
+        isWarning: true,
+      );
+    }
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFE4F8EA),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFCDEFD8)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _RentInfoLine(
+            label: 'Monthly Rent',
+            value: CurrencyFormatter.formatQAR(rentSummary.monthlyRent),
+          ),
+          const SizedBox(height: 6),
+          _RentInfoLine(
+            label: 'Already Paid',
+            value: CurrencyFormatter.formatQAR(rentSummary.paidAmount),
+          ),
+          const SizedBox(height: 6),
+          _RentInfoLine(
+            label: 'Remaining Rent',
+            value: CurrencyFormatter.formatQAR(rentSummary.remainingRent),
+            isEmphasized: true,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _RentInfoLine extends StatelessWidget {
+  final String label;
+  final String value;
+  final bool isEmphasized;
+
+  const _RentInfoLine({
+    required this.label,
+    required this.value,
+    this.isEmphasized = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: Text(
+            '$label:',
+            style: TextStyle(
+              color: const Color(0xFF38664D),
+              fontSize: 12,
+              fontWeight: isEmphasized ? FontWeight.w900 : FontWeight.w700,
+            ),
+          ),
+        ),
+        Text(
+          value,
+          style: TextStyle(
+            color: isEmphasized
+                ? const Color(0xFF067647)
+                : const Color(0xFF143D27),
+            fontSize: 12,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _RentMessage extends StatelessWidget {
+  final IconData icon;
+  final String message;
+  final bool isWarning;
+
+  const _RentMessage({
+    required this.icon,
+    required this.message,
+    this.isWarning = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final color = isWarning ? const Color(0xFFF04438) : const Color(0xFF12B76A);
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: color.withValues(alpha: 0.26)),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: color, size: 20),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              message,
+              style: TextStyle(
+                color: color,
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

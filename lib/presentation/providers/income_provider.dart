@@ -40,6 +40,22 @@ final totalIncomeForMonthProvider =
   });
 });
 
+final rentPaymentSummaryProvider =
+    Provider.family<AsyncValue<RentPaymentSummary>, RentPaymentSummaryRequest>(
+        (ref, request) {
+  final incomesAsync = ref.watch(incomeListProvider);
+
+  return incomesAsync.whenData((incomes) {
+    return RentPaymentSummary.fromIncomes(
+      roomId: request.roomId,
+      monthlyRent: request.monthlyRent,
+      month: request.month,
+      incomes: incomes,
+      excludedIncomeId: request.excludedIncomeId,
+    );
+  });
+});
+
 final incomeVillaSummaryProvider =
     Provider.family<AsyncValue<Map<String, double>>, DateTime>((ref, month) {
   final incomesAsync = ref.watch(incomeListProvider);
@@ -123,6 +139,92 @@ class IncomeController extends StateNotifier<AsyncValue<void>> {
         );
     _ref.read(syncRefreshProvider.notifier).state++;
   }
+}
+
+class RentPaymentSummaryRequest {
+  final String roomId;
+  final double monthlyRent;
+  final DateTime month;
+  final String? excludedIncomeId;
+
+  const RentPaymentSummaryRequest({
+    required this.roomId,
+    required this.monthlyRent,
+    required this.month,
+    this.excludedIncomeId,
+  });
+
+  @override
+  bool operator ==(Object other) {
+    return other is RentPaymentSummaryRequest &&
+        other.roomId == roomId &&
+        other.monthlyRent == monthlyRent &&
+        _isSameMonth(other.month, month) &&
+        other.excludedIncomeId == excludedIncomeId;
+  }
+
+  @override
+  int get hashCode => Object.hash(
+        roomId,
+        monthlyRent,
+        month.year,
+        month.month,
+        excludedIncomeId,
+      );
+}
+
+class RentPaymentSummary {
+  final double monthlyRent;
+  final double paidAmount;
+  final double remainingRent;
+
+  const RentPaymentSummary({
+    required this.monthlyRent,
+    required this.paidAmount,
+    required this.remainingRent,
+  });
+
+  bool get isFullyPaid => remainingRent <= 0;
+
+  static RentPaymentSummary fromIncomes({
+    required String roomId,
+    required double monthlyRent,
+    required DateTime month,
+    required List<Income> incomes,
+    String? excludedIncomeId,
+  }) {
+    final paidAmount = rentAlreadyRecordedForRoomMonth(
+      roomId: roomId,
+      month: month,
+      incomes: incomes,
+      excludedIncomeId: excludedIncomeId,
+    );
+    final remainingRent =
+        (monthlyRent - paidAmount).clamp(0.0, double.infinity);
+    return RentPaymentSummary(
+      monthlyRent: monthlyRent,
+      paidAmount: paidAmount,
+      remainingRent: remainingRent.toDouble(),
+    );
+  }
+}
+
+double rentAlreadyRecordedForRoomMonth({
+  required String roomId,
+  required DateTime month,
+  required List<Income> incomes,
+  String? excludedIncomeId,
+}) {
+  return incomes
+      .where(
+        (income) =>
+            income.id != excludedIncomeId &&
+            !income.isDeleted &&
+            income.roomId == roomId &&
+            income.incomeType.toLowerCase() == IncomeTypes.rent.toLowerCase() &&
+            _isSameMonth(income.monthCovered, month),
+      )
+      .fold<double>(0, (sum, income) => sum + income.amount);
 }
 
 bool _isSameMonth(DateTime date, DateTime month) {
