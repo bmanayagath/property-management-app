@@ -18,15 +18,9 @@ import '../../providers/dashboard_provider.dart';
 import '../../providers/income_provider.dart';
 import '../../providers/room_provider.dart';
 import '../../providers/villa_provider.dart';
+import '../villa_detail_screen.dart';
 import '../common/access_denied_screen.dart';
 import '../../widgets/premium_widgets.dart';
-import '../../widgets/reports/expense_report_view.dart';
-import '../../widgets/reports/income_report_view.dart';
-import '../../widgets/reports/monthly_summary_report.dart';
-import '../../widgets/reports/pending_rent_report_view.dart';
-import '../../widgets/reports/room_wise_profit_report.dart';
-import '../../widgets/reports/villa_wise_profit_report.dart';
-import '../../widgets/reports/yearly_summary_report.dart';
 
 class ReportsScreen extends ConsumerStatefulWidget {
   const ReportsScreen({Key? key}) : super(key: key);
@@ -45,6 +39,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
   late DateTime _selectedMonth;
   late int _selectedYear;
   ReportType _selectedReportType = ReportType.monthlySummary;
+  _ReportPeriod _selectedPeriod = _ReportPeriod.thisMonth;
   String? _selectedVillaId;
   String? _selectedRoomId;
   String _selectedStatus = 'All';
@@ -81,72 +76,62 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                   _buildReportData(villas, rooms, incomes, expenses);
 
               return ListView(
-                padding: PremiumTokens.pagePadding,
+                padding: const EdgeInsets.fromLTRB(18, 14, 18, 142),
                 children: [
-                  PremiumPageHeader(
+                  _ReportsHeader(
                     title: 'Reports',
-                    subtitle: 'Profit, rent, vacancy, income, and expenses',
-                    actions: [
-                      if (canExportReports)
-                        PremiumButton(
-                          onPressed: _isExporting
-                              ? null
-                              : () => _export(
-                                    villasAsync.valueOrNull ?? const [],
-                                    roomsAsync.valueOrNull ?? const [],
-                                    incomesAsync.valueOrNull ?? const [],
-                                    expenses,
-                                    ExportFormat.pdf,
-                                  ),
-                          icon: Icons.picture_as_pdf_rounded,
-                          label: 'Export PDF',
-                          filled: false,
+                    subtitle: 'Property Financial Overview',
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (canExportReports) ...[
+                          _CircleIconButton(
+                            icon: Icons.picture_as_pdf_rounded,
+                            tooltip: 'Export PDF',
+                            onPressed: _isExporting
+                                ? null
+                                : () => _export(
+                                      villasAsync.valueOrNull ?? const [],
+                                      roomsAsync.valueOrNull ?? const [],
+                                      incomesAsync.valueOrNull ?? const [],
+                                      expenses,
+                                      ExportFormat.pdf,
+                                    ),
+                          ),
+                          const SizedBox(width: 8),
+                        ],
+                        _CircleIconButton(
+                          icon: Icons.tune_rounded,
+                          tooltip: 'Filters',
+                          onPressed: () => _showFiltersSheet(
+                            villas: villas,
+                            rooms: rooms,
+                          ),
                         ),
-                    ],
+                      ],
+                    ),
                   ),
                   const SizedBox(height: 18),
-                  _Filters(
-                    selectedMonth: _selectedMonth,
-                    selectedYear: _selectedYear,
-                    selectedReportType: _selectedReportType,
-                    villas: villas,
-                    rooms: rooms,
-                    selectedVillaId: _selectedVillaId,
-                    selectedRoomId: _selectedRoomId,
-                    selectedStatus: _selectedStatus,
-                    onPreviousMonth: () => _changeMonth(-1),
-                    onNextMonth: () => _changeMonth(1),
-                    onYearChanged: (year) {
-                      if (year == null) return;
-                      setState(() => _selectedYear = year);
-                    },
-                    onReportTypeChanged: (type) {
-                      if (type == null) return;
-                      setState(() => _selectedReportType = type);
-                    },
-                    onVillaChanged: (villaId) {
-                      setState(() {
-                        _selectedVillaId = villaId;
-                        _selectedRoomId = null;
-                      });
-                    },
-                    onRoomChanged: (roomId) {
-                      setState(() => _selectedRoomId = roomId);
-                    },
-                    onStatusChanged: (status) {
-                      if (status == null) return;
-                      setState(() => _selectedStatus = status);
-                    },
+                  _PeriodPills(
+                    selectedPeriod: _selectedPeriod,
+                    onSelected: (period) =>
+                        _selectPeriod(period, villas, rooms),
                   ),
                   const SizedBox(height: 16),
-                  _ReportHeader(
-                    title: _selectedReportType.label,
-                    subtitle: _selectedReportType == ReportType.yearlySummary
+                  _DashboardReportView(
+                    data: reportData,
+                    money: _money,
+                    dateFormat: _dateFormat,
+                    periodLabel: _selectedReportType == ReportType.yearlySummary
                         ? '$_selectedYear'
                         : _monthFormat.format(_selectedMonth),
+                    onVillaTap: (item) => Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) =>
+                            VillaDetailScreen(villaId: item.villaId),
+                      ),
+                    ),
                   ),
-                  const SizedBox(height: 14),
-                  _buildReportView(reportData),
                 ],
               );
             },
@@ -325,25 +310,102 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
     );
   }
 
-  Widget _buildReportView(_ReportData data) {
-    switch (_selectedReportType) {
-      case ReportType.monthlySummary:
-        return MonthlySummaryReport(data: data.monthlySummary);
-      case ReportType.villaWiseProfit:
-        return VillaWiseProfitReport(items: data.villaProfitItems);
-      case ReportType.roomWiseProfit:
-        return RoomWiseProfitReport(items: data.roomProfitItems);
-      case ReportType.incomeReport:
-        return IncomeReportView(incomes: data.monthlyIncomes);
-      case ReportType.expenseReport:
-        return ExpenseReportView(expenses: data.monthlyExpenses);
-      case ReportType.pendingRentReport:
-        return PendingRentReportView(items: data.pendingRentItems);
-      case ReportType.vacancyReport:
-        return RoomWiseProfitReport(items: data.vacancyItems);
-      case ReportType.yearlySummary:
-        return YearlySummaryReport(items: data.yearlyItems);
+  void _selectPeriod(
+    _ReportPeriod period,
+    List<VillaModel> villas,
+    List<Room> rooms,
+  ) {
+    final now = DateTime.now();
+    setState(() {
+      _selectedPeriod = period;
+      switch (period) {
+        case _ReportPeriod.today:
+        case _ReportPeriod.thisMonth:
+          _selectedMonth = DateTime(now.year, now.month, 1);
+          _selectedYear = now.year;
+          _selectedReportType = ReportType.monthlySummary;
+          break;
+        case _ReportPeriod.last3Months:
+          _selectedMonth = DateTime(now.year, now.month - 2, 1);
+          _selectedYear = _selectedMonth.year;
+          _selectedReportType = ReportType.monthlySummary;
+          break;
+        case _ReportPeriod.thisYear:
+          _selectedYear = now.year;
+          _selectedMonth = DateTime(now.year, now.month, 1);
+          _selectedReportType = ReportType.yearlySummary;
+          break;
+        case _ReportPeriod.custom:
+          break;
+      }
+    });
+    ref.read(selectedMonthProvider.notifier).state = _selectedMonth;
+
+    if (period == _ReportPeriod.custom) {
+      _showFiltersSheet(villas: villas, rooms: rooms);
     }
+  }
+
+  void _showFiltersSheet({
+    required List<VillaModel> villas,
+    required List<Room> rooms,
+  }) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return SafeArea(
+          child: Padding(
+            padding: EdgeInsets.only(
+              left: 14,
+              right: 14,
+              bottom: MediaQuery.viewInsetsOf(context).bottom + 14,
+            ),
+            child: Material(
+              color: const Color(0xFFF8F9FA),
+              borderRadius: BorderRadius.circular(28),
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(16),
+                child: _Filters(
+                  selectedMonth: _selectedMonth,
+                  selectedYear: _selectedYear,
+                  selectedReportType: _selectedReportType,
+                  villas: villas,
+                  rooms: rooms,
+                  selectedVillaId: _selectedVillaId,
+                  selectedRoomId: _selectedRoomId,
+                  selectedStatus: _selectedStatus,
+                  onPreviousMonth: () => _changeMonth(-1),
+                  onNextMonth: () => _changeMonth(1),
+                  onYearChanged: (year) {
+                    if (year == null) return;
+                    setState(() => _selectedYear = year);
+                  },
+                  onReportTypeChanged: (type) {
+                    if (type == null) return;
+                    setState(() => _selectedReportType = type);
+                  },
+                  onVillaChanged: (villaId) {
+                    setState(() {
+                      _selectedVillaId = villaId;
+                      _selectedRoomId = null;
+                    });
+                  },
+                  onRoomChanged: (roomId) {
+                    setState(() => _selectedRoomId = roomId);
+                  },
+                  onStatusChanged: (status) {
+                    if (status == null) return;
+                    setState(() => _selectedStatus = status);
+                  },
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
   }
 
   Future<void> _export(
@@ -634,6 +696,1006 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
 
 enum ExportFormat { pdf, csv }
 
+enum _ReportPeriod {
+  today('Today'),
+  thisMonth('This Month'),
+  last3Months('Last 3 Months'),
+  thisYear('This Year'),
+  custom('Custom');
+
+  final String label;
+
+  const _ReportPeriod(this.label);
+}
+
+class _ReportsHeader extends StatelessWidget {
+  final String title;
+  final String subtitle;
+  final Widget trailing;
+
+  const _ReportsHeader({
+    required this.title,
+    required this.subtitle,
+    required this.trailing,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: const TextStyle(
+                  color: Color(0xFF111827),
+                  fontSize: 34,
+                  fontWeight: FontWeight.w900,
+                  height: 1.02,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                subtitle,
+                style: const TextStyle(
+                  color: Color(0xFF6B7280),
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 12),
+        trailing,
+      ],
+    );
+  }
+}
+
+class _CircleIconButton extends StatelessWidget {
+  final IconData icon;
+  final String tooltip;
+  final VoidCallback? onPressed;
+
+  const _CircleIconButton({
+    required this.icon,
+    required this.tooltip,
+    required this.onPressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: tooltip,
+      child: Material(
+        color: Colors.white,
+        shape: const CircleBorder(),
+        child: InkWell(
+          customBorder: const CircleBorder(),
+          onTap: onPressed,
+          child: Container(
+            width: 46,
+            height: 46,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(color: const Color(0xFFE5E7EB)),
+              boxShadow: _ReportSurface.shadow,
+            ),
+            child: Icon(icon, color: const Color(0xFF1F2937), size: 21),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _PeriodPills extends StatelessWidget {
+  final _ReportPeriod selectedPeriod;
+  final ValueChanged<_ReportPeriod> onSelected;
+
+  const _PeriodPills({
+    required this.selectedPeriod,
+    required this.onSelected,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: [
+          for (final period in _ReportPeriod.values) ...[
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 180),
+              curve: Curves.easeOut,
+              margin: const EdgeInsets.only(right: 8),
+              decoration: BoxDecoration(
+                color: selectedPeriod == period
+                    ? const Color(0xFFEAF2FF)
+                    : Colors.white,
+                borderRadius: BorderRadius.circular(999),
+                border: Border.all(
+                  color: selectedPeriod == period
+                      ? const Color(0xFFBFD8FF)
+                      : const Color(0xFFE7EAF0),
+                ),
+                boxShadow:
+                    selectedPeriod == period ? _ReportSurface.shadow : null,
+              ),
+              child: InkWell(
+                borderRadius: BorderRadius.circular(999),
+                onTap: () => onSelected(period),
+                child: Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  child: Text(
+                    period.label,
+                    style: TextStyle(
+                      color: selectedPeriod == period
+                          ? const Color(0xFF2563EB)
+                          : const Color(0xFF4B5563),
+                      fontSize: 13,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _DashboardReportView extends StatelessWidget {
+  final _ReportData data;
+  final String Function(double value) money;
+  final DateFormat dateFormat;
+  final String periodLabel;
+  final ValueChanged<VillaProfitReportItem> onVillaTap;
+
+  const _DashboardReportView({
+    required this.data,
+    required this.money,
+    required this.dateFormat,
+    required this.periodLabel,
+    required this.onVillaTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final sortedVillas = [...data.villaProfitItems]
+      ..sort((a, b) => b.netProfit.compareTo(a.netProfit));
+    final transactions = _recentTransactions();
+    final occupiedRooms =
+        data.roomProfitItems.where((item) => item.isOccupied).length;
+    final vacantRooms =
+        data.roomProfitItems.where((item) => item.isVacant).length;
+    final totalRooms = occupiedRooms + vacantRooms;
+    final occupancyRate = totalRooms == 0 ? 0.0 : occupiedRooms / totalRooms;
+    final hasData = data.monthlySummary.totalIncome != 0 ||
+        data.monthlySummary.totalExpenses != 0 ||
+        data.monthlySummary.expectedRent != 0 ||
+        sortedVillas.isNotEmpty ||
+        transactions.isNotEmpty;
+
+    if (!hasData) {
+      return const _EmptyReportsState();
+    }
+
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 220),
+      child: Column(
+        key: ValueKey(periodLabel),
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _PeriodLabel(label: periodLabel),
+          const SizedBox(height: 12),
+          _SummaryGrid(summary: data.monthlySummary, money: money),
+          const SizedBox(height: 16),
+          _FinancialPerformanceCard(summary: data.monthlySummary, money: money),
+          const SizedBox(height: 16),
+          _OccupancyCard(
+            occupiedRooms: occupiedRooms,
+            vacantRooms: vacantRooms,
+            occupancyRate: occupancyRate,
+          ),
+          const SizedBox(height: 22),
+          _PropertyPerformanceSection(
+            items: sortedVillas,
+            money: money,
+            onTap: onVillaTap,
+          ),
+          const SizedBox(height: 22),
+          _RecentTransactionsSection(
+            transactions: transactions,
+            money: money,
+            dateFormat: dateFormat,
+          ),
+        ],
+      ),
+    );
+  }
+
+  List<_ReportTransaction> _recentTransactions() {
+    final transactions = <_ReportTransaction>[
+      ...data.monthlyIncomes.map(
+        (income) => _ReportTransaction(
+          date: income.paymentDate,
+          description: income.incomeType,
+          type: 'Income',
+          amount: income.amount,
+          isIncome: true,
+        ),
+      ),
+      ...data.monthlyExpenses.map(
+        (expense) => _ReportTransaction(
+          date: expense.expenseDate,
+          description: expense.category,
+          type: 'Expense',
+          amount: expense.amount,
+          isIncome: false,
+        ),
+      ),
+    ]..sort((a, b) => b.date.compareTo(a.date));
+    return transactions.take(6).toList();
+  }
+}
+
+class _ReportSurface extends StatelessWidget {
+  final Widget child;
+  final EdgeInsetsGeometry padding;
+
+  static List<BoxShadow> get shadow => [
+        BoxShadow(
+          color: const Color(0xFF64748B).withValues(alpha: 0.07),
+          blurRadius: 24,
+          offset: const Offset(0, 12),
+        ),
+      ];
+
+  const _ReportSurface({
+    required this.child,
+    this.padding = const EdgeInsets.all(18),
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: padding,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: const Color(0xFFE9ECEF)),
+        boxShadow: shadow,
+      ),
+      child: child,
+    );
+  }
+}
+
+class _PeriodLabel extends StatelessWidget {
+  final String label;
+
+  const _PeriodLabel({required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      label,
+      style: const TextStyle(
+        color: Color(0xFF6B7280),
+        fontSize: 13,
+        fontWeight: FontWeight.w800,
+      ),
+    );
+  }
+}
+
+class _SummaryGrid extends StatelessWidget {
+  final MonthlySummaryReportData summary;
+  final String Function(double value) money;
+
+  const _SummaryGrid({
+    required this.summary,
+    required this.money,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final itemWidth = (constraints.maxWidth - 12) / 2;
+        return Wrap(
+          spacing: 12,
+          runSpacing: 12,
+          children: [
+            _SummaryMetricCard(
+              width: itemWidth,
+              label: 'Total Income',
+              value: money(summary.totalIncome),
+              accent: _valueColor(summary.totalIncome, const Color(0xFF059669)),
+              icon: Icons.trending_up_rounded,
+            ),
+            _SummaryMetricCard(
+              width: itemWidth,
+              label: 'Total Expenses',
+              value: money(summary.totalExpenses),
+              accent:
+                  _valueColor(summary.totalExpenses, const Color(0xFFE5484D)),
+              icon: Icons.trending_down_rounded,
+            ),
+            _SummaryMetricCard(
+              width: itemWidth,
+              label: 'Net Profit',
+              value: money(summary.netProfit),
+              accent: summary.netProfit == 0
+                  ? const Color(0xFF6B7280)
+                  : summary.netProfit > 0
+                      ? const Color(0xFF059669)
+                      : const Color(0xFFE5484D),
+              icon: Icons.account_balance_wallet_rounded,
+            ),
+            _SummaryMetricCard(
+              width: itemWidth,
+              label: 'Pending Rent',
+              value: money(summary.pendingRent),
+              accent: _valueColor(summary.pendingRent, const Color(0xFFD97706)),
+              icon: Icons.schedule_rounded,
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Color _valueColor(double value, Color color) {
+    return value == 0 ? const Color(0xFF6B7280) : color;
+  }
+}
+
+class _SummaryMetricCard extends StatelessWidget {
+  final double width;
+  final String label;
+  final String value;
+  final Color accent;
+  final IconData icon;
+
+  const _SummaryMetricCard({
+    required this.width,
+    required this.label,
+    required this.value,
+    required this.accent,
+    required this.icon,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: width,
+      child: _ReportSurface(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 34,
+                  height: 34,
+                  decoration: BoxDecoration(
+                    color: accent.withValues(alpha: 0.10),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(icon, color: accent, size: 19),
+                ),
+                const Spacer(),
+              ],
+            ),
+            const SizedBox(height: 14),
+            Align(
+              alignment: Alignment.centerRight,
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  value,
+                  textAlign: TextAlign.right,
+                  style: TextStyle(
+                    color: accent,
+                    fontSize: 22,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              label,
+              style: const TextStyle(
+                color: Color(0xFF6B7280),
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _FinancialPerformanceCard extends StatelessWidget {
+  final MonthlySummaryReportData summary;
+  final String Function(double value) money;
+
+  const _FinancialPerformanceCard({
+    required this.summary,
+    required this.money,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final maxValue = [
+      summary.expectedRent,
+      summary.totalIncome,
+      summary.pendingRent,
+      summary.vacancyLoss,
+    ].fold<double>(0, (max, value) => value > max ? value : max);
+
+    return _ReportSurface(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const _SectionTitle(title: 'Financial Performance'),
+          const SizedBox(height: 16),
+          _PerformanceRow(
+            label: 'Expected Rent',
+            value: summary.expectedRent,
+            maxValue: maxValue,
+            money: money,
+          ),
+          _PerformanceRow(
+            label: 'Collected Rent',
+            value: summary.totalIncome,
+            maxValue: maxValue,
+            money: money,
+          ),
+          _PerformanceRow(
+            label: 'Pending Rent',
+            value: summary.pendingRent,
+            maxValue: maxValue,
+            money: money,
+          ),
+          _PerformanceRow(
+            label: 'Vacancy Loss',
+            value: summary.vacancyLoss,
+            maxValue: maxValue,
+            money: money,
+            isLast: true,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PerformanceRow extends StatelessWidget {
+  final String label;
+  final double value;
+  final double maxValue;
+  final String Function(double value) money;
+  final bool isLast;
+
+  const _PerformanceRow({
+    required this.label,
+    required this.value,
+    required this.maxValue,
+    required this.money,
+    this.isLast = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final progress = maxValue <= 0 ? 0.0 : value / maxValue;
+    return Padding(
+      padding: EdgeInsets.only(bottom: isLast ? 0 : 14),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  label,
+                  style: const TextStyle(
+                    color: Color(0xFF6B7280),
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+              Text(
+                money(value),
+                textAlign: TextAlign.right,
+                style: const TextStyle(
+                  color: Color(0xFF111827),
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          _AnimatedProgress(value: progress, color: const Color(0xFF94A3B8)),
+        ],
+      ),
+    );
+  }
+}
+
+class _OccupancyCard extends StatelessWidget {
+  final int occupiedRooms;
+  final int vacantRooms;
+  final double occupancyRate;
+
+  const _OccupancyCard({
+    required this.occupiedRooms,
+    required this.vacantRooms,
+    required this.occupancyRate,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final percent = (occupancyRate * 100).round();
+    return _ReportSurface(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const _SectionTitle(title: 'Occupancy Overview'),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                  child: _TinyStat(
+                      label: 'Occupied Rooms', value: '$occupiedRooms')),
+              Expanded(
+                  child:
+                      _TinyStat(label: 'Vacant Rooms', value: '$vacantRooms')),
+              Expanded(
+                  child: _TinyStat(label: 'Occupancy %', value: '$percent%')),
+            ],
+          ),
+          const SizedBox(height: 16),
+          _AnimatedProgress(
+              value: occupancyRate, color: const Color(0xFF10B981), height: 12),
+          const SizedBox(height: 10),
+          Text(
+            '$percent% Occupied',
+            style: const TextStyle(
+              color: Color(0xFF059669),
+              fontSize: 13,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TinyStat extends StatelessWidget {
+  final String label;
+  final String value;
+
+  const _TinyStat({required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          value,
+          style: const TextStyle(
+            color: Color(0xFF111827),
+            fontSize: 20,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+        const SizedBox(height: 3),
+        Text(
+          label,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(
+            color: Color(0xFF6B7280),
+            fontSize: 11,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _PropertyPerformanceSection extends StatelessWidget {
+  final List<VillaProfitReportItem> items;
+  final String Function(double value) money;
+  final ValueChanged<VillaProfitReportItem> onTap;
+
+  const _PropertyPerformanceSection({
+    required this.items,
+    required this.money,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return _ReportSurface(
+      padding: const EdgeInsets.fromLTRB(18, 18, 18, 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const _SectionTitle(title: 'Property Performance'),
+          const SizedBox(height: 8),
+          if (items.isEmpty)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 18),
+              child: Text(
+                'No properties found.',
+                style: TextStyle(color: Color(0xFF6B7280)),
+              ),
+            )
+          else
+            for (final item in items)
+              _VillaPerformanceRow(
+                item: item,
+                money: money,
+                onTap: () => onTap(item),
+              ),
+        ],
+      ),
+    );
+  }
+}
+
+class _VillaPerformanceRow extends StatelessWidget {
+  final VillaProfitReportItem item;
+  final String Function(double value) money;
+  final VoidCallback onTap;
+
+  const _VillaPerformanceRow({
+    required this.item,
+    required this.money,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final profitColor =
+        item.netProfit < 0 ? const Color(0xFFE5484D) : const Color(0xFF059669);
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(14),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  item.villaName,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Color(0xFF111827),
+                    fontSize: 15,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              _MoneyColumn(label: 'Income', value: money(item.receivedIncome)),
+              const SizedBox(width: 8),
+              _MoneyColumn(label: 'Expenses', value: money(item.totalExpense)),
+              const SizedBox(width: 8),
+              _MoneyColumn(
+                label: 'Net Profit',
+                value: money(item.netProfit),
+                color: profitColor,
+              ),
+              const Icon(Icons.chevron_right_rounded, color: Color(0xFF9CA3AF)),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _MoneyColumn extends StatelessWidget {
+  final String label;
+  final String value;
+  final Color color;
+
+  const _MoneyColumn({
+    required this.label,
+    required this.value,
+    this.color = const Color(0xFF111827),
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 74,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          Text(
+            value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.right,
+            style: TextStyle(
+              color: color,
+              fontSize: 12,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          const SizedBox(height: 3),
+          Text(
+            label,
+            textAlign: TextAlign.right,
+            style: const TextStyle(
+              color: Color(0xFF9CA3AF),
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _RecentTransactionsSection extends StatelessWidget {
+  final List<_ReportTransaction> transactions;
+  final String Function(double value) money;
+  final DateFormat dateFormat;
+
+  const _RecentTransactionsSection({
+    required this.transactions,
+    required this.money,
+    required this.dateFormat,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return _ReportSurface(
+      padding: const EdgeInsets.fromLTRB(18, 18, 18, 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const _SectionTitle(title: 'Recent Transactions'),
+          const SizedBox(height: 8),
+          if (transactions.isEmpty)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 18),
+              child: Text(
+                'No transactions found.',
+                style: TextStyle(color: Color(0xFF6B7280)),
+              ),
+            )
+          else
+            for (var index = 0; index < transactions.length; index++)
+              _TransactionRow(
+                transaction: transactions[index],
+                money: money,
+                dateFormat: dateFormat,
+                showDivider: index != transactions.length - 1,
+              ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TransactionRow extends StatelessWidget {
+  final _ReportTransaction transaction;
+  final String Function(double value) money;
+  final DateFormat dateFormat;
+  final bool showDivider;
+
+  const _TransactionRow({
+    required this.transaction,
+    required this.money,
+    required this.dateFormat,
+    required this.showDivider,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final amountColor = transaction.isIncome
+        ? const Color(0xFF059669)
+        : const Color(0xFFE5484D);
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          child: Row(
+            children: [
+              SizedBox(
+                width: 72,
+                child: Text(
+                  dateFormat.format(transaction.date),
+                  style: const TextStyle(
+                    color: Color(0xFF6B7280),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              Expanded(
+                child: Text(
+                  transaction.description,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Color(0xFF111827),
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                transaction.type,
+                style: const TextStyle(
+                  color: Color(0xFF6B7280),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(width: 12),
+              SizedBox(
+                width: 96,
+                child: Text(
+                  money(transaction.amount),
+                  textAlign: TextAlign.right,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: amountColor,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        if (showDivider) const Divider(height: 1, color: Color(0xFFE9ECEF)),
+      ],
+    );
+  }
+}
+
+class _SectionTitle extends StatelessWidget {
+  final String title;
+
+  const _SectionTitle({required this.title});
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      title,
+      style: const TextStyle(
+        color: Color(0xFF111827),
+        fontSize: 18,
+        fontWeight: FontWeight.w900,
+      ),
+    );
+  }
+}
+
+class _AnimatedProgress extends StatelessWidget {
+  final double value;
+  final Color color;
+  final double height;
+
+  const _AnimatedProgress({
+    required this.value,
+    required this.color,
+    this.height = 8,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final clamped = value.clamp(0.0, 1.0);
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(999),
+      child: TweenAnimationBuilder<double>(
+        tween: Tween(begin: 0, end: clamped),
+        duration: const Duration(milliseconds: 520),
+        curve: Curves.easeOutCubic,
+        builder: (context, animatedValue, child) {
+          return LinearProgressIndicator(
+            value: animatedValue,
+            minHeight: height,
+            backgroundColor: const Color(0xFFE9ECEF),
+            valueColor: AlwaysStoppedAnimation(color),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _EmptyReportsState extends StatelessWidget {
+  const _EmptyReportsState();
+
+  @override
+  Widget build(BuildContext context) {
+    return _ReportSurface(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 42),
+      child: Column(
+        children: [
+          Container(
+            width: 96,
+            height: 72,
+            decoration: BoxDecoration(
+              color: const Color(0xFFEAF2FF),
+              borderRadius: BorderRadius.circular(24),
+            ),
+            child: const Icon(
+              Icons.insert_chart_outlined_rounded,
+              color: Color(0xFF2563EB),
+              size: 38,
+            ),
+          ),
+          const SizedBox(height: 18),
+          const Text(
+            'No report data available',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: Color(0xFF111827),
+              fontSize: 20,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Add records to generate financial reports.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: Color(0xFF6B7280),
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ReportTransaction {
+  final DateTime date;
+  final String description;
+  final String type;
+  final double amount;
+  final bool isIncome;
+
+  const _ReportTransaction({
+    required this.date,
+    required this.description,
+    required this.type,
+    required this.amount,
+    required this.isIncome,
+  });
+}
+
 class _Filters extends StatelessWidget {
   final DateTime selectedMonth;
   final int selectedYear;
@@ -851,48 +1913,6 @@ class _Filters extends StatelessWidget {
         borderRadius: BorderRadius.circular(14),
         borderSide: const BorderSide(color: Color(0xFFE8EAF0)),
       ),
-    );
-  }
-}
-
-class _ReportHeader extends StatelessWidget {
-  final String title;
-  final String subtitle;
-
-  const _ReportHeader({
-    required this.title,
-    required this.subtitle,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
-                style: const TextStyle(
-                  color: Color(0xFF060B26),
-                  fontSize: 22,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                subtitle,
-                style: const TextStyle(
-                  color: Color(0xFF646B7A),
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
     );
   }
 }
