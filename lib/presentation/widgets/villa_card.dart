@@ -150,8 +150,6 @@ class VillaCard extends StatelessWidget {
             const SizedBox(height: 8),
             Row(
               children: [
-                _RoomChip(label: 'Total', value: _activeRooms.length),
-                const SizedBox(width: 6),
                 _RoomChip(
                   label: 'Occupied',
                   value: _occupiedRooms,
@@ -163,6 +161,8 @@ class VillaCard extends StatelessWidget {
                   value: _vacantRooms,
                   color: AppColors.warning,
                 ),
+                const SizedBox(width: 6),
+                _RoomChip(label: 'Total', value: _activeRooms.length),
               ],
             ),
             const SizedBox(height: 7),

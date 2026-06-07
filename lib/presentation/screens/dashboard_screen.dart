@@ -1227,16 +1227,8 @@ class _VillaRow extends StatelessWidget {
                         ],
                       ),
                       const SizedBox(height: 8),
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(20),
-                        child: LinearProgressIndicator(
-                          value: summary.occupancyProgress,
-                          minHeight: 6,
-                          backgroundColor: const Color(0xFFE4E4E6),
-                          valueColor: const AlwaysStoppedAnimation(
-                            Color(0xFF2EA043),
-                          ),
-                        ),
+                      _SolidOccupancyLine(
+                        hasOccupiedRooms: summary.occupiedRooms > 0,
                       ),
                       const SizedBox(height: 10),
                       Row(
@@ -1391,6 +1383,28 @@ class _VillaAmount extends StatelessWidget {
   }
 }
 
+class _SolidOccupancyLine extends StatelessWidget {
+  final bool hasOccupiedRooms;
+
+  const _SolidOccupancyLine({
+    required this.hasOccupiedRooms,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 6,
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: hasOccupiedRooms
+            ? const Color(0xFF2EA043)
+            : const Color(0xFFE4E4E6),
+        borderRadius: BorderRadius.circular(20),
+      ),
+    );
+  }
+}
+
 class _VillaRoomSummary {
   final int totalRooms;
   final int occupiedRooms;
@@ -1415,9 +1429,6 @@ class _VillaRoomSummary {
     required this.actualNetProfit,
     required this.expectedNetProfit,
   });
-
-  double get occupancyProgress =>
-      totalRooms == 0 ? 0 : occupiedRooms / totalRooms;
 
   static _VillaRoomSummary fromData(
     Iterable<Room> rooms,

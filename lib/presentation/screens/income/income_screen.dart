@@ -67,7 +67,7 @@ class _IncomeScreenState extends ConsumerState<IncomeScreen> {
                     PremiumButton(
                       onPressed: _openAddIncome,
                       icon: Icons.add_rounded,
-                      label: 'Add Income',
+                      label: 'Add Income'
                     ),
                 ],
               ),
