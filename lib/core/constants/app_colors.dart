@@ -12,11 +12,19 @@ class AppColors {
   static const Color success = Color(0xFF10B981);
   static const Color successLight = Color(0xD4ECFF87);
   static const Color successDark = Color(0xFF059669);
+  static const Color income = Color(0xFF12B76A);
+  static const Color incomeDark = Color(0xFF067647);
+  static const Color incomeSurface = Color(0xFFF0FCF3);
+  static const Color incomeBorder = Color(0xFFCDEFD8);
 
   // Error/Expense - Red/Orange
   static const Color error = Color(0xFFEF4444);
   static const Color errorLight = Color(0xFFFCA5A5);
   static const Color errorDark = Color(0xFFDC2626);
+  static const Color expense = Color(0xFFF04438);
+  static const Color expenseDark = Color(0xFFB42318);
+  static const Color expenseSurface = Color(0xFFFFF6F4);
+  static const Color expenseBorder = Color(0xFFFBD2CE);
 
   // Warning/Pending - Amber
   static const Color warning = Color(0xFFF59E0B);

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:uuid/uuid.dart';
 
+import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_permissions.dart';
 import '../../../core/utils/currency_formatter.dart';
 import '../../../core/utils/room_helpers.dart';
@@ -314,26 +315,14 @@ class _AddEditIncomeScreenState extends ConsumerState<AddEditIncomeScreen> {
                     ],
                   ),
                   const SizedBox(height: 22),
-                  FilledButton.icon(
+                  ModuleActionButton.income(
                     onPressed: controllerState.isLoading || saveBlocked
                         ? null
                         : () => _save(activeVillas),
-                    icon: controllerState.isLoading
-                        ? const SizedBox(
-                            height: 18,
-                            width: 18,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Icon(Icons.check_rounded),
-                    label: Text(_isEditing ? 'Update Income' : 'Save Income'),
-                    style: FilledButton.styleFrom(
-                      backgroundColor: const Color(0xFF12B76A),
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                    ),
+                    icon: Icons.check_rounded,
+                    label: _isEditing ? 'Update Income' : 'Save Income',
+                    fullWidth: true,
+                    isLoading: controllerState.isLoading,
                   ),
                 ],
               ),
@@ -361,15 +350,15 @@ class _AddEditIncomeScreenState extends ConsumerState<AddEditIncomeScreen> {
       fillColor: const Color(0xFFFBFFFC),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
-        borderSide: const BorderSide(color: Color(0xFFCDEFD8)),
+        borderSide: const BorderSide(color: AppColors.incomeBorder),
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
-        borderSide: const BorderSide(color: Color(0xFFCDEFD8)),
+        borderSide: const BorderSide(color: AppColors.incomeBorder),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
-        borderSide: const BorderSide(color: Color(0xFF12B76A), width: 1.5),
+        borderSide: const BorderSide(color: AppColors.income, width: 1.5),
       ),
     );
   }
@@ -681,7 +670,7 @@ class _DateField extends StatelessWidget {
             Expanded(child: Text(formatter.format(value))),
             const Icon(
               Icons.calendar_month_rounded,
-              color: Color(0xFF12B76A),
+              color: AppColors.income,
             ),
           ],
         ),
@@ -733,9 +722,9 @@ class _RentInformation extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: const Color(0xFFE4F8EA),
+        color: AppColors.incomeSurface,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFCDEFD8)),
+        border: Border.all(color: AppColors.incomeBorder),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -789,9 +778,8 @@ class _RentInfoLine extends StatelessWidget {
         Text(
           value,
           style: TextStyle(
-            color: isEmphasized
-                ? const Color(0xFF067647)
-                : const Color(0xFF143D27),
+            color:
+                isEmphasized ? AppColors.incomeDark : const Color(0xFF143D27),
             fontSize: 12,
             fontWeight: FontWeight.w900,
           ),
@@ -814,7 +802,7 @@ class _RentMessage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = isWarning ? const Color(0xFFF04438) : const Color(0xFF12B76A);
+    final color = isWarning ? AppColors.expense : AppColors.income;
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(12),
@@ -855,10 +843,10 @@ class _FormPanel extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xFFCDEFD8)),
+        border: Border.all(color: AppColors.incomeBorder),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF067647).withValues(alpha: 0.08),
+            color: AppColors.incomeDark.withValues(alpha: 0.08),
             blurRadius: 22,
             offset: const Offset(0, 10),
           ),
@@ -889,10 +877,10 @@ class _SectionTitle extends StatelessWidget {
           height: 38,
           width: 38,
           decoration: const BoxDecoration(
-            color: Color(0xFFE4F8EA),
+            color: AppColors.incomeSurface,
             shape: BoxShape.circle,
           ),
-          child: Icon(icon, color: const Color(0xFF12B76A)),
+          child: Icon(icon, color: AppColors.income),
         ),
         const SizedBox(width: 10),
         Text(

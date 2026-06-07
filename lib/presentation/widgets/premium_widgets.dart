@@ -400,6 +400,147 @@ class PremiumButton extends StatelessWidget {
   }
 }
 
+class ModuleActionButton extends StatelessWidget {
+  final VoidCallback? onPressed;
+  final IconData icon;
+  final String label;
+  final Color color;
+  final bool fullWidth;
+  final bool isLoading;
+
+  const ModuleActionButton({
+    super.key,
+    required this.onPressed,
+    required this.icon,
+    required this.label,
+    required this.color,
+    this.fullWidth = false,
+    this.isLoading = false,
+  });
+
+  const ModuleActionButton.income({
+    super.key,
+    required this.onPressed,
+    this.icon = Icons.add_rounded,
+    required this.label,
+    this.fullWidth = false,
+    this.isLoading = false,
+  }) : color = AppColors.income;
+
+  const ModuleActionButton.expense({
+    super.key,
+    required this.onPressed,
+    this.icon = Icons.add_rounded,
+    required this.label,
+    this.fullWidth = false,
+    this.isLoading = false,
+  }) : color = AppColors.expense;
+
+  @override
+  Widget build(BuildContext context) {
+    final button = FilledButton.icon(
+      onPressed: isLoading ? null : onPressed,
+      icon: isLoading
+          ? const SizedBox(
+              height: 18,
+              width: 18,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: Colors.white,
+              ),
+            )
+          : Icon(icon, color: Colors.white, size: 19),
+      label: Text(label),
+      style: FilledButton.styleFrom(
+        backgroundColor: color,
+        disabledBackgroundColor: color.withValues(alpha: 0.48),
+        foregroundColor: Colors.white,
+        disabledForegroundColor: Colors.white,
+        minimumSize: Size(fullWidth ? double.infinity : 0, 48),
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 13),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(999),
+        ),
+        textStyle: const TextStyle(
+          fontSize: 14,
+          fontWeight: FontWeight.w900,
+        ),
+        elevation: 0,
+      ),
+    );
+
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(999),
+        boxShadow: [
+          BoxShadow(
+            color: color.withValues(alpha: onPressed == null ? 0 : 0.18),
+            blurRadius: 18,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child:
+          fullWidth ? SizedBox(width: double.infinity, child: button) : button,
+    );
+  }
+}
+
+class ModuleActionFab extends StatelessWidget {
+  final VoidCallback? onPressed;
+  final String heroTag;
+  final IconData icon;
+  final String label;
+  final Color color;
+
+  const ModuleActionFab({
+    super.key,
+    required this.onPressed,
+    required this.heroTag,
+    required this.icon,
+    required this.label,
+    required this.color,
+  });
+
+  const ModuleActionFab.income({
+    super.key,
+    required this.onPressed,
+    required this.heroTag,
+    this.icon = Icons.add_rounded,
+    this.label = 'Add Income',
+  }) : color = AppColors.income;
+
+  const ModuleActionFab.expense({
+    super.key,
+    required this.onPressed,
+    required this.heroTag,
+    this.icon = Icons.add_rounded,
+    this.label = 'Add Expense',
+  }) : color = AppColors.expense;
+
+  @override
+  Widget build(BuildContext context) {
+    return FloatingActionButton.extended(
+      heroTag: heroTag,
+      onPressed: onPressed,
+      backgroundColor: color,
+      foregroundColor: Colors.white,
+      elevation: 8,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(999),
+      ),
+      icon: Icon(icon, color: Colors.white),
+      label: Text(
+        label,
+        style: const TextStyle(
+          color: Colors.white,
+          fontWeight: FontWeight.w900,
+        ),
+      ),
+    );
+  }
+}
+
 class RoundedActionButton extends StatelessWidget {
   final VoidCallback? onPressed;
   final IconData icon;

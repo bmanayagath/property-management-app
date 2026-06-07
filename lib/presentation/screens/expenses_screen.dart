@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
+import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_permissions.dart';
 import '../../core/utils/currency_formatter.dart';
 import '../../domain/models/expense.dart';
@@ -60,7 +61,7 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
             subtitle: 'Track upkeep, payments, and property costs',
             actions: [
               if (canManageExpenses)
-                PremiumButton(
+                ModuleActionButton.expense(
                   onPressed: _openAddExpense,
                   icon: Icons.add_rounded,
                   label: 'Add Expense',
@@ -115,7 +116,9 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
           ),
           const SizedBox(height: 18),
           if (filteredExpenses.isEmpty)
-            const _EmptyExpenses()
+            _EmptyExpenses(
+              onAddExpense: canManageExpenses ? _openAddExpense : null,
+            )
           else
             LayoutBuilder(
               builder: (context, constraints) {
@@ -151,13 +154,9 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
       floatingActionButton: canManageExpenses
           ? Padding(
               padding: const EdgeInsets.only(bottom: 88),
-              child: FloatingActionButton.extended(
+              child: ModuleActionFab.expense(
                 heroTag: 'add-expense-fab',
                 onPressed: _openAddExpense,
-                backgroundColor: const Color(0xFFF04438),
-                foregroundColor: Colors.white,
-                icon: const Icon(Icons.add_rounded),
-                label: const Text('Add Expense'),
               ),
             )
           : null,
@@ -285,12 +284,12 @@ class _SummaryCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: const Color(0xFFFFF6F4),
+        color: AppColors.expenseSurface,
         borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: const Color(0xFFFBD2CE)),
+        border: Border.all(color: AppColors.expenseBorder),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFFB42318).withValues(alpha: 0.08),
+            color: AppColors.expenseDark.withValues(alpha: 0.08),
             blurRadius: 20,
             offset: const Offset(0, 8),
           ),
@@ -302,12 +301,12 @@ class _SummaryCard extends StatelessWidget {
             height: 58,
             width: 58,
             decoration: const BoxDecoration(
-              color: Color(0xFFFFDFDA),
+              color: AppColors.expenseSurface,
               shape: BoxShape.circle,
             ),
             child: const Icon(
               Icons.trending_down_rounded,
-              color: Color(0xFFF04438),
+              color: AppColors.expense,
               size: 30,
             ),
           ),
@@ -319,7 +318,7 @@ class _SummaryCard extends StatelessWidget {
                 const Text(
                   'Total Expenses',
                   style: TextStyle(
-                    color: Color(0xFFF04438),
+                    color: AppColors.expense,
                     fontSize: 15,
                     fontWeight: FontWeight.w900,
                   ),
@@ -352,7 +351,11 @@ class _SummaryCard extends StatelessWidget {
 }
 
 class _EmptyExpenses extends StatelessWidget {
-  const _EmptyExpenses();
+  final VoidCallback? onAddExpense;
+
+  const _EmptyExpenses({
+    this.onAddExpense,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -363,15 +366,15 @@ class _EmptyExpenses extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: const Color(0xFFE8EAF0)),
       ),
-      child: const Column(
+      child: Column(
         children: [
-          Icon(
+          const Icon(
             Icons.receipt_long_outlined,
-            color: Color(0xFFF04438),
+            color: AppColors.expense,
             size: 46,
           ),
-          SizedBox(height: 12),
-          Text(
+          const SizedBox(height: 12),
+          const Text(
             'No expenses found',
             style: TextStyle(
               color: Color(0xFF060B26),
@@ -379,8 +382,8 @@ class _EmptyExpenses extends StatelessWidget {
               fontWeight: FontWeight.w900,
             ),
           ),
-          SizedBox(height: 6),
-          Text(
+          const SizedBox(height: 6),
+          const Text(
             'Add an expense or adjust your filters.',
             textAlign: TextAlign.center,
             style: TextStyle(
@@ -388,6 +391,14 @@ class _EmptyExpenses extends StatelessWidget {
               fontSize: 13,
             ),
           ),
+          if (onAddExpense != null) ...[
+            const SizedBox(height: 16),
+            ModuleActionButton.expense(
+              onPressed: onAddExpense,
+              icon: Icons.add_rounded,
+              label: 'Add Expense',
+            ),
+          ],
         ],
       ),
     );

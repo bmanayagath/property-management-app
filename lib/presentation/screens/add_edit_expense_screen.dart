@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:uuid/uuid.dart';
 
+import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_permissions.dart';
 import '../../core/utils/currency_formatter.dart';
 import '../../core/utils/room_helpers.dart';
@@ -242,7 +243,7 @@ class _AddEditExpenseScreenState extends ConsumerState<AddEditExpenseScreen> {
                               ),
                               const Icon(
                                 Icons.calendar_month_rounded,
-                                color: Color(0xFFF04438),
+                                color: AppColors.expense,
                               ),
                             ],
                           ),
@@ -291,18 +292,11 @@ class _AddEditExpenseScreenState extends ConsumerState<AddEditExpenseScreen> {
                     ],
                   ),
                   const SizedBox(height: 22),
-                  FilledButton.icon(
+                  ModuleActionButton.expense(
                     onPressed: () => _save(activeVillas),
-                    icon: const Icon(Icons.check_rounded),
-                    label: Text(_isEditing ? 'Update Expense' : 'Save Expense'),
-                    style: FilledButton.styleFrom(
-                      backgroundColor: const Color(0xFFF04438),
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                    ),
+                    icon: Icons.check_rounded,
+                    label: _isEditing ? 'Update Expense' : 'Save Expense',
+                    fullWidth: true,
                   ),
                 ],
               ),
@@ -325,15 +319,15 @@ class _AddEditExpenseScreenState extends ConsumerState<AddEditExpenseScreen> {
       fillColor: const Color(0xFFFFFBFA),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
-        borderSide: const BorderSide(color: Color(0xFFF1D6CF)),
+        borderSide: const BorderSide(color: AppColors.expenseBorder),
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
-        borderSide: const BorderSide(color: Color(0xFFF1D6CF)),
+        borderSide: const BorderSide(color: AppColors.expenseBorder),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
-        borderSide: const BorderSide(color: Color(0xFFF04438), width: 1.5),
+        borderSide: const BorderSide(color: AppColors.expense, width: 1.5),
       ),
     );
   }
@@ -505,10 +499,10 @@ class _FormPanel extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xFFF1D6CF)),
+        border: Border.all(color: AppColors.expenseBorder),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFFB42318).withValues(alpha: 0.08),
+            color: AppColors.expenseDark.withValues(alpha: 0.08),
             blurRadius: 22,
             offset: const Offset(0, 10),
           ),
@@ -539,10 +533,10 @@ class _SectionTitle extends StatelessWidget {
           height: 38,
           width: 38,
           decoration: const BoxDecoration(
-            color: Color(0xFFFFE6E0),
+            color: AppColors.expenseSurface,
             shape: BoxShape.circle,
           ),
-          child: Icon(icon, color: const Color(0xFFF04438)),
+          child: Icon(icon, color: AppColors.expense),
         ),
         const SizedBox(width: 10),
         Text(

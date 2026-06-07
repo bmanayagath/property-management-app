@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
+import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_permissions.dart';
 import '../../core/utils/currency_formatter.dart';
 import '../../domain/models/expense.dart';
@@ -747,18 +748,18 @@ class _QuickActions extends StatelessWidget {
         _ActionPill(
           label: 'Add Income',
           icon: Icons.add_circle_outline_rounded,
-          color: const Color(0xFF2EA043),
-          background: const Color(0xFFF0FCF3),
-          border: const Color(0xFFC7ECCF),
+          color: AppColors.income,
+          background: AppColors.incomeSurface,
+          border: AppColors.incomeBorder,
           onTap: onAddIncome!,
         ),
       if (onAddExpense != null)
         _ActionPill(
           label: 'Add Expense',
           icon: Icons.add_circle_outline_rounded,
-          color: const Color(0xFFF04438),
-          background: const Color(0xFFFFF5F4),
-          border: const Color(0xFFF8C9C3),
+          color: AppColors.expense,
+          background: AppColors.expenseSurface,
+          border: AppColors.expenseBorder,
           onTap: onAddExpense!,
         ),
       if (onAddVilla != null)

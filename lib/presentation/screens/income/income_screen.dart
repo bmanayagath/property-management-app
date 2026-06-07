@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
+import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_permissions.dart';
 import '../../../core/utils/currency_formatter.dart';
 import '../../../domain/models/income.dart';
@@ -64,10 +65,10 @@ class _IncomeScreenState extends ConsumerState<IncomeScreen> {
                 subtitle: 'Track rent and other received payments',
                 actions: [
                   if (canManageIncome)
-                    PremiumButton(
+                    ModuleActionButton.income(
                       onPressed: _openAddIncome,
                       icon: Icons.add_rounded,
-                      label: 'Add Income'
+                      label: 'Add Income',
                     ),
                 ],
               ),
@@ -119,7 +120,9 @@ class _IncomeScreenState extends ConsumerState<IncomeScreen> {
               ),
               const SizedBox(height: 18),
               if (filteredIncomes.isEmpty)
-                const _EmptyIncome()
+                _EmptyIncome(
+                  onAddIncome: canManageIncome ? _openAddIncome : null,
+                )
               else
                 LayoutBuilder(
                   builder: (context, constraints) {
@@ -159,13 +162,9 @@ class _IncomeScreenState extends ConsumerState<IncomeScreen> {
       floatingActionButton: canManageIncome
           ? Padding(
               padding: const EdgeInsets.only(bottom: 88),
-              child: FloatingActionButton.extended(
+              child: ModuleActionFab.income(
                 heroTag: 'add-income-fab',
                 onPressed: _openAddIncome,
-                backgroundColor: const Color(0xFF12B76A),
-                foregroundColor: Colors.white,
-                icon: const Icon(Icons.add_rounded),
-                label: const Text('Add Income'),
               ),
             )
           : null,
@@ -291,12 +290,12 @@ class _SummaryCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: const Color(0xFFF0FCF3),
+        color: AppColors.incomeSurface,
         borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: const Color(0xFFCDEFD8)),
+        border: Border.all(color: AppColors.incomeBorder),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF067647).withValues(alpha: 0.08),
+            color: AppColors.incomeDark.withValues(alpha: 0.08),
             blurRadius: 20,
             offset: const Offset(0, 8),
           ),
@@ -308,12 +307,12 @@ class _SummaryCard extends StatelessWidget {
             height: 58,
             width: 58,
             decoration: const BoxDecoration(
-              color: Color(0xFFE4F8EA),
+              color: AppColors.incomeSurface,
               shape: BoxShape.circle,
             ),
             child: const Icon(
               Icons.trending_up_rounded,
-              color: Color(0xFF12B76A),
+              color: AppColors.income,
               size: 30,
             ),
           ),
@@ -325,7 +324,7 @@ class _SummaryCard extends StatelessWidget {
                 const Text(
                   'Total Income',
                   style: TextStyle(
-                    color: Color(0xFF039855),
+                    color: AppColors.incomeDark,
                     fontSize: 15,
                     fontWeight: FontWeight.w900,
                   ),
@@ -358,7 +357,11 @@ class _SummaryCard extends StatelessWidget {
 }
 
 class _EmptyIncome extends StatelessWidget {
-  const _EmptyIncome();
+  final VoidCallback? onAddIncome;
+
+  const _EmptyIncome({
+    this.onAddIncome,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -369,15 +372,15 @@ class _EmptyIncome extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: const Color(0xFFE8EAF0)),
       ),
-      child: const Column(
+      child: Column(
         children: [
-          Icon(
+          const Icon(
             Icons.payments_outlined,
-            color: Color(0xFF12B76A),
+            color: AppColors.income,
             size: 46,
           ),
-          SizedBox(height: 12),
-          Text(
+          const SizedBox(height: 12),
+          const Text(
             'No income found',
             style: TextStyle(
               color: Color(0xFF060B26),
@@ -385,8 +388,8 @@ class _EmptyIncome extends StatelessWidget {
               fontWeight: FontWeight.w900,
             ),
           ),
-          SizedBox(height: 6),
-          Text(
+          const SizedBox(height: 6),
+          const Text(
             'Add an income record or adjust your filters.',
             textAlign: TextAlign.center,
             style: TextStyle(
@@ -394,6 +397,14 @@ class _EmptyIncome extends StatelessWidget {
               fontSize: 13,
             ),
           ),
+          if (onAddIncome != null) ...[
+            const SizedBox(height: 16),
+            ModuleActionButton.income(
+              onPressed: onAddIncome,
+              icon: Icons.add_rounded,
+              label: 'Add Income',
+            ),
+          ],
         ],
       ),
     );
