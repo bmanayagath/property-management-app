@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-import '../../../core/utils/currency_formatter.dart';
 import '../../../domain/models/report_models.dart';
+import '../currency_amount_text.dart';
 
 class VillaProfitReportCard extends StatelessWidget {
   final VillaProfitReportItem item;
@@ -78,13 +78,11 @@ class VillaProfitReportCard extends StatelessWidget {
                   ],
                 ),
               ),
-              Text(
-                _money(item.netProfit),
-                style: TextStyle(
-                  color: profitColor,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w900,
-                ),
+              CurrencyAmountText(
+                amount: item.netProfit,
+                amountColor: profitColor,
+                amountFontSize: 16,
+                currencyFontSize: 9,
               ),
             ],
           ),
@@ -120,8 +118,6 @@ class VillaProfitReportCard extends StatelessWidget {
       ),
     );
   }
-
-  static String _money(double value) => CurrencyFormatter.formatQAR(value);
 }
 
 class _CountChip extends StatelessWidget {
@@ -183,13 +179,11 @@ class _Metric extends StatelessWidget {
           FittedBox(
             fit: BoxFit.scaleDown,
             alignment: Alignment.centerLeft,
-            child: Text(
-              CurrencyFormatter.formatQAR(value),
-              style: TextStyle(
-                color: color,
-                fontSize: 13,
-                fontWeight: FontWeight.w900,
-              ),
+            child: CurrencyAmountText(
+              amount: value,
+              amountColor: color,
+              amountFontSize: 13,
+              currencyFontSize: 8,
             ),
           ),
         ],

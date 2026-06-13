@@ -27,6 +27,7 @@ import '../../widgets/reports/pending_rent_report_view.dart';
 import '../../widgets/reports/room_wise_profit_report.dart';
 import '../../widgets/reports/villa_wise_profit_report.dart';
 import '../../widgets/reports/yearly_summary_report.dart';
+import '../../widgets/currency_amount_text.dart';
 
 class ReportsScreen extends ConsumerStatefulWidget {
   const ReportsScreen({Key? key}) : super(key: key);
@@ -1043,14 +1044,14 @@ class _SummaryGrid extends StatelessWidget {
             _SummaryMetricCard(
               width: itemWidth,
               label: 'Total Income',
-              value: money(summary.totalIncome),
+              value: summary.totalIncome,
               accent: _valueColor(summary.totalIncome, const Color(0xFF059669)),
               icon: Icons.trending_up_rounded,
             ),
             _SummaryMetricCard(
               width: itemWidth,
               label: 'Total Expenses',
-              value: money(summary.totalExpenses),
+              value: summary.totalExpenses,
               accent:
                   _valueColor(summary.totalExpenses, const Color(0xFFE5484D)),
               icon: Icons.trending_down_rounded,
@@ -1058,7 +1059,7 @@ class _SummaryGrid extends StatelessWidget {
             _SummaryMetricCard(
               width: itemWidth,
               label: 'Net Profit',
-              value: money(summary.netProfit),
+              value: summary.netProfit,
               accent: summary.netProfit == 0
                   ? const Color(0xFF6B7280)
                   : summary.netProfit > 0
@@ -1069,7 +1070,7 @@ class _SummaryGrid extends StatelessWidget {
             _SummaryMetricCard(
               width: itemWidth,
               label: 'Pending Rent',
-              value: money(summary.pendingRent),
+              value: summary.pendingRent,
               accent: _valueColor(summary.pendingRent, const Color(0xFFD97706)),
               icon: Icons.schedule_rounded,
             ),
@@ -1087,7 +1088,7 @@ class _SummaryGrid extends StatelessWidget {
 class _SummaryMetricCard extends StatelessWidget {
   final double width;
   final String label;
-  final String value;
+  final double value;
   final Color accent;
   final IconData icon;
 
@@ -1127,14 +1128,12 @@ class _SummaryMetricCard extends StatelessWidget {
               alignment: Alignment.centerRight,
               child: FittedBox(
                 fit: BoxFit.scaleDown,
-                child: Text(
-                  value,
+                child: CurrencyAmountText(
+                  amount: value,
+                  amountColor: accent,
+                  amountFontSize: 22,
+                  currencyFontSize: 11,
                   textAlign: TextAlign.right,
-                  style: TextStyle(
-                    color: accent,
-                    fontSize: 22,
-                    fontWeight: FontWeight.w900,
-                  ),
                 ),
               ),
             ),
@@ -1242,13 +1241,11 @@ class _PerformanceRow extends StatelessWidget {
                   ),
                 ),
               ),
-              Text(
-                money(value),
+              CurrencyAmountText(
+                amount: value,
+                amountFontSize: 14,
+                currencyFontSize: 9,
                 textAlign: TextAlign.right,
-                style: const TextStyle(
-                  color: Color(0xFF111827),
-                  fontWeight: FontWeight.w900,
-                ),
               ),
             ],
           ),
@@ -1423,13 +1420,13 @@ class _VillaPerformanceRow extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 8),
-              _MoneyColumn(label: 'Income', value: money(item.receivedIncome)),
+              _MoneyColumn(label: 'Income', value: item.receivedIncome),
               const SizedBox(width: 8),
-              _MoneyColumn(label: 'Expenses', value: money(item.totalExpense)),
+              _MoneyColumn(label: 'Expenses', value: item.totalExpense),
               const SizedBox(width: 8),
               _MoneyColumn(
                 label: 'Net Profit',
-                value: money(item.netProfit),
+                value: item.netProfit,
                 color: profitColor,
               ),
               const Icon(Icons.chevron_right_rounded, color: Color(0xFF9CA3AF)),
@@ -1443,7 +1440,7 @@ class _VillaPerformanceRow extends StatelessWidget {
 
 class _MoneyColumn extends StatelessWidget {
   final String label;
-  final String value;
+  final double value;
   final Color color;
 
   const _MoneyColumn({
@@ -1459,16 +1456,12 @@ class _MoneyColumn extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-          Text(
-            value,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
+          CurrencyAmountText(
+            amount: value,
+            amountColor: color,
+            amountFontSize: 12,
+            currencyFontSize: 8,
             textAlign: TextAlign.right,
-            style: TextStyle(
-              color: color,
-              fontSize: 12,
-              fontWeight: FontWeight.w900,
-            ),
           ),
           const SizedBox(height: 3),
           Text(
@@ -1586,15 +1579,12 @@ class _TransactionRow extends StatelessWidget {
               const SizedBox(width: 12),
               SizedBox(
                 width: 96,
-                child: Text(
-                  money(transaction.amount),
+                child: CurrencyAmountText(
+                  amount: transaction.amount,
+                  amountColor: amountColor,
+                  amountFontSize: 14,
+                  currencyFontSize: 9,
                   textAlign: TextAlign.right,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: amountColor,
-                    fontWeight: FontWeight.w900,
-                  ),
                 ),
               ),
             ],

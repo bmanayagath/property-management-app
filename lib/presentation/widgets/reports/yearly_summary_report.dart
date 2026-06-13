@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
-import '../../../core/utils/currency_formatter.dart';
 import '../../../domain/models/report_models.dart';
+import '../currency_amount_text.dart';
 
 class YearlySummaryReport extends StatelessWidget {
   final List<YearlySummaryReportItem> items;
@@ -40,30 +40,27 @@ class YearlySummaryReport extends StatelessWidget {
               cells: [
                 DataCell(Text(_monthFormat.format(item.month))),
                 DataCell(
-                  Text(
-                    CurrencyFormatter.formatQAR(item.income),
-                    style: const TextStyle(
-                      color: Color(0xFF12B76A),
-                      fontWeight: FontWeight.w900,
-                    ),
+                  CurrencyAmountText(
+                    amount: item.income,
+                    amountColor: const Color(0xFF12B76A),
+                    amountFontSize: 14,
+                    currencyFontSize: 9,
                   ),
                 ),
                 DataCell(
-                  Text(
-                    CurrencyFormatter.formatQAR(item.expense),
-                    style: const TextStyle(
-                      color: Color(0xFFF04438),
-                      fontWeight: FontWeight.w900,
-                    ),
+                  CurrencyAmountText(
+                    amount: item.expense,
+                    amountColor: const Color(0xFFF04438),
+                    amountFontSize: 14,
+                    currencyFontSize: 9,
                   ),
                 ),
                 DataCell(
-                  Text(
-                    CurrencyFormatter.formatQAR(item.profit),
-                    style: TextStyle(
-                      color: profitColor,
-                      fontWeight: FontWeight.w900,
-                    ),
+                  CurrencyAmountText(
+                    amount: item.profit,
+                    amountColor: profitColor,
+                    amountFontSize: 14,
+                    currencyFontSize: 9,
                   ),
                 ),
               ],

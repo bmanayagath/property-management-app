@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-import '../../../core/utils/currency_formatter.dart';
 import '../../../domain/models/report_models.dart';
+import '../currency_amount_text.dart';
 
 class PendingRentReportView extends StatelessWidget {
   final List<PendingRentReportItem> items;
@@ -162,13 +162,11 @@ class _Metric extends StatelessWidget {
         FittedBox(
           fit: BoxFit.scaleDown,
           alignment: Alignment.centerLeft,
-          child: Text(
-            CurrencyFormatter.formatQAR(value),
-            style: TextStyle(
-              color: color,
-              fontSize: 13,
-              fontWeight: FontWeight.w900,
-            ),
+          child: CurrencyAmountText(
+            amount: value,
+            amountColor: color,
+            amountFontSize: 13,
+            currencyFontSize: 8,
           ),
         ),
       ],

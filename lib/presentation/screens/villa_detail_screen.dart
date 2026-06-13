@@ -9,13 +9,13 @@ import '../../core/constants/app_roles.dart';
 import '../../core/constants/app_styles.dart';
 import '../../core/constants/app_permissions.dart';
 import '../../data/services/room_media_picker_service.dart';
-import '../../core/utils/currency_formatter.dart';
 import '../../data/services/tenant_contact_service.dart';
 import '../../data/services/whatsapp_share_service.dart';
 import '../../domain/models/income.dart';
 import '../../domain/models/room.dart';
 import '../../domain/models/villa_model.dart';
 import '../../models/room_media.dart';
+import '../widgets/currency_amount_text.dart';
 import '../providers/auth_provider.dart';
 import '../providers/dashboard_provider.dart';
 import '../providers/database_provider.dart';
@@ -391,12 +391,11 @@ class VillaDetailScreen extends ConsumerWidget {
                               style: AppStyles.labelSmall,
                             ),
                             const SizedBox(height: 4),
-                            Text(
-                              CurrencyFormatter.format(totalRoomRent),
-                              style: AppStyles.bodySmall.copyWith(
-                                color: AppColors.success,
-                                fontWeight: FontWeight.w700,
-                              ),
+                            CurrencyAmountText(
+                              amount: totalRoomRent,
+                              amountColor: AppColors.success,
+                              amountFontSize: 12,
+                              currencyFontSize: 8,
                             ),
                           ],
                         ),
@@ -635,7 +634,7 @@ class VillaDetailScreen extends ConsumerWidget {
                 final hasTenantPhone = room.tenantPhone.trim().isNotEmpty;
                 return RoomCard(
                   room: room,
-                  pendingRent: CurrencyFormatter.format(pending),
+                  pendingRent: pending,
                   pendingRentLabel:
                       room.isOccupied ? 'Pending' : 'Potential Loss',
                   onTap: () {

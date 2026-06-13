@@ -3,11 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/constants/app_permissions.dart';
-import '../../../core/utils/currency_formatter.dart';
 import '../../../domain/models/income.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/income_provider.dart';
 import '../../widgets/premium_widgets.dart';
+import '../../widgets/currency_amount_text.dart';
 import 'add_edit_income_screen.dart';
 
 class IncomeDetailScreen extends ConsumerWidget {
@@ -91,13 +91,11 @@ class IncomeDetailScreen extends ConsumerWidget {
                                 ),
                               ),
                               const SizedBox(height: 5),
-                              Text(
-                                CurrencyFormatter.formatQAR(income.amount),
-                                style: const TextStyle(
-                                  color: Color(0xFF12B76A),
-                                  fontSize: 24,
-                                  fontWeight: FontWeight.w900,
-                                ),
+                              CurrencyAmountText(
+                                amount: income.amount,
+                                amountColor: const Color(0xFF12B76A),
+                                amountFontSize: 24,
+                                currencyFontSize: 12,
                               ),
                             ],
                           ),

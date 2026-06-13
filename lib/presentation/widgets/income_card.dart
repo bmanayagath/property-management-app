@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
-import '../../core/utils/currency_formatter.dart';
 import '../../domain/models/income.dart';
+import 'currency_amount_text.dart';
 
 class IncomeCard extends StatelessWidget {
   final Income income;
@@ -111,14 +111,11 @@ class IncomeCard extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                Text(
-                  CurrencyFormatter.formatQAR(income.amount),
-                  style: const TextStyle(
-                    color: Color(0xFF12B76A),
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                  ),
-                  maxLines: 1,
+                CurrencyAmountText(
+                  amount: income.amount,
+                  amountColor: const Color(0xFF12B76A),
+                  amountFontSize: 14,
+                  currencyFontSize: 9,
                 ),
               ],
             ),

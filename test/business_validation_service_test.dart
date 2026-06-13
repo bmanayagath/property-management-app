@@ -40,7 +40,7 @@ void main() {
     expect(result.isValid, isFalse);
     expect(
       result.message,
-      'Amount exceeds pending rent. Remaining rent is QAR 1,500.',
+      'Amount exceeds pending rent. Remaining rent is 1,500 QAR.',
     );
   });
 

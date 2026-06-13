@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 
 import '../../core/constants/app_colors.dart';
-import '../../core/utils/currency_formatter.dart';
 import '../../domain/models/room.dart';
 import '../../domain/models/villa_model.dart';
 import 'premium_widgets.dart';
+import 'currency_amount_text.dart';
 
 class VillaSummaryCard extends StatelessWidget {
   final VillaModel villa;
@@ -229,29 +229,29 @@ class VillaSummaryCard extends StatelessWidget {
               final firstRow = [
                 _MoneyMetric(
                   label: 'Total Room Rent',
-                  value: CurrencyFormatter.format(_totalRoomRent),
+                  value: _totalRoomRent,
                   color: PremiumTokens.ink,
                 ),
                 _MoneyMetric(
                   label: 'Expected Rent',
-                  value: CurrencyFormatter.format(_expectedRent),
+                  value: _expectedRent,
                   color: AppColors.primary,
                 ),
               ];
               final secondRow = [
                 _MoneyMetric(
                   label: 'Collected',
-                  value: CurrencyFormatter.format(_collectedRent),
+                  value: _collectedRent,
                   color: AppColors.success,
                 ),
                 _MoneyMetric(
                   label: 'Pending',
-                  value: CurrencyFormatter.format(_pendingRent),
+                  value: _pendingRent,
                   color: AppColors.warning,
                 ),
                 _MoneyMetric(
                   label: 'Vacancy Loss',
-                  value: CurrencyFormatter.format(_vacancyLoss),
+                  value: _vacancyLoss,
                   color: AppColors.error,
                 ),
               ];
@@ -364,7 +364,7 @@ class _RoomPill extends StatelessWidget {
 
 class _MoneyMetric extends StatelessWidget {
   final String label;
-  final String value;
+  final double value;
   final Color color;
 
   const _MoneyMetric({
@@ -400,14 +400,11 @@ class _MoneyMetric extends StatelessWidget {
           FittedBox(
             fit: BoxFit.scaleDown,
             alignment: Alignment.centerLeft,
-            child: Text(
-              value,
-              maxLines: 1,
-              style: TextStyle(
-                color: color,
-                fontSize: 13,
-                fontWeight: FontWeight.w900,
-              ),
+            child: CurrencyAmountText(
+              amount: value,
+              amountColor: color,
+              amountFontSize: 13,
+              currencyFontSize: 8,
             ),
           ),
         ],

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
-import '../../core/utils/currency_formatter.dart';
 import '../../domain/models/expense.dart';
+import 'currency_amount_text.dart';
 
 class ExpenseCard extends StatelessWidget {
   final Expense expense;
@@ -113,14 +113,11 @@ class ExpenseCard extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                Text(
-                  CurrencyFormatter.formatQAR(expense.amount),
-                  style: const TextStyle(
-                    color: Color(0xFFF04438),
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                  ),
-                  maxLines: 1,
+                CurrencyAmountText(
+                  amount: expense.amount,
+                  amountColor: const Color(0xFFF04438),
+                  amountFontSize: 14,
+                  currencyFontSize: 9,
                 ),
               ],
             ),

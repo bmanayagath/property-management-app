@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_styles.dart';
 import '../../core/constants/app_permissions.dart';
-import '../../core/utils/currency_formatter.dart';
 import '../../domain/models/income.dart';
 import '../../domain/models/room.dart';
 import '../../domain/models/villa_model.dart';
@@ -144,7 +143,7 @@ class _VillasScreenState extends ConsumerState<VillasScreen> {
                         Expanded(
                           child: SoftStatCard(
                             title: 'Total Room Rent',
-                            value: CurrencyFormatter.format(totalRoomRent),
+                            amount: totalRoomRent,
                             color: AppColors.profit,
                             icon: Icons.trending_up,
                           ),

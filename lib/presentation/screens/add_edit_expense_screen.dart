@@ -220,7 +220,7 @@ class _AddEditExpenseScreenState extends ConsumerState<AddEditExpenseScreen> {
                         controller: _amountController,
                         keyboardType: const TextInputType.numberWithOptions(
                             decimal: true),
-                        decoration: _decoration('Amount', prefixText: 'QAR '),
+                        decoration: _decoration('Amount', suffixText: 'QAR'),
                         validator: (value) {
                           final amount = double.tryParse(value?.trim() ?? '');
                           if (amount == null) return 'Amount is required';
@@ -311,10 +311,16 @@ class _AddEditExpenseScreenState extends ConsumerState<AddEditExpenseScreen> {
     );
   }
 
-  InputDecoration _decoration(String label, {String? prefixText}) {
+  InputDecoration _decoration(String label, {String? suffixText}) {
     return InputDecoration(
       labelText: label,
-      prefixText: prefixText,
+      suffixText: suffixText,
+      suffixStyle: const TextStyle(
+        color: Color(0xFF6B7280),
+        fontSize: 12,
+        fontWeight: FontWeight.w500,
+        letterSpacing: 0.4,
+      ),
       filled: true,
       fillColor: const Color(0xFFFFFBFA),
       border: OutlineInputBorder(
