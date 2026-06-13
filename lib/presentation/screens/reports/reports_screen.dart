@@ -21,6 +21,12 @@ import '../../providers/villa_provider.dart';
 import '../villa_detail_screen.dart';
 import '../common/access_denied_screen.dart';
 import '../../widgets/premium_widgets.dart';
+import '../../widgets/reports/expense_report_view.dart';
+import '../../widgets/reports/income_report_view.dart';
+import '../../widgets/reports/pending_rent_report_view.dart';
+import '../../widgets/reports/room_wise_profit_report.dart';
+import '../../widgets/reports/villa_wise_profit_report.dart';
+import '../../widgets/reports/yearly_summary_report.dart';
 
 class ReportsScreen extends ConsumerStatefulWidget {
   const ReportsScreen({Key? key}) : super(key: key);
@@ -118,20 +124,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                         _selectPeriod(period, villas, rooms),
                   ),
                   const SizedBox(height: 16),
-                  _DashboardReportView(
-                    data: reportData,
-                    money: _money,
-                    dateFormat: _dateFormat,
-                    periodLabel: _selectedReportType == ReportType.yearlySummary
-                        ? '$_selectedYear'
-                        : _monthFormat.format(_selectedMonth),
-                    onVillaTap: (item) => Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (context) =>
-                            VillaDetailScreen(villaId: item.villaId),
-                      ),
-                    ),
-                  ),
+                  _buildSelectedReport(reportData),
                 ],
               );
             },
@@ -310,6 +303,37 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
     );
   }
 
+  Widget _buildSelectedReport(_ReportData data) {
+    switch (_selectedReportType) {
+      case ReportType.monthlySummary:
+        return _DashboardReportView(
+          data: data,
+          money: _money,
+          dateFormat: _dateFormat,
+          periodLabel: _monthFormat.format(_selectedMonth),
+          onVillaTap: (item) => Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (context) => VillaDetailScreen(villaId: item.villaId),
+            ),
+          ),
+        );
+      case ReportType.villaWiseProfit:
+        return VillaWiseProfitReport(items: data.villaProfitItems);
+      case ReportType.roomWiseProfit:
+        return RoomWiseProfitReport(items: data.roomProfitItems);
+      case ReportType.incomeReport:
+        return IncomeReportView(incomes: data.monthlyIncomes);
+      case ReportType.expenseReport:
+        return ExpenseReportView(expenses: data.monthlyExpenses);
+      case ReportType.pendingRentReport:
+        return PendingRentReportView(items: data.pendingRentItems);
+      case ReportType.vacancyReport:
+        return RoomWiseProfitReport(items: data.vacancyItems);
+      case ReportType.yearlySummary:
+        return YearlySummaryReport(items: data.yearlyItems);
+    }
+  }
+
   void _selectPeriod(
     _ReportPeriod period,
     List<VillaModel> villas,
@@ -385,6 +409,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                   onReportTypeChanged: (type) {
                     if (type == null) return;
                     setState(() => _selectedReportType = type);
+                    Navigator.of(context).pop();
                   },
                   onVillaChanged: (villaId) {
                     setState(() {

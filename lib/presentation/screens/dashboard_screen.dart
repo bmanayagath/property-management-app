@@ -19,6 +19,9 @@ import '../providers/notification_provider.dart';
 import '../providers/room_provider.dart';
 import '../providers/villa_provider.dart';
 import '../widgets/premium_widgets.dart';
+import 'add_edit_expense_screen.dart';
+import 'add_edit_villa_screen.dart';
+import 'income/add_edit_income_screen.dart';
 import 'notifications/notifications_screen.dart';
 import 'villa_detail_screen.dart';
 
@@ -37,6 +40,7 @@ class DashboardScreen extends ConsumerWidget {
         authState.hasPermission(AppPermissions.manageExpenses);
     final canManageVillas =
         authState.hasPermission(AppPermissions.manageVillas);
+    final canViewReports = authState.hasPermission(AppPermissions.viewReports);
 
     return PremiumScaffold(
       body: RefreshIndicator(
@@ -70,13 +74,28 @@ class DashboardScreen extends ConsumerWidget {
             const SizedBox(height: 12),
             _QuickActions(
               onAddIncome: canManageIncome
-                  ? () => ref.read(selectedTabProvider.notifier).state = 2
+                  ? () => Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => const AddEditIncomeScreen(),
+                        ),
+                      )
                   : null,
               onAddExpense: canManageExpenses
-                  ? () => ref.read(selectedTabProvider.notifier).state = 3
+                  ? () => Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => const AddEditExpenseScreen(),
+                        ),
+                      )
                   : null,
               onAddVilla: canManageVillas
-                  ? () => ref.read(selectedTabProvider.notifier).state = 1
+                  ? () => Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => const AddEditVillaScreen(),
+                        ),
+                      )
+                  : null,
+              onReports: canViewReports
+                  ? () => ref.read(selectedTabProvider.notifier).state = 4
                   : null,
             ),
             const SizedBox(height: 16),
@@ -734,48 +753,43 @@ class _QuickActions extends StatelessWidget {
   final VoidCallback? onAddIncome;
   final VoidCallback? onAddExpense;
   final VoidCallback? onAddVilla;
+  final VoidCallback? onReports;
 
   const _QuickActions({
     required this.onAddIncome,
     required this.onAddExpense,
     required this.onAddVilla,
+    required this.onReports,
   });
 
   @override
   Widget build(BuildContext context) {
-    final actions = [
-      if (onAddIncome != null)
-        _ActionPill(
-          label: 'Add Income',
-          icon: Icons.add_circle_outline_rounded,
-          color: AppColors.income,
-          background: AppColors.incomeSurface,
-          border: AppColors.incomeBorder,
-          onTap: onAddIncome!,
-        ),
-      if (onAddExpense != null)
-        _ActionPill(
-          label: 'Add Expense',
-          icon: Icons.add_circle_outline_rounded,
-          color: AppColors.expense,
-          background: AppColors.expenseSurface,
-          border: AppColors.expenseBorder,
-          onTap: onAddExpense!,
-        ),
-      if (onAddVilla != null)
-        _ActionPill(
-          label: 'Add Villa',
-          icon: Icons.home_outlined,
-          color: const Color(0xFF5549DE),
-          background: const Color(0xFFF4F0FF),
-          border: const Color(0xFFE1D6FF),
-          onTap: onAddVilla!,
-        ),
+    final actions = <Widget>[
+      _ActionCard(
+        label: 'Add Villa',
+        icon: Icons.home_rounded,
+        color: const Color(0xFF5549DE),
+        onTap: onAddVilla,
+      ),
+      _ActionCard(
+        label: 'Add Income',
+        icon: Icons.credit_card_rounded,
+        color: AppColors.income,
+        onTap: onAddIncome,
+      ),
+      _ActionCard(
+        label: 'Add Expense',
+        icon: Icons.receipt_long_rounded,
+        color: AppColors.expense,
+        onTap: onAddExpense,
+      ),
+      _ActionCard(
+        label: 'Reports',
+        icon: Icons.analytics_rounded,
+        color: const Color(0xFF2563EB),
+        onTap: onReports,
+      ),
     ];
-
-    if (actions.isEmpty) {
-      return const SizedBox.shrink();
-    }
 
     return _RaisedPanel(
       padding: const EdgeInsets.fromLTRB(14, 15, 14, 14),
@@ -791,11 +805,20 @@ class _QuickActions extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 18),
-          Row(
-            children: List.generate(actions.length * 2 - 1, (index) {
-              if (index.isOdd) return const SizedBox(width: 10);
-              return Expanded(child: actions[index ~/ 2]);
-            }),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final columns = constraints.maxWidth >= 620 ? 4 : 2;
+              const spacing = 12.0;
+              final width =
+                  (constraints.maxWidth - spacing * (columns - 1)) / columns;
+              return Wrap(
+                spacing: spacing,
+                runSpacing: spacing,
+                children: actions
+                    .map((action) => SizedBox(width: width, child: action))
+                    .toList(),
+              );
+            },
           ),
         ],
       ),
@@ -803,61 +826,75 @@ class _QuickActions extends StatelessWidget {
   }
 }
 
-class _ActionPill extends StatelessWidget {
+class _ActionCard extends StatelessWidget {
   final String label;
   final IconData icon;
   final Color color;
-  final Color background;
-  final Color border;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
 
-  const _ActionPill({
+  const _ActionCard({
     required this.label,
     required this.icon,
     required this.color,
-    required this.background,
-    required this.border,
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final compact = constraints.maxWidth < 150;
-
-        return GestureDetector(
-          onTap: onTap,
-          child: Container(
-            height: 52,
-            padding: EdgeInsets.symmetric(horizontal: compact ? 7 : 9),
-            decoration: BoxDecoration(
-              color: background,
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: border),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(icon, color: color, size: compact ? 18 : 22),
-                SizedBox(width: compact ? 6 : 8),
-                Flexible(
-                  child: Text(
-                    label,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: const Color(0xFF060B26),
-                      fontSize: compact ? 12 : 14,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                ),
-              ],
-            ),
+    final enabled = onTap != null;
+    return Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(20),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(20),
+        child: Container(
+          height: 112,
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: const Color(0xFFE8EAF0)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.045),
+                blurRadius: 16,
+                offset: const Offset(0, 7),
+              ),
+            ],
           ),
-        );
-      },
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: enabled ? 0.11 : 0.05),
+                  borderRadius: BorderRadius.circular(15),
+                ),
+                child: Icon(
+                  icon,
+                  color: enabled ? color : const Color(0xFFADB2BD),
+                  size: 24,
+                ),
+              ),
+              const SizedBox(height: 9),
+              Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: enabled
+                      ? const Color(0xFF060B26)
+                      : const Color(0xFF89909E),
+                  fontSize: 13,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
@@ -883,7 +920,9 @@ class _RentCollectionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final percent = (progress * 100).round();
+    final hasRentDue = expectedRent > 0;
+    final safeProgress = progress.clamp(0.0, 1.0);
+    final percent = (safeProgress * 100).round();
 
     return _RaisedPanel(
       padding: const EdgeInsets.fromLTRB(14, 15, 14, 14),
@@ -899,117 +938,174 @@ class _RentCollectionCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 18),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Expanded(
-                child: Column(
-                  children: [
-                    Row(
+          if (!hasRentDue)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 28),
+              child: Center(
+                child: Text(
+                  'No rent due for selected period',
+                  style: TextStyle(
+                    color: Color(0xFF656B7B),
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            )
+          else ...[
+            Center(
+              child: SizedBox(
+                width: 230,
+                height: 132,
+                child: CustomPaint(
+                  painter: _SemiCircleGaugePainter(progress: safeProgress),
+                  child: Align(
+                    alignment: const Alignment(0, 0.72),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        Expanded(
-                          child: _CollectionAmount(
-                            label: 'Total Room Rent',
-                            value: DashboardScreen.money(totalRoomRent),
-                            color: const Color(0xFF060B26),
-                          ),
-                        ),
-                        Container(
-                          width: 1,
-                          height: 45,
-                          color: const Color(0xFFD8DCE5),
-                        ),
-                        Expanded(
-                          child: Padding(
-                            padding: const EdgeInsets.only(left: 18),
-                            child: _CollectionAmount(
-                              label: 'Expected Rent',
-                              value: DashboardScreen.money(expectedRent),
-                              color: const Color(0xFF5549DE),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _CollectionAmount(
-                            label: 'Collected',
-                            value: DashboardScreen.money(collected),
-                            color: const Color(0xFF2EA043),
-                          ),
-                        ),
-                        Container(
-                          width: 1,
-                          height: 45,
-                          color: const Color(0xFFD8DCE5),
-                        ),
-                        Expanded(
-                          child: Padding(
-                            padding: const EdgeInsets.only(left: 18),
-                            child: _CollectionAmount(
-                              label: 'Pending',
-                              value: DashboardScreen.money(pending),
-                              color: const Color(0xFFF04438),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 17),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(20),
-                            child: LinearProgressIndicator(
-                              value: progress,
-                              minHeight: 12,
-                              backgroundColor: const Color(0xFFE4E4E6),
-                              valueColor: const AlwaysStoppedAnimation(
-                                Color(0xFF35A84A),
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 14),
                         Text(
                           '$percent%',
                           style: const TextStyle(
                             color: Color(0xFF060B26),
-                            fontSize: 20,
+                            fontSize: 32,
                             fontWeight: FontWeight.w900,
+                            height: 1,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        const Text(
+                          'Collected',
+                          style: TextStyle(
+                            color: Color(0xFF656B7B),
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 12),
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: Text(
-                        '$paidRooms of $totalOccupiedRooms occupied rooms paid',
-                        style: const TextStyle(
-                          color: Color(0xFF656B7B),
-                          fontSize: 15,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
               ),
-              const SizedBox(width: 12),
-              const SizedBox(
-                height: 104,
-                width: 106,
-                child: _RentIllustration(),
-              ),
-            ],
-          ),
+            ),
+            const SizedBox(height: 12),
+            const Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                _LegendItem(label: 'Collected', color: Color(0xFF2EA043)),
+                SizedBox(width: 22),
+                _LegendItem(label: 'Pending', color: Color(0xFFF59E0B)),
+              ],
+            ),
+            const SizedBox(height: 22),
+            Row(
+              children: [
+                Expanded(
+                  child: _CollectionAmount(
+                    label: 'Total Expected Rent',
+                    value: DashboardScreen.money(expectedRent),
+                    color: const Color(0xFF0F2747),
+                  ),
+                ),
+                const _CollectionDivider(),
+                Expanded(
+                  child: _CollectionAmount(
+                    label: 'Collected',
+                    value: DashboardScreen.money(collected),
+                    color: const Color(0xFF2EA043),
+                  ),
+                ),
+                const _CollectionDivider(),
+                Expanded(
+                  child: _CollectionAmount(
+                    label: 'Pending',
+                    value: DashboardScreen.money(pending),
+                    color: const Color(0xFFF59E0B),
+                  ),
+                ),
+              ],
+            ),
+          ],
         ],
       ),
+    );
+  }
+}
+
+class _SemiCircleGaugePainter extends CustomPainter {
+  final double progress;
+
+  const _SemiCircleGaugePainter({required this.progress});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    const strokeWidth = 18.0;
+    final rect = Rect.fromLTWH(
+      strokeWidth / 2,
+      strokeWidth / 2,
+      size.width - strokeWidth,
+      (size.height - strokeWidth) * 2,
+    );
+    final background = Paint()
+      ..color = const Color(0xFFE8EAF0)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = strokeWidth
+      ..strokeCap = StrokeCap.round;
+    final foreground = Paint()
+      ..color = const Color(0xFF2EA043)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = strokeWidth
+      ..strokeCap = StrokeCap.round;
+
+    canvas.drawArc(rect, math.pi, math.pi, false, background);
+    canvas.drawArc(rect, math.pi, math.pi * progress, false, foreground);
+  }
+
+  @override
+  bool shouldRepaint(covariant _SemiCircleGaugePainter oldDelegate) =>
+      oldDelegate.progress != progress;
+}
+
+class _LegendItem extends StatelessWidget {
+  final String label;
+  final Color color;
+
+  const _LegendItem({required this.label, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 9,
+          height: 9,
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+        ),
+        const SizedBox(width: 7),
+        Text(
+          label,
+          style: const TextStyle(
+            color: Color(0xFF656B7B),
+            fontSize: 13,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _CollectionDivider extends StatelessWidget {
+  const _CollectionDivider();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 1,
+      height: 48,
+      margin: const EdgeInsets.symmetric(horizontal: 10),
+      color: const Color(0xFFE1E4EA),
     );
   }
 }
@@ -1208,22 +1304,69 @@ class _VillaRow extends StatelessWidget {
                           ),
                         ),
                       ),
-                      const SizedBox(height: 3),
+                      if (villa.location.trim().isNotEmpty) ...[
+                        const SizedBox(height: 3),
+                        Row(
+                          children: [
+                            const Icon(
+                              Icons.location_on_outlined,
+                              size: 14,
+                              color: Color(0xFF89909E),
+                            ),
+                            const SizedBox(width: 4),
+                            Expanded(
+                              child: Text(
+                                villa.location,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  color: Color(0xFF656B7B),
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          const Text(
+                            'Occupancy',
+                            style: TextStyle(
+                              color: Color(0xFF3B4152),
+                              fontSize: 12,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                          const Spacer(),
+                          Text(
+                            '${summary.occupiedRooms} / ${summary.totalRooms} Rooms',
+                            style: const TextStyle(
+                              color: Color(0xFF060B26),
+                              fontSize: 12,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
                       Wrap(
                         spacing: 6,
                         runSpacing: 5,
                         children: [
                           _RoomCountChip(
-                            label: '${summary.totalRooms} rooms',
-                            color: const Color(0xFF5549DE),
-                          ),
-                          _RoomCountChip(
-                            label: '${summary.occupiedRooms} occupied',
+                            label: '${summary.occupiedRooms} Occupied',
                             color: const Color(0xFF2EA043),
                           ),
                           _RoomCountChip(
-                            label: '${summary.vacantRooms} vacant',
+                            label: '${summary.vacantRooms} Vacant',
                             color: const Color(0xFFEA580C),
+                          ),
+                          _RoomCountChip(
+                            label: '${summary.totalRooms} Total',
+                            color: const Color(0xFF2563EB),
                           ),
                         ],
                       ),
@@ -1237,10 +1380,22 @@ class _VillaRow extends StatelessWidget {
                           Expanded(
                             flex: 4,
                             child: _VillaAmount(
+                              label: 'Total Room Rent',
+                              value: DashboardScreen.money(
+                                summary.totalRoomRent,
+                              ),
+                              color: const Color(0xFF2563EB),
+                            ),
+                          ),
+                          _SmallDivider(),
+                          Expanded(
+                            flex: 4,
+                            child: _VillaAmount(
                               label: 'Expected Rent',
-                              value:
-                                  DashboardScreen.money(summary.expectedRent),
-                              color: const Color(0xFF060B26),
+                              value: DashboardScreen.money(
+                                summary.expectedRent,
+                              ),
+                              color: const Color(0xFF0F2747),
                             ),
                           ),
                           _SmallDivider(),
@@ -1248,21 +1403,11 @@ class _VillaRow extends StatelessWidget {
                             flex: 4,
                             child: _VillaAmount(
                               label: 'Collected',
-                              value:
-                                  DashboardScreen.money(summary.rentReceived),
+                              value: DashboardScreen.money(
+                                summary.rentReceived,
+                              ),
                               color: summary.rentReceived > 0
                                   ? const Color(0xFF2EA043)
-                                  : const Color(0xFF596070),
-                            ),
-                          ),
-                          _SmallDivider(),
-                          Expanded(
-                            flex: 4,
-                            child: _VillaAmount(
-                              label: 'Pending',
-                              value: DashboardScreen.money(summary.pendingRent),
-                              color: summary.pendingRent > 0
-                                  ? const Color(0xFFF59E0B)
                                   : const Color(0xFF596070),
                             ),
                           ),
@@ -1274,11 +1419,12 @@ class _VillaRow extends StatelessWidget {
                           Expanded(
                             flex: 4,
                             child: _VillaAmount(
-                              label: 'Expenses',
-                              value:
-                                  DashboardScreen.money(summary.totalExpenses),
-                              color: summary.totalExpenses > 0
-                                  ? const Color(0xFFF04438)
+                              label: 'Pending',
+                              value: DashboardScreen.money(
+                                summary.pendingRent,
+                              ),
+                              color: summary.pendingRent > 0
+                                  ? const Color(0xFFF59E0B)
                                   : const Color(0xFF596070),
                             ),
                           ),
@@ -1286,28 +1432,16 @@ class _VillaRow extends StatelessWidget {
                           Expanded(
                             flex: 4,
                             child: _VillaAmount(
-                              label: 'Actual Profit',
+                              label: 'Vacancy Loss',
                               value: DashboardScreen.money(
-                                summary.actualNetProfit,
+                                summary.vacancyLoss,
                               ),
-                              color: summary.actualNetProfit >= 0
-                                  ? const Color(0xFF2EA043)
-                                  : const Color(0xFFF04438),
+                              color: summary.vacancyLoss > 0
+                                  ? const Color(0xFFF04438)
+                                  : const Color(0xFF596070),
                             ),
                           ),
-                          _SmallDivider(),
-                          Expanded(
-                            flex: 4,
-                            child: _VillaAmount(
-                              label: 'Expected Profit',
-                              value: DashboardScreen.money(
-                                summary.expectedNetProfit,
-                              ),
-                              color: summary.expectedNetProfit >= 0
-                                  ? const Color(0xFF2563EB)
-                                  : const Color(0xFFF04438),
-                            ),
-                          ),
+                          const Expanded(flex: 4, child: SizedBox()),
                         ],
                       ),
                     ],
@@ -1410,6 +1544,7 @@ class _VillaRoomSummary {
   final int totalRooms;
   final int occupiedRooms;
   final int vacantRooms;
+  final double totalRoomRent;
   final double expectedRent;
   final double rentReceived;
   final double pendingRent;
@@ -1422,6 +1557,7 @@ class _VillaRoomSummary {
     required this.totalRooms,
     required this.occupiedRooms,
     required this.vacantRooms,
+    required this.totalRoomRent,
     required this.expectedRent,
     required this.rentReceived,
     required this.pendingRent,
@@ -1440,6 +1576,7 @@ class _VillaRoomSummary {
     var totalRooms = 0;
     var occupiedRooms = 0;
     var vacantRooms = 0;
+    var totalRoomRent = 0.0;
     var expectedRent = 0.0;
     var rentReceived = 0.0;
     var pendingRent = 0.0;
@@ -1454,6 +1591,7 @@ class _VillaRoomSummary {
 
     for (final room in rooms.where((room) => !room.isDeleted)) {
       totalRooms++;
+      totalRoomRent += room.monthlyRent;
       final received = rentReceivedByRoom[room.id] ?? 0;
       rentReceived += received;
       if (room.isOccupied) {
@@ -1473,6 +1611,7 @@ class _VillaRoomSummary {
       totalRooms: totalRooms,
       occupiedRooms: occupiedRooms,
       vacantRooms: vacantRooms,
+      totalRoomRent: totalRoomRent,
       expectedRent: expectedRent,
       rentReceived: rentReceived,
       pendingRent: pendingRent,
@@ -1553,96 +1692,6 @@ class _RaisedPanel extends StatelessWidget {
       child: child,
     );
   }
-}
-
-class _RentIllustration extends StatelessWidget {
-  const _RentIllustration();
-
-  @override
-  Widget build(BuildContext context) {
-    return CustomPaint(painter: _RentIllustrationPainter());
-  }
-}
-
-class _RentIllustrationPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()..style = PaintingStyle.fill;
-
-    paint.color = const Color(0xFFFFE8C4);
-    canvas.drawCircle(Offset(size.width * 0.55, size.height * 0.48), 43, paint);
-
-    final board = RRect.fromRectAndRadius(
-      Rect.fromLTWH(
-          size.width * 0.32, 8, size.width * 0.44, size.height * 0.74),
-      const Radius.circular(5),
-    );
-    paint.color = const Color(0xFFFFC978);
-    canvas.drawRRect(board, paint);
-
-    final paper = RRect.fromRectAndRadius(
-      Rect.fromLTWH(
-          size.width * 0.37, 14, size.width * 0.34, size.height * 0.65),
-      const Radius.circular(4),
-    );
-    paint.color = Colors.white;
-    canvas.drawRRect(paper, paint);
-
-    paint.color = const Color(0xFFE3E8FF);
-    for (var i = 0; i < 5; i++) {
-      canvas.drawRRect(
-        RRect.fromRectAndRadius(
-          Rect.fromLTWH(size.width * 0.49, 27 + i * 10, size.width * 0.17, 4),
-          const Radius.circular(2),
-        ),
-        paint,
-      );
-    }
-
-    paint.color = const Color(0xFF7B84A1);
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(
-        Rect.fromLTWH(size.width * 0.44, 2, size.width * 0.24, 15),
-        const Radius.circular(4),
-      ),
-      paint,
-    );
-
-    final roof = Path()
-      ..moveTo(size.width * 0.08, size.height * 0.74)
-      ..lineTo(size.width * 0.25, size.height * 0.51)
-      ..lineTo(size.width * 0.42, size.height * 0.74)
-      ..close();
-    paint.color = const Color(0xFFE84A56);
-    canvas.drawPath(roof, paint);
-
-    paint.color = const Color(0xFFD9E6F7);
-    canvas.drawRect(
-      Rect.fromLTWH(size.width * 0.13, size.height * 0.70, 32, 27),
-      paint,
-    );
-    paint.color = const Color(0xFFA5C7E6);
-    canvas.drawRect(
-      Rect.fromLTWH(size.width * 0.26, size.height * 0.77, 9, 20),
-      paint,
-    );
-
-    paint.color = const Color(0xFF62C98F);
-    canvas.drawCircle(Offset(size.width * 0.83, size.height * 0.75), 19, paint);
-    final check = Paint()
-      ..color = Colors.white
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 4
-      ..strokeCap = StrokeCap.round;
-    final path = Path()
-      ..moveTo(size.width * 0.76, size.height * 0.74)
-      ..lineTo(size.width * 0.82, size.height * 0.80)
-      ..lineTo(size.width * 0.91, size.height * 0.67);
-    canvas.drawPath(path, check);
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
 class _VillaThumbnailPainter extends CustomPainter {
