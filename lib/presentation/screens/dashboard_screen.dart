@@ -40,7 +40,6 @@ class DashboardScreen extends ConsumerWidget {
         authState.hasPermission(AppPermissions.manageExpenses);
     final canManageVillas =
         authState.hasPermission(AppPermissions.manageVillas);
-    final canViewReports = authState.hasPermission(AppPermissions.viewReports);
 
     return PremiumScaffold(
       body: RefreshIndicator(
@@ -55,7 +54,7 @@ class DashboardScreen extends ConsumerWidget {
           padding: PremiumTokens.pagePadding,
           children: [
             const _DashboardHeader(),
-            const SizedBox(height: 24),
+            const SizedBox(height: 18),
             _MonthFilter(
               selectedMonth: selectedMonth,
               onTap: () => _showMonthFilter(context, ref, selectedMonth),
@@ -94,18 +93,12 @@ class DashboardScreen extends ConsumerWidget {
                         ),
                       )
                   : null,
-              onReports: canViewReports
-                  ? () => ref.read(selectedTabProvider.notifier).state = 4
-                  : null,
             ),
             const SizedBox(height: 16),
             _RentCollectionCard(
-              totalRoomRent: dashboard.totalRoomRent,
               expectedRent: dashboard.expectedRent,
               collected: dashboard.rentReceived,
               pending: dashboard.pendingRent,
-              paidRooms: dashboard.paidRooms,
-              totalOccupiedRooms: dashboard.occupiedRooms,
               progress: dashboard.rentCollectionProgress,
             ),
             const SizedBox(height: 22),
@@ -227,79 +220,126 @@ class _DashboardHeader extends ConsumerWidget {
     final unreadCount =
         ref.watch(unreadNotificationCountProvider).valueOrNull ?? 0;
 
-    return SizedBox(
-      height: 76,
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          const Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(
-                'VillaBooks',
-                style: TextStyle(
-                  color: Color(0xFF060B26),
-                  fontSize: 31,
-                  fontWeight: FontWeight.w900,
-                  height: 1,
-                ),
-              ),
-              SizedBox(height: 7),
-              Text(
-                'Dashboard',
-                style: TextStyle(
-                  color: Color(0xFF6C7180),
-                  fontSize: 17,
-                  fontWeight: FontWeight.w600,
-                  height: 1,
-                ),
-              ),
-            ],
+    return Container(
+      height: 178,
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(26),
+        border: Border.all(color: const Color(0xFFE4E1DA)),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF667085).withValues(alpha: 0.10),
+            blurRadius: 24,
+            offset: const Offset(0, 12),
           ),
-          Align(
-            alignment: Alignment.centerRight,
-            child: IconButton(
-              tooltip: 'Notifications',
-              onPressed: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => const NotificationsScreen(),
+        ],
+      ),
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          const DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  Color(0xFFFFFCF5),
+                  Color(0xFFF1F4F5),
+                  Color(0xFFE8EEF1),
+                ],
+              ),
+            ),
+          ),
+          const Positioned.fill(
+            child: CustomPaint(painter: _QatarSkylinePainter()),
+          ),
+          const DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [Color(0x26FFFFFF), Color(0xB8FFFFFF)],
+              ),
+            ),
+          ),
+          const Positioned(
+            left: 22,
+            top: 30,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'VillaBooks',
+                  style: TextStyle(
+                    color: Color(0xFF172B3A),
+                    fontSize: 31,
+                    fontWeight: FontWeight.w900,
+                    height: 1,
+                    letterSpacing: -0.8,
                   ),
-                );
-              },
-              icon: Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  const Icon(
-                    Icons.notifications_none_rounded,
-                    color: Colors.black,
-                    size: 32,
+                ),
+                SizedBox(height: 9),
+                Text(
+                  'Dashboard',
+                  style: TextStyle(
+                    color: Color(0xFF60717D),
+                    fontSize: 17,
+                    fontWeight: FontWeight.w700,
+                    height: 1,
                   ),
-                  if (unreadCount > 0)
-                    Positioned(
-                      right: -5,
-                      top: -6,
-                      child: Container(
-                        height: 21,
-                        constraints: const BoxConstraints(minWidth: 21),
-                        padding: const EdgeInsets.symmetric(horizontal: 5),
-                        alignment: Alignment.center,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF04438),
-                          borderRadius: BorderRadius.circular(11),
-                          border: Border.all(color: Colors.white, width: 2),
-                        ),
-                        child: Text(
-                          unreadCount > 99 ? '99+' : '$unreadCount',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w800,
+                ),
+              ],
+            ),
+          ),
+          Positioned(
+            right: 16,
+            top: 20,
+            child: Material(
+              color: Colors.white.withValues(alpha: 0.82),
+              shape: const CircleBorder(),
+              child: IconButton(
+                tooltip: 'Notifications',
+                onPressed: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => const NotificationsScreen(),
+                    ),
+                  );
+                },
+                icon: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    const Icon(
+                      Icons.notifications_none_rounded,
+                      color: Color(0xFF172B3A),
+                      size: 27,
+                    ),
+                    if (unreadCount > 0)
+                      Positioned(
+                        right: -5,
+                        top: -6,
+                        child: Container(
+                          height: 21,
+                          constraints: const BoxConstraints(minWidth: 21),
+                          padding: const EdgeInsets.symmetric(horizontal: 5),
+                          alignment: Alignment.center,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF04438),
+                            borderRadius: BorderRadius.circular(11),
+                            border: Border.all(color: Colors.white, width: 2),
+                          ),
+                          child: Text(
+                            unreadCount > 99 ? '99+' : '$unreadCount',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w800,
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),
@@ -307,6 +347,71 @@ class _DashboardHeader extends ConsumerWidget {
       ),
     );
   }
+}
+
+class _QatarSkylinePainter extends CustomPainter {
+  const _QatarSkylinePainter();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final skyline = Paint()
+      ..color = const Color(0xFF526C7B).withValues(alpha: 0.08)
+      ..style = PaintingStyle.fill;
+    final sand = Paint()
+      ..color = const Color(0xFFB69A72).withValues(alpha: 0.09)
+      ..style = PaintingStyle.fill;
+    final baseline = size.height * 0.88;
+
+    canvas.drawRect(
+      Rect.fromLTWH(0, baseline, size.width, size.height - baseline),
+      sand,
+    );
+
+    final museum = Path()
+      ..moveTo(size.width * 0.03, baseline)
+      ..lineTo(size.width * 0.08, baseline - 22)
+      ..lineTo(size.width * 0.15, baseline - 31)
+      ..lineTo(size.width * 0.19, baseline - 16)
+      ..lineTo(size.width * 0.25, baseline - 25)
+      ..lineTo(size.width * 0.31, baseline)
+      ..close();
+    canvas.drawPath(museum, sand);
+    canvas.drawOval(
+      Rect.fromCenter(
+        center: Offset(size.width * 0.15, baseline - 25),
+        width: size.width * 0.18,
+        height: 17,
+      ),
+      sand,
+    );
+
+    final buildings = <Rect>[
+      Rect.fromLTWH(size.width * 0.37, baseline - 47, 18, 47),
+      Rect.fromLTWH(size.width * 0.43, baseline - 68, 23, 68),
+      Rect.fromLTWH(size.width * 0.51, baseline - 38, 17, 38),
+      Rect.fromLTWH(size.width * 0.57, baseline - 82, 25, 82),
+      Rect.fromLTWH(size.width * 0.66, baseline - 54, 20, 54),
+      Rect.fromLTWH(size.width * 0.74, baseline - 72, 28, 72),
+      Rect.fromLTWH(size.width * 0.84, baseline - 44, 20, 44),
+      Rect.fromLTWH(size.width * 0.91, baseline - 59, 24, 59),
+    ];
+    for (final building in buildings) {
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(building, const Radius.circular(3)),
+        skyline,
+      );
+    }
+
+    final tower = Path()
+      ..moveTo(size.width * 0.76, baseline - 72)
+      ..lineTo(size.width * 0.78, baseline - 105)
+      ..lineTo(size.width * 0.80, baseline - 72)
+      ..close();
+    canvas.drawPath(tower, skyline);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
 class _MonthFilter extends StatelessWidget {
@@ -322,22 +427,24 @@ class _MonthFilter extends StatelessWidget {
   Widget build(BuildContext context) {
     final month = DateFormat('MMMM yyyy').format(selectedMonth);
 
-    return Align(
-      alignment: Alignment.centerLeft,
+    return Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(22),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(22),
         child: Ink(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 17),
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: const Color(0xFFE1D6FF)),
+            borderRadius: BorderRadius.circular(22),
+            border: Border.all(color: const Color(0xFFE8EAF0)),
             boxShadow: [
               BoxShadow(
-                color: const Color(0xFF5549DE).withValues(alpha: 0.08),
-                blurRadius: 14,
-                offset: const Offset(0, 6),
+                color: const Color(0xFF667085).withValues(alpha: 0.10),
+                blurRadius: 20,
+                offset: const Offset(0, 9),
               ),
             ],
           ),
@@ -347,7 +454,7 @@ class _MonthFilter extends StatelessWidget {
               const Icon(
                 Icons.calendar_month_rounded,
                 color: Color(0xFF5549DE),
-                size: 21,
+                size: 24,
               ),
               const SizedBox(width: 9),
               Flexible(
@@ -359,8 +466,8 @@ class _MonthFilter extends StatelessWidget {
                     maxLines: 1,
                     style: const TextStyle(
                       color: Color(0xFF060B26),
-                      fontSize: 17,
-                      fontWeight: FontWeight.w800,
+                      fontSize: 19,
+                      fontWeight: FontWeight.w900,
                     ),
                   ),
                 ),
@@ -369,7 +476,7 @@ class _MonthFilter extends StatelessWidget {
               const Icon(
                 Icons.keyboard_arrow_down_rounded,
                 color: Color(0xFF5549DE),
-                size: 22,
+                size: 25,
               ),
             ],
           ),
@@ -662,8 +769,15 @@ class _MetricCard extends StatelessWidget {
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
             color: background,
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(18),
             border: Border.all(color: border),
+            boxShadow: [
+              BoxShadow(
+                color: color.withValues(alpha: 0.06),
+                blurRadius: 16,
+                offset: const Offset(0, 7),
+              ),
+            ],
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -753,41 +867,33 @@ class _QuickActions extends StatelessWidget {
   final VoidCallback? onAddIncome;
   final VoidCallback? onAddExpense;
   final VoidCallback? onAddVilla;
-  final VoidCallback? onReports;
 
   const _QuickActions({
     required this.onAddIncome,
     required this.onAddExpense,
     required this.onAddVilla,
-    required this.onReports,
   });
 
   @override
   Widget build(BuildContext context) {
     final actions = <Widget>[
       _ActionCard(
-        label: 'Add Villa',
-        icon: Icons.home_rounded,
-        color: const Color(0xFF5549DE),
-        onTap: onAddVilla,
-      ),
-      _ActionCard(
-        label: 'Add Income',
+        label: 'Income',
         icon: Icons.credit_card_rounded,
         color: AppColors.income,
         onTap: onAddIncome,
       ),
       _ActionCard(
-        label: 'Add Expense',
+        label: 'Expense',
         icon: Icons.receipt_long_rounded,
         color: AppColors.expense,
         onTap: onAddExpense,
       ),
       _ActionCard(
-        label: 'Reports',
-        icon: Icons.analytics_rounded,
-        color: const Color(0xFF2563EB),
-        onTap: onReports,
+        label: 'Villa',
+        icon: Icons.home_rounded,
+        color: const Color(0xFF5549DE),
+        onTap: onAddVilla,
       ),
     ];
 
@@ -807,7 +913,7 @@ class _QuickActions extends StatelessWidget {
           const SizedBox(height: 18),
           LayoutBuilder(
             builder: (context, constraints) {
-              final columns = constraints.maxWidth >= 620 ? 4 : 2;
+              const columns = 3;
               const spacing = 12.0;
               final width =
                   (constraints.maxWidth - spacing * (columns - 1)) / columns;
@@ -900,21 +1006,15 @@ class _ActionCard extends StatelessWidget {
 }
 
 class _RentCollectionCard extends StatelessWidget {
-  final double totalRoomRent;
   final double expectedRent;
   final double collected;
   final double pending;
-  final int paidRooms;
-  final int totalOccupiedRooms;
   final double progress;
 
   const _RentCollectionCard({
-    required this.totalRoomRent,
     required this.expectedRent,
     required this.collected,
     required this.pending,
-    required this.paidRooms,
-    required this.totalOccupiedRooms,
     required this.progress,
   });
 
@@ -953,51 +1053,6 @@ class _RentCollectionCard extends StatelessWidget {
               ),
             )
           else ...[
-            Center(
-              child: SizedBox(
-                width: 230,
-                height: 132,
-                child: CustomPaint(
-                  painter: _SemiCircleGaugePainter(progress: safeProgress),
-                  child: Align(
-                    alignment: const Alignment(0, 0.72),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          '$percent%',
-                          style: const TextStyle(
-                            color: Color(0xFF060B26),
-                            fontSize: 32,
-                            fontWeight: FontWeight.w900,
-                            height: 1,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        const Text(
-                          'Collected',
-                          style: TextStyle(
-                            color: Color(0xFF656B7B),
-                            fontSize: 13,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 12),
-            const Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                _LegendItem(label: 'Collected', color: Color(0xFF2EA043)),
-                SizedBox(width: 22),
-                _LegendItem(label: 'Pending', color: Color(0xFFF59E0B)),
-              ],
-            ),
-            const SizedBox(height: 22),
             Row(
               children: [
                 Expanded(
@@ -1010,7 +1065,7 @@ class _RentCollectionCard extends StatelessWidget {
                 const _CollectionDivider(),
                 Expanded(
                   child: _CollectionAmount(
-                    label: 'Collected',
+                    label: 'Current Collected',
                     value: DashboardScreen.money(collected),
                     color: const Color(0xFF2EA043),
                   ),
@@ -1018,80 +1073,48 @@ class _RentCollectionCard extends StatelessWidget {
                 const _CollectionDivider(),
                 Expanded(
                   child: _CollectionAmount(
-                    label: 'Pending',
+                    label: 'Current Pending',
                     value: DashboardScreen.money(pending),
                     color: const Color(0xFFF59E0B),
                   ),
                 ),
               ],
             ),
+            const SizedBox(height: 20),
+            Row(
+              children: [
+                const Text(
+                  'Collection Progress',
+                  style: TextStyle(
+                    color: Color(0xFF656B7B),
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const Spacer(),
+                Text(
+                  '$percent%',
+                  style: const TextStyle(
+                    color: Color(0xFF172B3A),
+                    fontSize: 16,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 9),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(99),
+              child: LinearProgressIndicator(
+                value: safeProgress,
+                minHeight: 10,
+                backgroundColor: const Color(0xFFF1E2C8),
+                valueColor: const AlwaysStoppedAnimation(Color(0xFF2EA043)),
+              ),
+            ),
           ],
         ],
       ),
-    );
-  }
-}
-
-class _SemiCircleGaugePainter extends CustomPainter {
-  final double progress;
-
-  const _SemiCircleGaugePainter({required this.progress});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    const strokeWidth = 18.0;
-    final rect = Rect.fromLTWH(
-      strokeWidth / 2,
-      strokeWidth / 2,
-      size.width - strokeWidth,
-      (size.height - strokeWidth) * 2,
-    );
-    final background = Paint()
-      ..color = const Color(0xFFE8EAF0)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = strokeWidth
-      ..strokeCap = StrokeCap.round;
-    final foreground = Paint()
-      ..color = const Color(0xFF2EA043)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = strokeWidth
-      ..strokeCap = StrokeCap.round;
-
-    canvas.drawArc(rect, math.pi, math.pi, false, background);
-    canvas.drawArc(rect, math.pi, math.pi * progress, false, foreground);
-  }
-
-  @override
-  bool shouldRepaint(covariant _SemiCircleGaugePainter oldDelegate) =>
-      oldDelegate.progress != progress;
-}
-
-class _LegendItem extends StatelessWidget {
-  final String label;
-  final Color color;
-
-  const _LegendItem({required this.label, required this.color});
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 9,
-          height: 9,
-          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-        ),
-        const SizedBox(width: 7),
-        Text(
-          label,
-          style: const TextStyle(
-            color: Color(0xFF656B7B),
-            fontSize: 13,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-      ],
     );
   }
 }
@@ -1679,13 +1702,13 @@ class _RaisedPanel extends StatelessWidget {
       padding: padding,
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(22),
         border: Border.all(color: const Color(0xFFE8EAF0)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.07),
-            blurRadius: 18,
-            offset: const Offset(0, 7),
+            color: const Color(0xFF667085).withValues(alpha: 0.09),
+            blurRadius: 22,
+            offset: const Offset(0, 10),
           ),
         ],
       ),
