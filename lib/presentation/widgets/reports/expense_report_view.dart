@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
-import '../../../core/utils/currency_formatter.dart';
 import '../../../domain/models/expense.dart';
+import '../currency_amount_text.dart';
 
 class ExpenseReportView extends StatelessWidget {
   final List<Expense> expenses;
@@ -46,12 +46,11 @@ class ExpenseReportView extends StatelessWidget {
                     ? 'Not specified'
                     : expense.paidTo)),
                 DataCell(
-                  Text(
-                    CurrencyFormatter.formatQAR(expense.amount),
-                    style: const TextStyle(
-                      color: Color(0xFFF04438),
-                      fontWeight: FontWeight.w900,
-                    ),
+                  CurrencyAmountText(
+                    amount: expense.amount,
+                    amountColor: const Color(0xFFF04438),
+                    amountFontSize: 14,
+                    currencyFontSize: 9,
                   ),
                 ),
               ],

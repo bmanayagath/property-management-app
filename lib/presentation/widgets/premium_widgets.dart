@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/constants/app_colors.dart';
+import 'currency_amount_text.dart';
 
 class PremiumTokens {
   PremiumTokens._();
@@ -187,7 +188,8 @@ class PremiumCard extends StatelessWidget {
 
 class SoftStatCard extends StatelessWidget {
   final String title;
-  final String value;
+  final String? value;
+  final num? amount;
   final IconData icon;
   final Color color;
   final String? subtitle;
@@ -195,7 +197,8 @@ class SoftStatCard extends StatelessWidget {
   const SoftStatCard({
     super.key,
     required this.title,
-    required this.value,
+    this.value,
+    this.amount,
     required this.icon,
     this.color = AppColors.primary,
     this.subtitle,
@@ -226,13 +229,20 @@ class SoftStatCard extends StatelessWidget {
           FittedBox(
             fit: BoxFit.scaleDown,
             alignment: Alignment.centerLeft,
-            child: Text(
-              value,
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w900,
-                    color: PremiumTokens.ink,
+            child: amount != null
+                ? CurrencyAmountText(
+                    amount: amount!,
+                    amountColor: PremiumTokens.ink,
+                    amountFontSize: 22,
+                    currencyFontSize: 11,
+                  )
+                : Text(
+                    value ?? '',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.w900,
+                          color: PremiumTokens.ink,
+                        ),
                   ),
-            ),
           ),
           const SizedBox(height: 4),
           Text(

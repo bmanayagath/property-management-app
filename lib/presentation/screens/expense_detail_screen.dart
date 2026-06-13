@@ -3,12 +3,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../core/constants/app_permissions.dart';
-import '../../core/utils/currency_formatter.dart';
 import '../../domain/models/expense.dart';
 import '../providers/auth_provider.dart';
 import '../providers/dashboard_provider.dart';
 import '../providers/expense_provider.dart';
 import '../widgets/premium_widgets.dart';
+import '../widgets/currency_amount_text.dart';
 import 'add_edit_expense_screen.dart';
 
 class ExpenseDetailScreen extends ConsumerWidget {
@@ -85,13 +85,11 @@ class ExpenseDetailScreen extends ConsumerWidget {
                                   ),
                                 ),
                                 const SizedBox(height: 5),
-                                Text(
-                                  CurrencyFormatter.formatQAR(expense.amount),
-                                  style: const TextStyle(
-                                    color: Color(0xFFF04438),
-                                    fontSize: 24,
-                                    fontWeight: FontWeight.w900,
-                                  ),
+                                CurrencyAmountText(
+                                  amount: expense.amount,
+                                  amountColor: const Color(0xFFF04438),
+                                  amountFontSize: 24,
+                                  currencyFontSize: 12,
                                 ),
                               ],
                             ),

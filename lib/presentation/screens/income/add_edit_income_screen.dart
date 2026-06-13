@@ -19,6 +19,7 @@ import '../../providers/notification_provider.dart';
 import '../../providers/villa_provider.dart';
 import '../../providers/room_provider.dart';
 import '../../widgets/premium_widgets.dart';
+import '../../widgets/currency_amount_text.dart';
 
 class AddEditIncomeScreen extends ConsumerStatefulWidget {
   final Income? income;
@@ -233,7 +234,7 @@ class _AddEditIncomeScreenState extends ConsumerState<AddEditIncomeScreen> {
                             decimal: true),
                         decoration: _decoration(
                           'Amount',
-                          prefixText: 'QAR ',
+                          suffixText: 'QAR',
                           helperText: _isRentIncome
                               ? 'Auto-filled from pending rent. You can enter a lower partial payment.'
                               : null,
@@ -339,12 +340,18 @@ class _AddEditIncomeScreenState extends ConsumerState<AddEditIncomeScreen> {
 
   InputDecoration _decoration(
     String label, {
-    String? prefixText,
+    String? suffixText,
     String? helperText,
   }) {
     return InputDecoration(
       labelText: label,
-      prefixText: prefixText,
+      suffixText: suffixText,
+      suffixStyle: const TextStyle(
+        color: Color(0xFF6B7280),
+        fontSize: 12,
+        fontWeight: FontWeight.w500,
+        letterSpacing: 0.4,
+      ),
       helperText: helperText,
       filled: true,
       fillColor: const Color(0xFFFBFFFC),
@@ -731,17 +738,17 @@ class _RentInformation extends StatelessWidget {
         children: [
           _RentInfoLine(
             label: 'Monthly Rent',
-            value: CurrencyFormatter.formatQAR(rentSummary.monthlyRent),
+            value: rentSummary.monthlyRent,
           ),
           const SizedBox(height: 6),
           _RentInfoLine(
             label: 'Already Paid',
-            value: CurrencyFormatter.formatQAR(rentSummary.paidAmount),
+            value: rentSummary.paidAmount,
           ),
           const SizedBox(height: 6),
           _RentInfoLine(
             label: 'Remaining Rent',
-            value: CurrencyFormatter.formatQAR(rentSummary.remainingRent),
+            value: rentSummary.remainingRent,
             isEmphasized: true,
           ),
         ],
@@ -752,7 +759,7 @@ class _RentInformation extends StatelessWidget {
 
 class _RentInfoLine extends StatelessWidget {
   final String label;
-  final String value;
+  final double value;
   final bool isEmphasized;
 
   const _RentInfoLine({
@@ -775,14 +782,13 @@ class _RentInfoLine extends StatelessWidget {
             ),
           ),
         ),
-        Text(
-          value,
-          style: TextStyle(
-            color:
-                isEmphasized ? AppColors.incomeDark : const Color(0xFF143D27),
-            fontSize: 12,
-            fontWeight: FontWeight.w900,
-          ),
+        CurrencyAmountText(
+          amount: value,
+          amountColor:
+              isEmphasized ? AppColors.incomeDark : const Color(0xFF143D27),
+          amountFontSize: 12,
+          currencyFontSize: 8,
+          textAlign: TextAlign.end,
         ),
       ],
     );

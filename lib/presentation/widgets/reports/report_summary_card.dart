@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../../core/utils/currency_formatter.dart';
+import '../currency_amount_text.dart';
 
 class ReportSummaryCard extends StatelessWidget {
   final String title;
@@ -22,10 +22,6 @@ class ReportSummaryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final valueText = isPercentage
-        ? '${value.toStringAsFixed(1)}%'
-        : CurrencyFormatter.formatQAR(value);
-
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -70,14 +66,20 @@ class ReportSummaryCard extends StatelessWidget {
                 FittedBox(
                   fit: BoxFit.scaleDown,
                   alignment: Alignment.centerLeft,
-                  child: Text(
-                    valueText,
-                    style: const TextStyle(
-                      color: Color(0xFF060B26),
-                      fontSize: 20,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
+                  child: isPercentage
+                      ? Text(
+                          '${value.toStringAsFixed(1)}%',
+                          style: const TextStyle(
+                            color: Color(0xFF060B26),
+                            fontSize: 20,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        )
+                      : CurrencyAmountText(
+                          amount: value,
+                          amountFontSize: 20,
+                          currencyFontSize: 10,
+                        ),
                 ),
                 if (subtitle != null) ...[
                   const SizedBox(height: 4),

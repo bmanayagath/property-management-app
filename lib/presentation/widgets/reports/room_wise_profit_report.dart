@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/constants/app_colors.dart';
-import '../../../core/utils/currency_formatter.dart';
 import '../../../domain/models/report_models.dart';
+import '../currency_amount_text.dart';
 
 class RoomWiseProfitReport extends StatelessWidget {
   final List<RoomWiseProfitReportItem> items;
@@ -84,43 +84,43 @@ class _SummaryBand extends StatelessWidget {
         final cards = [
           _MetricCard(
             label: 'Expected Rent',
-            value: CurrencyFormatter.format(expectedRent),
+            value: expectedRent,
             icon: Icons.home_work_outlined,
             color: AppColors.primary,
           ),
           _MetricCard(
             label: 'Rent Received',
-            value: CurrencyFormatter.format(rentReceived),
+            value: rentReceived,
             icon: Icons.trending_up_rounded,
             color: AppColors.success,
           ),
           _MetricCard(
             label: 'Expenses',
-            value: CurrencyFormatter.format(expenses),
+            value: expenses,
             icon: Icons.receipt_long_outlined,
             color: AppColors.error,
           ),
           _MetricCard(
             label: 'Pending',
-            value: CurrencyFormatter.format(pendingRent),
+            value: pendingRent,
             icon: Icons.schedule_rounded,
             color: AppColors.warning,
           ),
           _MetricCard(
             label: 'Vacancy Loss',
-            value: CurrencyFormatter.format(vacancyLoss),
+            value: vacancyLoss,
             icon: Icons.sensor_door_outlined,
             color: Colors.deepPurple,
           ),
           _MetricCard(
             label: 'Actual Profit',
-            value: CurrencyFormatter.format(actualProfit),
+            value: actualProfit,
             icon: Icons.account_balance_wallet_outlined,
             color: AppColors.profit,
           ),
           _MetricCard(
             label: 'Expected Profit',
-            value: CurrencyFormatter.format(expectedProfit),
+            value: expectedProfit,
             icon: Icons.insights_rounded,
             color: AppColors.primary,
           ),
@@ -142,7 +142,7 @@ class _SummaryBand extends StatelessWidget {
 
 class _MetricCard extends StatelessWidget {
   final String label;
-  final String value;
+  final double value;
   final IconData icon;
   final Color color;
 
@@ -190,15 +190,10 @@ class _MetricCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 4),
-                Text(
-                  value,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: Color(0xFF060B26),
-                    fontSize: 14,
-                    fontWeight: FontWeight.w900,
-                  ),
+                CurrencyAmountText(
+                  amount: value,
+                  amountFontSize: 14,
+                  currencyFontSize: 9,
                 ),
               ],
             ),
@@ -391,15 +386,11 @@ class _DetailGrid extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: 4),
-                      Text(
-                        CurrencyFormatter.format(value.amount),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: value.color,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w900,
-                        ),
+                      CurrencyAmountText(
+                        amount: value.amount,
+                        amountColor: value.color,
+                        amountFontSize: 12,
+                        currencyFontSize: 8,
                       ),
                     ],
                   ),

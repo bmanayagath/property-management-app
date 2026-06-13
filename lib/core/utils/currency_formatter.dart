@@ -8,18 +8,22 @@ class CurrencyFormatter {
   static final NumberFormat _wholeFormatter = NumberFormat('#,##0');
   static final NumberFormat _decimalFormatter = NumberFormat('#,##0.00');
 
-  static String formatQAR(num amount, {bool showDecimals = false}) {
+  static String formatAmount(num amount, {bool showDecimals = false}) {
     final formatter = showDecimals ? _decimalFormatter : _wholeFormatter;
-    return '$qatariRiyal ${formatter.format(amount)}';
+    return formatter.format(amount);
+  }
+
+  static String formatQAR(num amount, {bool showDecimals = false}) {
+    return '${formatAmount(amount, showDecimals: showDecimals)} $qatariRiyal';
   }
 
   static String format(double amount) => formatQAR(amount);
 
   static String formatCompact(double amount) {
     if (amount >= 1000000) {
-      return '$qatariRiyal ${(amount / 1000000).toStringAsFixed(1)}M';
+      return '${(amount / 1000000).toStringAsFixed(1)}M $qatariRiyal';
     } else if (amount >= 1000) {
-      return '$qatariRiyal ${(amount / 1000).toStringAsFixed(1)}K';
+      return '${(amount / 1000).toStringAsFixed(1)}K $qatariRiyal';
     }
     return formatQAR(amount);
   }

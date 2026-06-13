@@ -6,7 +6,6 @@ import 'package:intl/intl.dart';
 
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_permissions.dart';
-import '../../core/utils/currency_formatter.dart';
 import '../../domain/models/expense.dart';
 import '../../domain/models/room.dart';
 import '../../domain/models/villa_model.dart';
@@ -19,6 +18,7 @@ import '../providers/notification_provider.dart';
 import '../providers/room_provider.dart';
 import '../providers/villa_provider.dart';
 import '../widgets/premium_widgets.dart';
+import '../widgets/currency_amount_text.dart';
 import 'add_edit_expense_screen.dart';
 import 'add_edit_villa_screen.dart';
 import 'income/add_edit_income_screen.dart';
@@ -201,8 +201,6 @@ class DashboardScreen extends ConsumerWidget {
       1,
     );
   }
-
-  static String money(double value) => CurrencyFormatter.formatQAR(value);
 }
 
 double _calculatePendingRent({
@@ -637,7 +635,7 @@ class _MetricGrid extends StatelessWidget {
             Expanded(
               child: _MetricCard(
                 title: 'Total Income',
-                value: DashboardScreen.money(totalIncome),
+                amount: totalIncome,
                 color: const Color(0xFF2EA043),
                 background: const Color(0xFFF1FCF3),
                 border: const Color(0xFFC8EFD0),
@@ -649,7 +647,7 @@ class _MetricGrid extends StatelessWidget {
             Expanded(
               child: _MetricCard(
                 title: 'Actual Net Profit',
-                value: DashboardScreen.money(actualNetProfit),
+                amount: actualNetProfit,
                 color: const Color(0xFF2563EB),
                 background: const Color(0xFFF4F8FF),
                 border: const Color(0xFFD2E2FF),
@@ -665,7 +663,7 @@ class _MetricGrid extends StatelessWidget {
             Expanded(
               child: _MetricCard(
                 title: 'Pending Rent',
-                value: DashboardScreen.money(pendingRent),
+                amount: pendingRent,
                 trend: '$pendingRooms Rooms',
                 color: const Color(0xFFF59E0B),
                 background: const Color(0xFFFFFAF0),
@@ -679,7 +677,7 @@ class _MetricGrid extends StatelessWidget {
             Expanded(
               child: _MetricCard(
                 title: 'Vacancy Loss',
-                value: DashboardScreen.money(vacancyLoss),
+                amount: vacancyLoss,
                 trend: 'Vacant Rooms: $vacantRooms',
                 color: const Color(0xFFEA580C),
                 background: const Color(0xFFFFF7ED),
@@ -739,7 +737,8 @@ class _MetricGrid extends StatelessWidget {
 
 class _MetricCard extends StatelessWidget {
   final String title;
-  final String value;
+  final String? value;
+  final double? amount;
   final String? trend;
   final Color color;
   final Color background;
@@ -750,7 +749,8 @@ class _MetricCard extends StatelessWidget {
 
   const _MetricCard({
     required this.title,
-    required this.value,
+    this.value,
+    this.amount,
     this.trend,
     required this.color,
     required this.background,
@@ -817,15 +817,21 @@ class _MetricCard extends StatelessWidget {
               FittedBox(
                 fit: BoxFit.scaleDown,
                 alignment: Alignment.centerLeft,
-                child: Text(
-                  value,
-                  maxLines: 1,
-                  style: const TextStyle(
-                    color: Color(0xFF060B26),
-                    fontSize: 22,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
+                child: amount != null
+                    ? CurrencyAmountText(
+                        amount: amount!,
+                        amountFontSize: 22,
+                        currencyFontSize: 11,
+                      )
+                    : Text(
+                        value ?? '',
+                        maxLines: 1,
+                        style: const TextStyle(
+                          color: Color(0xFF060B26),
+                          fontSize: 22,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
               ),
               if (trend != null) ...[
                 const SizedBox(height: 4),
@@ -1058,7 +1064,7 @@ class _RentCollectionCard extends StatelessWidget {
                 Expanded(
                   child: _CollectionAmount(
                     label: 'Total Expected Rent',
-                    value: DashboardScreen.money(expectedRent),
+                    value: expectedRent,
                     color: const Color(0xFF0F2747),
                   ),
                 ),
@@ -1066,7 +1072,7 @@ class _RentCollectionCard extends StatelessWidget {
                 Expanded(
                   child: _CollectionAmount(
                     label: 'Current Collected',
-                    value: DashboardScreen.money(collected),
+                    value: collected,
                     color: const Color(0xFF2EA043),
                   ),
                 ),
@@ -1074,7 +1080,7 @@ class _RentCollectionCard extends StatelessWidget {
                 Expanded(
                   child: _CollectionAmount(
                     label: 'Current Pending',
-                    value: DashboardScreen.money(pending),
+                    value: pending,
                     color: const Color(0xFFF59E0B),
                   ),
                 ),
@@ -1135,7 +1141,7 @@ class _CollectionDivider extends StatelessWidget {
 
 class _CollectionAmount extends StatelessWidget {
   final String label;
-  final String value;
+  final double value;
   final Color color;
 
   const _CollectionAmount({
@@ -1161,13 +1167,11 @@ class _CollectionAmount extends StatelessWidget {
         FittedBox(
           fit: BoxFit.scaleDown,
           alignment: Alignment.centerLeft,
-          child: Text(
-            value,
-            style: TextStyle(
-              color: color,
-              fontSize: 19,
-              fontWeight: FontWeight.w900,
-            ),
+          child: CurrencyAmountText(
+            amount: value,
+            amountColor: color,
+            amountFontSize: 19,
+            currencyFontSize: 10,
           ),
         ),
       ],
@@ -1404,9 +1408,7 @@ class _VillaRow extends StatelessWidget {
                             flex: 4,
                             child: _VillaAmount(
                               label: 'Total Room Rent',
-                              value: DashboardScreen.money(
-                                summary.totalRoomRent,
-                              ),
+                              value: summary.totalRoomRent,
                               color: const Color(0xFF2563EB),
                             ),
                           ),
@@ -1415,9 +1417,7 @@ class _VillaRow extends StatelessWidget {
                             flex: 4,
                             child: _VillaAmount(
                               label: 'Expected Rent',
-                              value: DashboardScreen.money(
-                                summary.expectedRent,
-                              ),
+                              value: summary.expectedRent,
                               color: const Color(0xFF0F2747),
                             ),
                           ),
@@ -1426,9 +1426,7 @@ class _VillaRow extends StatelessWidget {
                             flex: 4,
                             child: _VillaAmount(
                               label: 'Collected',
-                              value: DashboardScreen.money(
-                                summary.rentReceived,
-                              ),
+                              value: summary.rentReceived,
                               color: summary.rentReceived > 0
                                   ? const Color(0xFF2EA043)
                                   : const Color(0xFF596070),
@@ -1443,9 +1441,7 @@ class _VillaRow extends StatelessWidget {
                             flex: 4,
                             child: _VillaAmount(
                               label: 'Pending',
-                              value: DashboardScreen.money(
-                                summary.pendingRent,
-                              ),
+                              value: summary.pendingRent,
                               color: summary.pendingRent > 0
                                   ? const Color(0xFFF59E0B)
                                   : const Color(0xFF596070),
@@ -1456,9 +1452,7 @@ class _VillaRow extends StatelessWidget {
                             flex: 4,
                             child: _VillaAmount(
                               label: 'Vacancy Loss',
-                              value: DashboardScreen.money(
-                                summary.vacancyLoss,
-                              ),
+                              value: summary.vacancyLoss,
                               color: summary.vacancyLoss > 0
                                   ? const Color(0xFFF04438)
                                   : const Color(0xFF596070),
@@ -1498,7 +1492,7 @@ class _VillaRow extends StatelessWidget {
 
 class _VillaAmount extends StatelessWidget {
   final String label;
-  final String value;
+  final double value;
   final Color color;
 
   const _VillaAmount({
@@ -1526,14 +1520,11 @@ class _VillaAmount extends StatelessWidget {
         FittedBox(
           fit: BoxFit.scaleDown,
           alignment: Alignment.centerLeft,
-          child: Text(
-            value,
-            maxLines: 1,
-            style: TextStyle(
-              color: color,
-              fontSize: 13,
-              fontWeight: FontWeight.w900,
-            ),
+          child: CurrencyAmountText(
+            amount: value,
+            amountColor: color,
+            amountFontSize: 13,
+            currencyFontSize: 8,
           ),
         ),
       ],

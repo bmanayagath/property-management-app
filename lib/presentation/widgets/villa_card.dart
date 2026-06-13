@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 
 import '../../core/constants/app_colors.dart';
-import '../../core/utils/currency_formatter.dart';
 import '../../domain/models/room.dart';
 import '../../domain/models/villa_model.dart';
+import 'currency_amount_text.dart';
 
 class VillaCard extends StatelessWidget {
   final VillaModel villa;
@@ -171,13 +171,13 @@ class VillaCard extends StatelessWidget {
                 Expanded(
                   child: _FinancialValue(
                     label: 'Total Room Rent',
-                    value: CurrencyFormatter.format(_totalRoomRent),
+                    value: _totalRoomRent,
                   ),
                 ),
                 Expanded(
                   child: _FinancialValue(
                     label: 'Expected Rent',
-                    value: CurrencyFormatter.format(_expectedRent),
+                    value: _expectedRent,
                     color: AppColors.primary,
                   ),
                 ),
@@ -189,21 +189,21 @@ class VillaCard extends StatelessWidget {
                 Expanded(
                   child: _FinancialValue(
                     label: 'Collected',
-                    value: CurrencyFormatter.format(_collectedRent),
+                    value: _collectedRent,
                     color: AppColors.success,
                   ),
                 ),
                 Expanded(
                   child: _FinancialValue(
                     label: 'Pending',
-                    value: CurrencyFormatter.format(_pendingRent),
+                    value: _pendingRent,
                     color: AppColors.warning,
                   ),
                 ),
                 Expanded(
                   child: _FinancialValue(
                     label: 'Vacancy Loss',
-                    value: CurrencyFormatter.format(_vacancyLoss),
+                    value: _vacancyLoss,
                     color: AppColors.error,
                   ),
                 ),
@@ -269,7 +269,7 @@ class _RoomChip extends StatelessWidget {
 
 class _FinancialValue extends StatelessWidget {
   final String label;
-  final String value;
+  final double value;
   final Color color;
 
   const _FinancialValue({
@@ -300,14 +300,11 @@ class _FinancialValue extends StatelessWidget {
         FittedBox(
           fit: BoxFit.scaleDown,
           alignment: Alignment.centerLeft,
-          child: Text(
-            value,
-            maxLines: 1,
-            style: TextStyle(
-              color: color,
-              fontSize: 12,
-              fontWeight: FontWeight.w900,
-            ),
+          child: CurrencyAmountText(
+            amount: value,
+            amountColor: color,
+            amountFontSize: 12,
+            currencyFontSize: 8,
           ),
         ),
       ],

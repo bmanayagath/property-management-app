@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
-import '../../../core/utils/currency_formatter.dart';
 import '../../../domain/models/income.dart';
+import '../currency_amount_text.dart';
 
 class IncomeReportView extends StatelessWidget {
   final List<Income> incomes;
@@ -23,13 +23,15 @@ class IncomeReportView extends StatelessWidget {
     return _ReportTable(
       columns: const ['Date', 'Villa', 'Type', 'Payment', 'Amount'],
       rows: incomes.map((income) {
-        return [
-          _dateFormat.format(income.paymentDate),
-          income.villaName,
-          income.incomeType,
-          income.paymentMethod,
-          CurrencyFormatter.formatQAR(income.amount),
-        ];
+        return _ReportRow(
+          values: [
+            _dateFormat.format(income.paymentDate),
+            income.villaName,
+            income.incomeType,
+            income.paymentMethod,
+          ],
+          amount: income.amount,
+        );
       }).toList(),
       amountColor: const Color(0xFF12B76A),
     );
@@ -38,7 +40,7 @@ class IncomeReportView extends StatelessWidget {
 
 class _ReportTable extends StatelessWidget {
   final List<String> columns;
-  final List<List<String>> rows;
+  final List<_ReportRow> rows;
   final Color amountColor;
 
   const _ReportTable({
@@ -70,27 +72,40 @@ class _ReportTable extends StatelessWidget {
               .toList(),
           rows: rows.map((row) {
             return DataRow(
-              cells: List.generate(row.length, (index) {
-                return DataCell(
-                  Text(
-                    row[index],
-                    style: TextStyle(
-                      color: index == row.length - 1
-                          ? amountColor
-                          : const Color(0xFF060B26),
-                      fontWeight: index == row.length - 1
-                          ? FontWeight.w900
-                          : FontWeight.w600,
+              cells: [
+                ...row.values.map(
+                  (value) => DataCell(
+                    Text(
+                      value,
+                      style: const TextStyle(
+                        color: Color(0xFF060B26),
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ),
-                );
-              }),
+                ),
+                DataCell(
+                  CurrencyAmountText(
+                    amount: row.amount,
+                    amountColor: amountColor,
+                    amountFontSize: 14,
+                    currencyFontSize: 9,
+                  ),
+                ),
+              ],
             );
           }).toList(),
         ),
       ),
     );
   }
+}
+
+class _ReportRow {
+  final List<String> values;
+  final double amount;
+
+  const _ReportRow({required this.values, required this.amount});
 }
 
 class _EmptyReport extends StatelessWidget {

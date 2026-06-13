@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../core/constants/app_colors.dart';
-import '../../core/utils/currency_formatter.dart';
 import '../../domain/models/room.dart';
+import 'currency_amount_text.dart';
 
 class RoomCard extends StatelessWidget {
   final Room room;
@@ -14,7 +14,7 @@ class RoomCard extends StatelessWidget {
   final VoidCallback? onAddVideo;
   final VoidCallback? onViewMedia;
   final VoidCallback? onShareMedia;
-  final String? pendingRent;
+  final double? pendingRent;
   final String pendingRentLabel;
 
   const RoomCard({
@@ -232,13 +232,10 @@ class RoomCard extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: 2),
-                      Text(
-                        CurrencyFormatter.format(room.monthlyRent),
-                        style: const TextStyle(
-                          color: Color(0xFF060B26),
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                        ),
+                      CurrencyAmountText(
+                        amount: room.monthlyRent,
+                        amountFontSize: 12,
+                        currencyFontSize: 8,
                       ),
                     ],
                   ),
@@ -307,13 +304,11 @@ class RoomCard extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(height: 2),
-                        Text(
-                          pendingRent ?? '',
-                          style: const TextStyle(
-                            color: Colors.orange,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                          ),
+                        CurrencyAmountText(
+                          amount: pendingRent!,
+                          amountColor: Colors.orange,
+                          amountFontSize: 12,
+                          currencyFontSize: 8,
                         ),
                       ],
                     ),

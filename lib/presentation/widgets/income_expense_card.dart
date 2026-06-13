@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_styles.dart';
-import '../../core/utils/currency_formatter.dart';
 import '../../core/utils/date_formatter.dart';
+import 'currency_amount_text.dart';
 
 class IncomeExpenseCard extends StatelessWidget {
   final String title;
@@ -87,9 +87,12 @@ class IncomeExpenseCard extends StatelessWidget {
             Column(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                Text(
-                  '${isIncome ? '+' : '-'} ${CurrencyFormatter.format(amount)}',
-                  style: AppStyles.titleSmall.copyWith(color: color),
+                CurrencyAmountText(
+                  amount: isIncome ? amount : -amount,
+                  amountColor: color,
+                  amountFontSize: 14,
+                  currencyFontSize: 9,
+                  textAlign: TextAlign.end,
                 ),
               ],
             ),

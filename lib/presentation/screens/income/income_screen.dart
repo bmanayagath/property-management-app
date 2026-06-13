@@ -4,12 +4,12 @@ import 'package:intl/intl.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_permissions.dart';
-import '../../../core/utils/currency_formatter.dart';
 import '../../../domain/models/income.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/dashboard_provider.dart';
 import '../../providers/income_provider.dart';
 import '../../widgets/income_card.dart';
+import '../../widgets/currency_amount_text.dart';
 import '../../widgets/premium_widgets.dart';
 import 'add_edit_income_screen.dart';
 import 'income_detail_screen.dart';
@@ -330,13 +330,10 @@ class _SummaryCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 5),
-                Text(
-                  CurrencyFormatter.formatQAR(total),
-                  style: const TextStyle(
-                    color: Color(0xFF060B26),
-                    fontSize: 25,
-                    fontWeight: FontWeight.w900,
-                  ),
+                CurrencyAmountText(
+                  amount: total,
+                  amountFontSize: 25,
+                  currencyFontSize: 12,
                 ),
                 const SizedBox(height: 3),
                 Text(
