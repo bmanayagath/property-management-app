@@ -1325,6 +1325,98 @@ class $RoomsTable extends Rooms with TableInfo<$RoomsTable, Room> {
   late final GeneratedColumn<DateTime> lastSyncedAt = GeneratedColumn<DateTime>(
       'last_synced_at', aliasedName, true,
       type: DriftSqlType.dateTime, requiredDuringInsert: false);
+  static const VerificationMeta _depositTypeMeta =
+      const VerificationMeta('depositType');
+  @override
+  late final GeneratedColumn<String> depositType = GeneratedColumn<String>(
+      'deposit_type', aliasedName, false,
+      type: DriftSqlType.string,
+      requiredDuringInsert: false,
+      defaultValue: const Constant('None'));
+  static const VerificationMeta _depositAmountMeta =
+      const VerificationMeta('depositAmount');
+  @override
+  late final GeneratedColumn<double> depositAmount = GeneratedColumn<double>(
+      'deposit_amount', aliasedName, false,
+      type: DriftSqlType.double,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(0));
+  static const VerificationMeta _depositDateMeta =
+      const VerificationMeta('depositDate');
+  @override
+  late final GeneratedColumn<DateTime> depositDate = GeneratedColumn<DateTime>(
+      'deposit_date', aliasedName, true,
+      type: DriftSqlType.dateTime, requiredDuringInsert: false);
+  static const VerificationMeta _depositStatusMeta =
+      const VerificationMeta('depositStatus');
+  @override
+  late final GeneratedColumn<String> depositStatus = GeneratedColumn<String>(
+      'deposit_status', aliasedName, false,
+      type: DriftSqlType.string,
+      requiredDuringInsert: false,
+      defaultValue: const Constant('Held'));
+  static const VerificationMeta _depositNotesMeta =
+      const VerificationMeta('depositNotes');
+  @override
+  late final GeneratedColumn<String> depositNotes = GeneratedColumn<String>(
+      'deposit_notes', aliasedName, false,
+      type: DriftSqlType.string,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(''));
+  static const VerificationMeta _moveOutDateMeta =
+      const VerificationMeta('moveOutDate');
+  @override
+  late final GeneratedColumn<DateTime> moveOutDate = GeneratedColumn<DateTime>(
+      'move_out_date', aliasedName, true,
+      type: DriftSqlType.dateTime, requiredDuringInsert: false);
+  static const VerificationMeta _lastTenantNameMeta =
+      const VerificationMeta('lastTenantName');
+  @override
+  late final GeneratedColumn<String> lastTenantName = GeneratedColumn<String>(
+      'last_tenant_name', aliasedName, false,
+      type: DriftSqlType.string,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(''));
+  static const VerificationMeta _lastTenantPhoneMeta =
+      const VerificationMeta('lastTenantPhone');
+  @override
+  late final GeneratedColumn<String> lastTenantPhone = GeneratedColumn<String>(
+      'last_tenant_phone', aliasedName, false,
+      type: DriftSqlType.string,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(''));
+  static const VerificationMeta _refundAmountMeta =
+      const VerificationMeta('refundAmount');
+  @override
+  late final GeneratedColumn<double> refundAmount = GeneratedColumn<double>(
+      'refund_amount', aliasedName, false,
+      type: DriftSqlType.double,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(0));
+  static const VerificationMeta _retainedAmountMeta =
+      const VerificationMeta('retainedAmount');
+  @override
+  late final GeneratedColumn<double> retainedAmount = GeneratedColumn<double>(
+      'retained_amount', aliasedName, false,
+      type: DriftSqlType.double,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(0));
+  static const VerificationMeta _depositReasonMeta =
+      const VerificationMeta('depositReason');
+  @override
+  late final GeneratedColumn<String> depositReason = GeneratedColumn<String>(
+      'deposit_reason', aliasedName, false,
+      type: DriftSqlType.string,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(''));
+  static const VerificationMeta _tenantHistoryJsonMeta =
+      const VerificationMeta('tenantHistoryJson');
+  @override
+  late final GeneratedColumn<String> tenantHistoryJson =
+      GeneratedColumn<String>('tenant_history_json', aliasedName, false,
+          type: DriftSqlType.string,
+          requiredDuringInsert: false,
+          defaultValue: const Constant('[]'));
   @override
   List<GeneratedColumn> get $columns => [
         id,
@@ -1347,7 +1439,19 @@ class $RoomsTable extends Rooms with TableInfo<$RoomsTable, Room> {
         deletedBy,
         createdBy,
         updatedBy,
-        lastSyncedAt
+        lastSyncedAt,
+        depositType,
+        depositAmount,
+        depositDate,
+        depositStatus,
+        depositNotes,
+        moveOutDate,
+        lastTenantName,
+        lastTenantPhone,
+        refundAmount,
+        retainedAmount,
+        depositReason,
+        tenantHistoryJson
       ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -1474,6 +1578,78 @@ class $RoomsTable extends Rooms with TableInfo<$RoomsTable, Room> {
           lastSyncedAt.isAcceptableOrUnknown(
               data['last_synced_at']!, _lastSyncedAtMeta));
     }
+    if (data.containsKey('deposit_type')) {
+      context.handle(
+          _depositTypeMeta,
+          depositType.isAcceptableOrUnknown(
+              data['deposit_type']!, _depositTypeMeta));
+    }
+    if (data.containsKey('deposit_amount')) {
+      context.handle(
+          _depositAmountMeta,
+          depositAmount.isAcceptableOrUnknown(
+              data['deposit_amount']!, _depositAmountMeta));
+    }
+    if (data.containsKey('deposit_date')) {
+      context.handle(
+          _depositDateMeta,
+          depositDate.isAcceptableOrUnknown(
+              data['deposit_date']!, _depositDateMeta));
+    }
+    if (data.containsKey('deposit_status')) {
+      context.handle(
+          _depositStatusMeta,
+          depositStatus.isAcceptableOrUnknown(
+              data['deposit_status']!, _depositStatusMeta));
+    }
+    if (data.containsKey('deposit_notes')) {
+      context.handle(
+          _depositNotesMeta,
+          depositNotes.isAcceptableOrUnknown(
+              data['deposit_notes']!, _depositNotesMeta));
+    }
+    if (data.containsKey('move_out_date')) {
+      context.handle(
+          _moveOutDateMeta,
+          moveOutDate.isAcceptableOrUnknown(
+              data['move_out_date']!, _moveOutDateMeta));
+    }
+    if (data.containsKey('last_tenant_name')) {
+      context.handle(
+          _lastTenantNameMeta,
+          lastTenantName.isAcceptableOrUnknown(
+              data['last_tenant_name']!, _lastTenantNameMeta));
+    }
+    if (data.containsKey('last_tenant_phone')) {
+      context.handle(
+          _lastTenantPhoneMeta,
+          lastTenantPhone.isAcceptableOrUnknown(
+              data['last_tenant_phone']!, _lastTenantPhoneMeta));
+    }
+    if (data.containsKey('refund_amount')) {
+      context.handle(
+          _refundAmountMeta,
+          refundAmount.isAcceptableOrUnknown(
+              data['refund_amount']!, _refundAmountMeta));
+    }
+    if (data.containsKey('retained_amount')) {
+      context.handle(
+          _retainedAmountMeta,
+          retainedAmount.isAcceptableOrUnknown(
+              data['retained_amount']!, _retainedAmountMeta));
+    }
+    if (data.containsKey('deposit_reason')) {
+      context.handle(
+          _depositReasonMeta,
+          depositReason.isAcceptableOrUnknown(
+              data['deposit_reason']!, _depositReasonMeta));
+    }
+    if (data.containsKey('tenant_history_json')) {
+      context.handle(
+          _tenantHistoryJsonMeta,
+          tenantHistoryJson.isAcceptableOrUnknown(
+              data['tenant_history_json']!, _tenantHistoryJsonMeta));
+    }
     return context;
   }
 
@@ -1525,6 +1701,30 @@ class $RoomsTable extends Rooms with TableInfo<$RoomsTable, Room> {
           .read(DriftSqlType.string, data['${effectivePrefix}updated_by']),
       lastSyncedAt: attachedDatabase.typeMapping.read(
           DriftSqlType.dateTime, data['${effectivePrefix}last_synced_at']),
+      depositType: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}deposit_type'])!,
+      depositAmount: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}deposit_amount'])!,
+      depositDate: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}deposit_date']),
+      depositStatus: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}deposit_status'])!,
+      depositNotes: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}deposit_notes'])!,
+      moveOutDate: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}move_out_date']),
+      lastTenantName: attachedDatabase.typeMapping.read(
+          DriftSqlType.string, data['${effectivePrefix}last_tenant_name'])!,
+      lastTenantPhone: attachedDatabase.typeMapping.read(
+          DriftSqlType.string, data['${effectivePrefix}last_tenant_phone'])!,
+      refundAmount: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}refund_amount'])!,
+      retainedAmount: attachedDatabase.typeMapping.read(
+          DriftSqlType.double, data['${effectivePrefix}retained_amount'])!,
+      depositReason: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}deposit_reason'])!,
+      tenantHistoryJson: attachedDatabase.typeMapping.read(
+          DriftSqlType.string, data['${effectivePrefix}tenant_history_json'])!,
     );
   }
 
@@ -1556,6 +1756,18 @@ class Room extends DataClass implements Insertable<Room> {
   final String? createdBy;
   final String? updatedBy;
   final DateTime? lastSyncedAt;
+  final String depositType;
+  final double depositAmount;
+  final DateTime? depositDate;
+  final String depositStatus;
+  final String depositNotes;
+  final DateTime? moveOutDate;
+  final String lastTenantName;
+  final String lastTenantPhone;
+  final double refundAmount;
+  final double retainedAmount;
+  final String depositReason;
+  final String tenantHistoryJson;
   const Room(
       {required this.id,
       required this.villaId,
@@ -1577,7 +1789,19 @@ class Room extends DataClass implements Insertable<Room> {
       this.deletedBy,
       this.createdBy,
       this.updatedBy,
-      this.lastSyncedAt});
+      this.lastSyncedAt,
+      required this.depositType,
+      required this.depositAmount,
+      this.depositDate,
+      required this.depositStatus,
+      required this.depositNotes,
+      this.moveOutDate,
+      required this.lastTenantName,
+      required this.lastTenantPhone,
+      required this.refundAmount,
+      required this.retainedAmount,
+      required this.depositReason,
+      required this.tenantHistoryJson});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -1622,6 +1846,22 @@ class Room extends DataClass implements Insertable<Room> {
     if (!nullToAbsent || lastSyncedAt != null) {
       map['last_synced_at'] = Variable<DateTime>(lastSyncedAt);
     }
+    map['deposit_type'] = Variable<String>(depositType);
+    map['deposit_amount'] = Variable<double>(depositAmount);
+    if (!nullToAbsent || depositDate != null) {
+      map['deposit_date'] = Variable<DateTime>(depositDate);
+    }
+    map['deposit_status'] = Variable<String>(depositStatus);
+    map['deposit_notes'] = Variable<String>(depositNotes);
+    if (!nullToAbsent || moveOutDate != null) {
+      map['move_out_date'] = Variable<DateTime>(moveOutDate);
+    }
+    map['last_tenant_name'] = Variable<String>(lastTenantName);
+    map['last_tenant_phone'] = Variable<String>(lastTenantPhone);
+    map['refund_amount'] = Variable<double>(refundAmount);
+    map['retained_amount'] = Variable<double>(retainedAmount);
+    map['deposit_reason'] = Variable<String>(depositReason);
+    map['tenant_history_json'] = Variable<String>(tenantHistoryJson);
     return map;
   }
 
@@ -1668,6 +1908,22 @@ class Room extends DataClass implements Insertable<Room> {
       lastSyncedAt: lastSyncedAt == null && nullToAbsent
           ? const Value.absent()
           : Value(lastSyncedAt),
+      depositType: Value(depositType),
+      depositAmount: Value(depositAmount),
+      depositDate: depositDate == null && nullToAbsent
+          ? const Value.absent()
+          : Value(depositDate),
+      depositStatus: Value(depositStatus),
+      depositNotes: Value(depositNotes),
+      moveOutDate: moveOutDate == null && nullToAbsent
+          ? const Value.absent()
+          : Value(moveOutDate),
+      lastTenantName: Value(lastTenantName),
+      lastTenantPhone: Value(lastTenantPhone),
+      refundAmount: Value(refundAmount),
+      retainedAmount: Value(retainedAmount),
+      depositReason: Value(depositReason),
+      tenantHistoryJson: Value(tenantHistoryJson),
     );
   }
 
@@ -1697,6 +1953,18 @@ class Room extends DataClass implements Insertable<Room> {
       createdBy: serializer.fromJson<String?>(json['createdBy']),
       updatedBy: serializer.fromJson<String?>(json['updatedBy']),
       lastSyncedAt: serializer.fromJson<DateTime?>(json['lastSyncedAt']),
+      depositType: serializer.fromJson<String>(json['depositType']),
+      depositAmount: serializer.fromJson<double>(json['depositAmount']),
+      depositDate: serializer.fromJson<DateTime?>(json['depositDate']),
+      depositStatus: serializer.fromJson<String>(json['depositStatus']),
+      depositNotes: serializer.fromJson<String>(json['depositNotes']),
+      moveOutDate: serializer.fromJson<DateTime?>(json['moveOutDate']),
+      lastTenantName: serializer.fromJson<String>(json['lastTenantName']),
+      lastTenantPhone: serializer.fromJson<String>(json['lastTenantPhone']),
+      refundAmount: serializer.fromJson<double>(json['refundAmount']),
+      retainedAmount: serializer.fromJson<double>(json['retainedAmount']),
+      depositReason: serializer.fromJson<String>(json['depositReason']),
+      tenantHistoryJson: serializer.fromJson<String>(json['tenantHistoryJson']),
     );
   }
   @override
@@ -1724,6 +1992,18 @@ class Room extends DataClass implements Insertable<Room> {
       'createdBy': serializer.toJson<String?>(createdBy),
       'updatedBy': serializer.toJson<String?>(updatedBy),
       'lastSyncedAt': serializer.toJson<DateTime?>(lastSyncedAt),
+      'depositType': serializer.toJson<String>(depositType),
+      'depositAmount': serializer.toJson<double>(depositAmount),
+      'depositDate': serializer.toJson<DateTime?>(depositDate),
+      'depositStatus': serializer.toJson<String>(depositStatus),
+      'depositNotes': serializer.toJson<String>(depositNotes),
+      'moveOutDate': serializer.toJson<DateTime?>(moveOutDate),
+      'lastTenantName': serializer.toJson<String>(lastTenantName),
+      'lastTenantPhone': serializer.toJson<String>(lastTenantPhone),
+      'refundAmount': serializer.toJson<double>(refundAmount),
+      'retainedAmount': serializer.toJson<double>(retainedAmount),
+      'depositReason': serializer.toJson<String>(depositReason),
+      'tenantHistoryJson': serializer.toJson<String>(tenantHistoryJson),
     };
   }
 
@@ -1748,7 +2028,19 @@ class Room extends DataClass implements Insertable<Room> {
           Value<String?> deletedBy = const Value.absent(),
           Value<String?> createdBy = const Value.absent(),
           Value<String?> updatedBy = const Value.absent(),
-          Value<DateTime?> lastSyncedAt = const Value.absent()}) =>
+          Value<DateTime?> lastSyncedAt = const Value.absent(),
+          String? depositType,
+          double? depositAmount,
+          Value<DateTime?> depositDate = const Value.absent(),
+          String? depositStatus,
+          String? depositNotes,
+          Value<DateTime?> moveOutDate = const Value.absent(),
+          String? lastTenantName,
+          String? lastTenantPhone,
+          double? refundAmount,
+          double? retainedAmount,
+          String? depositReason,
+          String? tenantHistoryJson}) =>
       Room(
         id: id ?? this.id,
         villaId: villaId ?? this.villaId,
@@ -1776,6 +2068,18 @@ class Room extends DataClass implements Insertable<Room> {
         updatedBy: updatedBy.present ? updatedBy.value : this.updatedBy,
         lastSyncedAt:
             lastSyncedAt.present ? lastSyncedAt.value : this.lastSyncedAt,
+        depositType: depositType ?? this.depositType,
+        depositAmount: depositAmount ?? this.depositAmount,
+        depositDate: depositDate.present ? depositDate.value : this.depositDate,
+        depositStatus: depositStatus ?? this.depositStatus,
+        depositNotes: depositNotes ?? this.depositNotes,
+        moveOutDate: moveOutDate.present ? moveOutDate.value : this.moveOutDate,
+        lastTenantName: lastTenantName ?? this.lastTenantName,
+        lastTenantPhone: lastTenantPhone ?? this.lastTenantPhone,
+        refundAmount: refundAmount ?? this.refundAmount,
+        retainedAmount: retainedAmount ?? this.retainedAmount,
+        depositReason: depositReason ?? this.depositReason,
+        tenantHistoryJson: tenantHistoryJson ?? this.tenantHistoryJson,
       );
   Room copyWithCompanion(RoomsCompanion data) {
     return Room(
@@ -1813,6 +2117,39 @@ class Room extends DataClass implements Insertable<Room> {
       lastSyncedAt: data.lastSyncedAt.present
           ? data.lastSyncedAt.value
           : this.lastSyncedAt,
+      depositType:
+          data.depositType.present ? data.depositType.value : this.depositType,
+      depositAmount: data.depositAmount.present
+          ? data.depositAmount.value
+          : this.depositAmount,
+      depositDate:
+          data.depositDate.present ? data.depositDate.value : this.depositDate,
+      depositStatus: data.depositStatus.present
+          ? data.depositStatus.value
+          : this.depositStatus,
+      depositNotes: data.depositNotes.present
+          ? data.depositNotes.value
+          : this.depositNotes,
+      moveOutDate:
+          data.moveOutDate.present ? data.moveOutDate.value : this.moveOutDate,
+      lastTenantName: data.lastTenantName.present
+          ? data.lastTenantName.value
+          : this.lastTenantName,
+      lastTenantPhone: data.lastTenantPhone.present
+          ? data.lastTenantPhone.value
+          : this.lastTenantPhone,
+      refundAmount: data.refundAmount.present
+          ? data.refundAmount.value
+          : this.refundAmount,
+      retainedAmount: data.retainedAmount.present
+          ? data.retainedAmount.value
+          : this.retainedAmount,
+      depositReason: data.depositReason.present
+          ? data.depositReason.value
+          : this.depositReason,
+      tenantHistoryJson: data.tenantHistoryJson.present
+          ? data.tenantHistoryJson.value
+          : this.tenantHistoryJson,
     );
   }
 
@@ -1839,7 +2176,19 @@ class Room extends DataClass implements Insertable<Room> {
           ..write('deletedBy: $deletedBy, ')
           ..write('createdBy: $createdBy, ')
           ..write('updatedBy: $updatedBy, ')
-          ..write('lastSyncedAt: $lastSyncedAt')
+          ..write('lastSyncedAt: $lastSyncedAt, ')
+          ..write('depositType: $depositType, ')
+          ..write('depositAmount: $depositAmount, ')
+          ..write('depositDate: $depositDate, ')
+          ..write('depositStatus: $depositStatus, ')
+          ..write('depositNotes: $depositNotes, ')
+          ..write('moveOutDate: $moveOutDate, ')
+          ..write('lastTenantName: $lastTenantName, ')
+          ..write('lastTenantPhone: $lastTenantPhone, ')
+          ..write('refundAmount: $refundAmount, ')
+          ..write('retainedAmount: $retainedAmount, ')
+          ..write('depositReason: $depositReason, ')
+          ..write('tenantHistoryJson: $tenantHistoryJson')
           ..write(')'))
         .toString();
   }
@@ -1866,7 +2215,19 @@ class Room extends DataClass implements Insertable<Room> {
         deletedBy,
         createdBy,
         updatedBy,
-        lastSyncedAt
+        lastSyncedAt,
+        depositType,
+        depositAmount,
+        depositDate,
+        depositStatus,
+        depositNotes,
+        moveOutDate,
+        lastTenantName,
+        lastTenantPhone,
+        refundAmount,
+        retainedAmount,
+        depositReason,
+        tenantHistoryJson
       ]);
   @override
   bool operator ==(Object other) =>
@@ -1892,7 +2253,19 @@ class Room extends DataClass implements Insertable<Room> {
           other.deletedBy == this.deletedBy &&
           other.createdBy == this.createdBy &&
           other.updatedBy == this.updatedBy &&
-          other.lastSyncedAt == this.lastSyncedAt);
+          other.lastSyncedAt == this.lastSyncedAt &&
+          other.depositType == this.depositType &&
+          other.depositAmount == this.depositAmount &&
+          other.depositDate == this.depositDate &&
+          other.depositStatus == this.depositStatus &&
+          other.depositNotes == this.depositNotes &&
+          other.moveOutDate == this.moveOutDate &&
+          other.lastTenantName == this.lastTenantName &&
+          other.lastTenantPhone == this.lastTenantPhone &&
+          other.refundAmount == this.refundAmount &&
+          other.retainedAmount == this.retainedAmount &&
+          other.depositReason == this.depositReason &&
+          other.tenantHistoryJson == this.tenantHistoryJson);
 }
 
 class RoomsCompanion extends UpdateCompanion<Room> {
@@ -1917,6 +2290,18 @@ class RoomsCompanion extends UpdateCompanion<Room> {
   final Value<String?> createdBy;
   final Value<String?> updatedBy;
   final Value<DateTime?> lastSyncedAt;
+  final Value<String> depositType;
+  final Value<double> depositAmount;
+  final Value<DateTime?> depositDate;
+  final Value<String> depositStatus;
+  final Value<String> depositNotes;
+  final Value<DateTime?> moveOutDate;
+  final Value<String> lastTenantName;
+  final Value<String> lastTenantPhone;
+  final Value<double> refundAmount;
+  final Value<double> retainedAmount;
+  final Value<String> depositReason;
+  final Value<String> tenantHistoryJson;
   final Value<int> rowid;
   const RoomsCompanion({
     this.id = const Value.absent(),
@@ -1940,6 +2325,18 @@ class RoomsCompanion extends UpdateCompanion<Room> {
     this.createdBy = const Value.absent(),
     this.updatedBy = const Value.absent(),
     this.lastSyncedAt = const Value.absent(),
+    this.depositType = const Value.absent(),
+    this.depositAmount = const Value.absent(),
+    this.depositDate = const Value.absent(),
+    this.depositStatus = const Value.absent(),
+    this.depositNotes = const Value.absent(),
+    this.moveOutDate = const Value.absent(),
+    this.lastTenantName = const Value.absent(),
+    this.lastTenantPhone = const Value.absent(),
+    this.refundAmount = const Value.absent(),
+    this.retainedAmount = const Value.absent(),
+    this.depositReason = const Value.absent(),
+    this.tenantHistoryJson = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   RoomsCompanion.insert({
@@ -1964,6 +2361,18 @@ class RoomsCompanion extends UpdateCompanion<Room> {
     this.createdBy = const Value.absent(),
     this.updatedBy = const Value.absent(),
     this.lastSyncedAt = const Value.absent(),
+    this.depositType = const Value.absent(),
+    this.depositAmount = const Value.absent(),
+    this.depositDate = const Value.absent(),
+    this.depositStatus = const Value.absent(),
+    this.depositNotes = const Value.absent(),
+    this.moveOutDate = const Value.absent(),
+    this.lastTenantName = const Value.absent(),
+    this.lastTenantPhone = const Value.absent(),
+    this.refundAmount = const Value.absent(),
+    this.retainedAmount = const Value.absent(),
+    this.depositReason = const Value.absent(),
+    this.tenantHistoryJson = const Value.absent(),
     this.rowid = const Value.absent(),
   })  : id = Value(id),
         villaId = Value(villaId),
@@ -1994,6 +2403,18 @@ class RoomsCompanion extends UpdateCompanion<Room> {
     Expression<String>? createdBy,
     Expression<String>? updatedBy,
     Expression<DateTime>? lastSyncedAt,
+    Expression<String>? depositType,
+    Expression<double>? depositAmount,
+    Expression<DateTime>? depositDate,
+    Expression<String>? depositStatus,
+    Expression<String>? depositNotes,
+    Expression<DateTime>? moveOutDate,
+    Expression<String>? lastTenantName,
+    Expression<String>? lastTenantPhone,
+    Expression<double>? refundAmount,
+    Expression<double>? retainedAmount,
+    Expression<String>? depositReason,
+    Expression<String>? tenantHistoryJson,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -2018,6 +2439,18 @@ class RoomsCompanion extends UpdateCompanion<Room> {
       if (createdBy != null) 'created_by': createdBy,
       if (updatedBy != null) 'updated_by': updatedBy,
       if (lastSyncedAt != null) 'last_synced_at': lastSyncedAt,
+      if (depositType != null) 'deposit_type': depositType,
+      if (depositAmount != null) 'deposit_amount': depositAmount,
+      if (depositDate != null) 'deposit_date': depositDate,
+      if (depositStatus != null) 'deposit_status': depositStatus,
+      if (depositNotes != null) 'deposit_notes': depositNotes,
+      if (moveOutDate != null) 'move_out_date': moveOutDate,
+      if (lastTenantName != null) 'last_tenant_name': lastTenantName,
+      if (lastTenantPhone != null) 'last_tenant_phone': lastTenantPhone,
+      if (refundAmount != null) 'refund_amount': refundAmount,
+      if (retainedAmount != null) 'retained_amount': retainedAmount,
+      if (depositReason != null) 'deposit_reason': depositReason,
+      if (tenantHistoryJson != null) 'tenant_history_json': tenantHistoryJson,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -2044,6 +2477,18 @@ class RoomsCompanion extends UpdateCompanion<Room> {
       Value<String?>? createdBy,
       Value<String?>? updatedBy,
       Value<DateTime?>? lastSyncedAt,
+      Value<String>? depositType,
+      Value<double>? depositAmount,
+      Value<DateTime?>? depositDate,
+      Value<String>? depositStatus,
+      Value<String>? depositNotes,
+      Value<DateTime?>? moveOutDate,
+      Value<String>? lastTenantName,
+      Value<String>? lastTenantPhone,
+      Value<double>? refundAmount,
+      Value<double>? retainedAmount,
+      Value<String>? depositReason,
+      Value<String>? tenantHistoryJson,
       Value<int>? rowid}) {
     return RoomsCompanion(
       id: id ?? this.id,
@@ -2067,6 +2512,18 @@ class RoomsCompanion extends UpdateCompanion<Room> {
       createdBy: createdBy ?? this.createdBy,
       updatedBy: updatedBy ?? this.updatedBy,
       lastSyncedAt: lastSyncedAt ?? this.lastSyncedAt,
+      depositType: depositType ?? this.depositType,
+      depositAmount: depositAmount ?? this.depositAmount,
+      depositDate: depositDate ?? this.depositDate,
+      depositStatus: depositStatus ?? this.depositStatus,
+      depositNotes: depositNotes ?? this.depositNotes,
+      moveOutDate: moveOutDate ?? this.moveOutDate,
+      lastTenantName: lastTenantName ?? this.lastTenantName,
+      lastTenantPhone: lastTenantPhone ?? this.lastTenantPhone,
+      refundAmount: refundAmount ?? this.refundAmount,
+      retainedAmount: retainedAmount ?? this.retainedAmount,
+      depositReason: depositReason ?? this.depositReason,
+      tenantHistoryJson: tenantHistoryJson ?? this.tenantHistoryJson,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -2137,6 +2594,42 @@ class RoomsCompanion extends UpdateCompanion<Room> {
     if (lastSyncedAt.present) {
       map['last_synced_at'] = Variable<DateTime>(lastSyncedAt.value);
     }
+    if (depositType.present) {
+      map['deposit_type'] = Variable<String>(depositType.value);
+    }
+    if (depositAmount.present) {
+      map['deposit_amount'] = Variable<double>(depositAmount.value);
+    }
+    if (depositDate.present) {
+      map['deposit_date'] = Variable<DateTime>(depositDate.value);
+    }
+    if (depositStatus.present) {
+      map['deposit_status'] = Variable<String>(depositStatus.value);
+    }
+    if (depositNotes.present) {
+      map['deposit_notes'] = Variable<String>(depositNotes.value);
+    }
+    if (moveOutDate.present) {
+      map['move_out_date'] = Variable<DateTime>(moveOutDate.value);
+    }
+    if (lastTenantName.present) {
+      map['last_tenant_name'] = Variable<String>(lastTenantName.value);
+    }
+    if (lastTenantPhone.present) {
+      map['last_tenant_phone'] = Variable<String>(lastTenantPhone.value);
+    }
+    if (refundAmount.present) {
+      map['refund_amount'] = Variable<double>(refundAmount.value);
+    }
+    if (retainedAmount.present) {
+      map['retained_amount'] = Variable<double>(retainedAmount.value);
+    }
+    if (depositReason.present) {
+      map['deposit_reason'] = Variable<String>(depositReason.value);
+    }
+    if (tenantHistoryJson.present) {
+      map['tenant_history_json'] = Variable<String>(tenantHistoryJson.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -2167,6 +2660,18 @@ class RoomsCompanion extends UpdateCompanion<Room> {
           ..write('createdBy: $createdBy, ')
           ..write('updatedBy: $updatedBy, ')
           ..write('lastSyncedAt: $lastSyncedAt, ')
+          ..write('depositType: $depositType, ')
+          ..write('depositAmount: $depositAmount, ')
+          ..write('depositDate: $depositDate, ')
+          ..write('depositStatus: $depositStatus, ')
+          ..write('depositNotes: $depositNotes, ')
+          ..write('moveOutDate: $moveOutDate, ')
+          ..write('lastTenantName: $lastTenantName, ')
+          ..write('lastTenantPhone: $lastTenantPhone, ')
+          ..write('refundAmount: $refundAmount, ')
+          ..write('retainedAmount: $retainedAmount, ')
+          ..write('depositReason: $depositReason, ')
+          ..write('tenantHistoryJson: $tenantHistoryJson, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -5403,6 +5908,18 @@ typedef $$RoomsTableCreateCompanionBuilder = RoomsCompanion Function({
   Value<String?> createdBy,
   Value<String?> updatedBy,
   Value<DateTime?> lastSyncedAt,
+  Value<String> depositType,
+  Value<double> depositAmount,
+  Value<DateTime?> depositDate,
+  Value<String> depositStatus,
+  Value<String> depositNotes,
+  Value<DateTime?> moveOutDate,
+  Value<String> lastTenantName,
+  Value<String> lastTenantPhone,
+  Value<double> refundAmount,
+  Value<double> retainedAmount,
+  Value<String> depositReason,
+  Value<String> tenantHistoryJson,
   Value<int> rowid,
 });
 typedef $$RoomsTableUpdateCompanionBuilder = RoomsCompanion Function({
@@ -5427,6 +5944,18 @@ typedef $$RoomsTableUpdateCompanionBuilder = RoomsCompanion Function({
   Value<String?> createdBy,
   Value<String?> updatedBy,
   Value<DateTime?> lastSyncedAt,
+  Value<String> depositType,
+  Value<double> depositAmount,
+  Value<DateTime?> depositDate,
+  Value<String> depositStatus,
+  Value<String> depositNotes,
+  Value<DateTime?> moveOutDate,
+  Value<String> lastTenantName,
+  Value<String> lastTenantPhone,
+  Value<double> refundAmount,
+  Value<double> retainedAmount,
+  Value<String> depositReason,
+  Value<String> tenantHistoryJson,
   Value<int> rowid,
 });
 
@@ -5518,6 +6047,46 @@ class $$RoomsTableFilterComposer extends Composer<_$AppDatabase, $RoomsTable> {
 
   ColumnFilters<DateTime> get lastSyncedAt => $composableBuilder(
       column: $table.lastSyncedAt, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get depositType => $composableBuilder(
+      column: $table.depositType, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get depositAmount => $composableBuilder(
+      column: $table.depositAmount, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get depositDate => $composableBuilder(
+      column: $table.depositDate, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get depositStatus => $composableBuilder(
+      column: $table.depositStatus, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get depositNotes => $composableBuilder(
+      column: $table.depositNotes, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get moveOutDate => $composableBuilder(
+      column: $table.moveOutDate, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get lastTenantName => $composableBuilder(
+      column: $table.lastTenantName,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get lastTenantPhone => $composableBuilder(
+      column: $table.lastTenantPhone,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get refundAmount => $composableBuilder(
+      column: $table.refundAmount, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get retainedAmount => $composableBuilder(
+      column: $table.retainedAmount,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get depositReason => $composableBuilder(
+      column: $table.depositReason, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get tenantHistoryJson => $composableBuilder(
+      column: $table.tenantHistoryJson,
+      builder: (column) => ColumnFilters(column));
 
   $$VillasTableFilterComposer get villaId {
     final $$VillasTableFilterComposer composer = $composerBuilder(
@@ -5613,6 +6182,51 @@ class $$RoomsTableOrderingComposer
       column: $table.lastSyncedAt,
       builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<String> get depositType => $composableBuilder(
+      column: $table.depositType, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get depositAmount => $composableBuilder(
+      column: $table.depositAmount,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get depositDate => $composableBuilder(
+      column: $table.depositDate, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get depositStatus => $composableBuilder(
+      column: $table.depositStatus,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get depositNotes => $composableBuilder(
+      column: $table.depositNotes,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get moveOutDate => $composableBuilder(
+      column: $table.moveOutDate, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get lastTenantName => $composableBuilder(
+      column: $table.lastTenantName,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get lastTenantPhone => $composableBuilder(
+      column: $table.lastTenantPhone,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get refundAmount => $composableBuilder(
+      column: $table.refundAmount,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get retainedAmount => $composableBuilder(
+      column: $table.retainedAmount,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get depositReason => $composableBuilder(
+      column: $table.depositReason,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get tenantHistoryJson => $composableBuilder(
+      column: $table.tenantHistoryJson,
+      builder: (column) => ColumnOrderings(column));
+
   $$VillasTableOrderingComposer get villaId {
     final $$VillasTableOrderingComposer composer = $composerBuilder(
         composer: this,
@@ -5703,6 +6317,42 @@ class $$RoomsTableAnnotationComposer
   GeneratedColumn<DateTime> get lastSyncedAt => $composableBuilder(
       column: $table.lastSyncedAt, builder: (column) => column);
 
+  GeneratedColumn<String> get depositType => $composableBuilder(
+      column: $table.depositType, builder: (column) => column);
+
+  GeneratedColumn<double> get depositAmount => $composableBuilder(
+      column: $table.depositAmount, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get depositDate => $composableBuilder(
+      column: $table.depositDate, builder: (column) => column);
+
+  GeneratedColumn<String> get depositStatus => $composableBuilder(
+      column: $table.depositStatus, builder: (column) => column);
+
+  GeneratedColumn<String> get depositNotes => $composableBuilder(
+      column: $table.depositNotes, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get moveOutDate => $composableBuilder(
+      column: $table.moveOutDate, builder: (column) => column);
+
+  GeneratedColumn<String> get lastTenantName => $composableBuilder(
+      column: $table.lastTenantName, builder: (column) => column);
+
+  GeneratedColumn<String> get lastTenantPhone => $composableBuilder(
+      column: $table.lastTenantPhone, builder: (column) => column);
+
+  GeneratedColumn<double> get refundAmount => $composableBuilder(
+      column: $table.refundAmount, builder: (column) => column);
+
+  GeneratedColumn<double> get retainedAmount => $composableBuilder(
+      column: $table.retainedAmount, builder: (column) => column);
+
+  GeneratedColumn<String> get depositReason => $composableBuilder(
+      column: $table.depositReason, builder: (column) => column);
+
+  GeneratedColumn<String> get tenantHistoryJson => $composableBuilder(
+      column: $table.tenantHistoryJson, builder: (column) => column);
+
   $$VillasTableAnnotationComposer get villaId {
     final $$VillasTableAnnotationComposer composer = $composerBuilder(
         composer: this,
@@ -5768,6 +6418,18 @@ class $$RoomsTableTableManager extends RootTableManager<
             Value<String?> createdBy = const Value.absent(),
             Value<String?> updatedBy = const Value.absent(),
             Value<DateTime?> lastSyncedAt = const Value.absent(),
+            Value<String> depositType = const Value.absent(),
+            Value<double> depositAmount = const Value.absent(),
+            Value<DateTime?> depositDate = const Value.absent(),
+            Value<String> depositStatus = const Value.absent(),
+            Value<String> depositNotes = const Value.absent(),
+            Value<DateTime?> moveOutDate = const Value.absent(),
+            Value<String> lastTenantName = const Value.absent(),
+            Value<String> lastTenantPhone = const Value.absent(),
+            Value<double> refundAmount = const Value.absent(),
+            Value<double> retainedAmount = const Value.absent(),
+            Value<String> depositReason = const Value.absent(),
+            Value<String> tenantHistoryJson = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               RoomsCompanion(
@@ -5792,6 +6454,18 @@ class $$RoomsTableTableManager extends RootTableManager<
             createdBy: createdBy,
             updatedBy: updatedBy,
             lastSyncedAt: lastSyncedAt,
+            depositType: depositType,
+            depositAmount: depositAmount,
+            depositDate: depositDate,
+            depositStatus: depositStatus,
+            depositNotes: depositNotes,
+            moveOutDate: moveOutDate,
+            lastTenantName: lastTenantName,
+            lastTenantPhone: lastTenantPhone,
+            refundAmount: refundAmount,
+            retainedAmount: retainedAmount,
+            depositReason: depositReason,
+            tenantHistoryJson: tenantHistoryJson,
             rowid: rowid,
           ),
           createCompanionCallback: ({
@@ -5816,6 +6490,18 @@ class $$RoomsTableTableManager extends RootTableManager<
             Value<String?> createdBy = const Value.absent(),
             Value<String?> updatedBy = const Value.absent(),
             Value<DateTime?> lastSyncedAt = const Value.absent(),
+            Value<String> depositType = const Value.absent(),
+            Value<double> depositAmount = const Value.absent(),
+            Value<DateTime?> depositDate = const Value.absent(),
+            Value<String> depositStatus = const Value.absent(),
+            Value<String> depositNotes = const Value.absent(),
+            Value<DateTime?> moveOutDate = const Value.absent(),
+            Value<String> lastTenantName = const Value.absent(),
+            Value<String> lastTenantPhone = const Value.absent(),
+            Value<double> refundAmount = const Value.absent(),
+            Value<double> retainedAmount = const Value.absent(),
+            Value<String> depositReason = const Value.absent(),
+            Value<String> tenantHistoryJson = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               RoomsCompanion.insert(
@@ -5840,6 +6526,18 @@ class $$RoomsTableTableManager extends RootTableManager<
             createdBy: createdBy,
             updatedBy: updatedBy,
             lastSyncedAt: lastSyncedAt,
+            depositType: depositType,
+            depositAmount: depositAmount,
+            depositDate: depositDate,
+            depositStatus: depositStatus,
+            depositNotes: depositNotes,
+            moveOutDate: moveOutDate,
+            lastTenantName: lastTenantName,
+            lastTenantPhone: lastTenantPhone,
+            refundAmount: refundAmount,
+            retainedAmount: retainedAmount,
+            depositReason: depositReason,
+            tenantHistoryJson: tenantHistoryJson,
             rowid: rowid,
           ),
           withReferenceMapper: (p0) => p0

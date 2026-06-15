@@ -63,6 +63,19 @@ class Rooms extends Table {
   TextColumn get createdBy => text().nullable()();
   TextColumn get updatedBy => text().nullable()();
   DateTimeColumn get lastSyncedAt => dateTime().nullable()();
+  TextColumn get depositType => text().withDefault(const Constant('None'))();
+  RealColumn get depositAmount => real().withDefault(const Constant(0))();
+  DateTimeColumn get depositDate => dateTime().nullable()();
+  TextColumn get depositStatus => text().withDefault(const Constant('Held'))();
+  TextColumn get depositNotes => text().withDefault(const Constant(''))();
+  DateTimeColumn get moveOutDate => dateTime().nullable()();
+  TextColumn get lastTenantName => text().withDefault(const Constant(''))();
+  TextColumn get lastTenantPhone => text().withDefault(const Constant(''))();
+  RealColumn get refundAmount => real().withDefault(const Constant(0))();
+  RealColumn get retainedAmount => real().withDefault(const Constant(0))();
+  TextColumn get depositReason => text().withDefault(const Constant(''))();
+  TextColumn get tenantHistoryJson =>
+      text().withDefault(const Constant('[]'))();
 
   @override
   Set<Column> get primaryKey => {id};
@@ -155,7 +168,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 6;
+  int get schemaVersion => 7;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -219,6 +232,20 @@ class AppDatabase extends _$AppDatabase {
           }
           if (from < 6) {
             await migrator.createTable(appLogs);
+          }
+          if (from < 7) {
+            await migrator.addColumn(rooms, rooms.depositType);
+            await migrator.addColumn(rooms, rooms.depositAmount);
+            await migrator.addColumn(rooms, rooms.depositDate);
+            await migrator.addColumn(rooms, rooms.depositStatus);
+            await migrator.addColumn(rooms, rooms.depositNotes);
+            await migrator.addColumn(rooms, rooms.moveOutDate);
+            await migrator.addColumn(rooms, rooms.lastTenantName);
+            await migrator.addColumn(rooms, rooms.lastTenantPhone);
+            await migrator.addColumn(rooms, rooms.refundAmount);
+            await migrator.addColumn(rooms, rooms.retainedAmount);
+            await migrator.addColumn(rooms, rooms.depositReason);
+            await migrator.addColumn(rooms, rooms.tenantHistoryJson);
           }
         },
       );

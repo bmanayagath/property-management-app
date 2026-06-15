@@ -1020,6 +1020,18 @@ class FirebaseSyncService {
       'createdBy': room.createdBy,
       'updatedBy': room.updatedBy,
       'lastSyncedAt': room.lastSyncedAt?.toIso8601String(),
+      'depositType': room.depositType,
+      'depositAmount': room.depositAmount,
+      'depositDate': room.depositDate?.toIso8601String(),
+      'depositStatus': room.depositStatus,
+      'depositNotes': room.depositNotes,
+      'moveOutDate': room.moveOutDate?.toIso8601String(),
+      'lastTenantName': room.lastTenantName,
+      'lastTenantPhone': room.lastTenantPhone,
+      'refundAmount': room.refundAmount,
+      'retainedAmount': room.retainedAmount,
+      'depositReason': room.depositReason,
+      'tenantHistory': room.tenantHistory.map((item) => item.toJson()).toList(),
     };
   }
 
@@ -1133,6 +1145,21 @@ class FirebaseSyncService {
       createdBy: json['createdBy'] as String?,
       updatedBy: json['updatedBy'] as String?,
       lastSyncedAt: _readNullableDateTime(json['lastSyncedAt']),
+      depositType: json['depositType'] as String? ?? DepositTypes.none,
+      depositAmount: (json['depositAmount'] as num?)?.toDouble() ?? 0,
+      depositDate: _readNullableDateTime(json['depositDate']),
+      depositStatus: json['depositStatus'] as String? ?? DepositStatuses.held,
+      depositNotes: json['depositNotes'] as String? ?? '',
+      moveOutDate: _readNullableDateTime(json['moveOutDate']),
+      lastTenantName: json['lastTenantName'] as String? ?? '',
+      lastTenantPhone: json['lastTenantPhone'] as String? ?? '',
+      refundAmount: (json['refundAmount'] as num?)?.toDouble() ?? 0,
+      retainedAmount: (json['retainedAmount'] as num?)?.toDouble() ?? 0,
+      depositReason: json['depositReason'] as String? ?? '',
+      tenantHistory: (json['tenantHistory'] as List<dynamic>? ?? const [])
+          .whereType<Map<String, dynamic>>()
+          .map(TenantHistory.fromJson)
+          .toList(),
     );
   }
 

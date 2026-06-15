@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:uuid/uuid.dart';
 import 'package:drift/drift.dart';
 import '../../domain/models/room.dart';
@@ -89,6 +91,20 @@ class RoomRepositoryImpl implements RoomRepository {
         updatedAt: Value(now),
         isDeleted: const Value(0),
         syncStatus: const Value('pending'),
+        depositType: Value(room.depositType),
+        depositAmount: Value(room.depositAmount),
+        depositDate: Value(room.depositDate),
+        depositStatus: Value(room.depositStatus),
+        depositNotes: Value(room.depositNotes),
+        moveOutDate: Value(room.moveOutDate),
+        lastTenantName: Value(room.lastTenantName),
+        lastTenantPhone: Value(room.lastTenantPhone),
+        refundAmount: Value(room.refundAmount),
+        retainedAmount: Value(room.retainedAmount),
+        depositReason: Value(room.depositReason),
+        tenantHistoryJson: Value(jsonEncode(
+          room.tenantHistory.map((item) => item.toJson()).toList(),
+        )),
       ),
     );
 
@@ -116,6 +132,20 @@ class RoomRepositoryImpl implements RoomRepository {
         createdAt: Value(room.createdAt),
         updatedAt: Value(now),
         syncStatus: const Value('pending'),
+        depositType: Value(room.depositType),
+        depositAmount: Value(room.depositAmount),
+        depositDate: Value(room.depositDate),
+        depositStatus: Value(room.depositStatus),
+        depositNotes: Value(room.depositNotes),
+        moveOutDate: Value(room.moveOutDate),
+        lastTenantName: Value(room.lastTenantName),
+        lastTenantPhone: Value(room.lastTenantPhone),
+        refundAmount: Value(room.refundAmount),
+        retainedAmount: Value(room.retainedAmount),
+        depositReason: Value(room.depositReason),
+        tenantHistoryJson: Value(jsonEncode(
+          room.tenantHistory.map((item) => item.toJson()).toList(),
+        )),
       ),
     );
   }
@@ -169,6 +199,30 @@ class RoomRepositoryImpl implements RoomRepository {
       createdBy: room.createdBy,
       updatedBy: room.updatedBy,
       lastSyncedAt: room.lastSyncedAt,
+      depositType: room.depositType,
+      depositAmount: room.depositAmount,
+      depositDate: room.depositDate,
+      depositStatus: room.depositStatus,
+      depositNotes: room.depositNotes,
+      moveOutDate: room.moveOutDate,
+      lastTenantName: room.lastTenantName,
+      lastTenantPhone: room.lastTenantPhone,
+      refundAmount: room.refundAmount,
+      retainedAmount: room.retainedAmount,
+      depositReason: room.depositReason,
+      tenantHistory: _decodeTenantHistory(room.tenantHistoryJson),
     );
+  }
+
+  List<TenantHistory> _decodeTenantHistory(String value) {
+    try {
+      final items = jsonDecode(value) as List<dynamic>;
+      return items
+          .whereType<Map<String, dynamic>>()
+          .map(TenantHistory.fromJson)
+          .toList();
+    } catch (_) {
+      return const [];
+    }
   }
 }

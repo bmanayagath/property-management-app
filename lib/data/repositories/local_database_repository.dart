@@ -197,6 +197,20 @@ class LocalDatabaseRepository {
       createdBy: Value(room.createdBy),
       updatedBy: Value(room.updatedBy),
       lastSyncedAt: Value(DateTime.now()),
+      depositType: Value(room.depositType),
+      depositAmount: Value(room.depositAmount),
+      depositDate: Value(room.depositDate),
+      depositStatus: Value(room.depositStatus),
+      depositNotes: Value(room.depositNotes),
+      moveOutDate: Value(room.moveOutDate),
+      lastTenantName: Value(room.lastTenantName),
+      lastTenantPhone: Value(room.lastTenantPhone),
+      refundAmount: Value(room.refundAmount),
+      retainedAmount: Value(room.retainedAmount),
+      depositReason: Value(room.depositReason),
+      tenantHistoryJson: Value(jsonEncode(
+        room.tenantHistory.map((item) => item.toJson()).toList(),
+      )),
     );
 
     if (existing == null) {
