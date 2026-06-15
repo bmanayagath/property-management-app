@@ -7,6 +7,7 @@ enum ReportType {
   pendingRentReport,
   vacancyReport,
   yearlySummary,
+  depositReport,
 }
 
 extension ReportTypeLabel on ReportType {
@@ -28,6 +29,8 @@ extension ReportTypeLabel on ReportType {
         return 'Vacancy Report';
       case ReportType.yearlySummary:
         return 'Yearly Summary';
+      case ReportType.depositReport:
+        return 'Deposit Report';
     }
   }
 }

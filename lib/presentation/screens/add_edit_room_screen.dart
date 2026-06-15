@@ -32,10 +32,15 @@ class _AddEditRoomScreenState extends ConsumerState<AddEditRoomScreen> {
   late TextEditingController _tenantPhoneController;
   late TextEditingController _monthlyRentController;
   late TextEditingController _paymentDueDayController;
+  late TextEditingController _depositAmountController;
+  late TextEditingController _depositNotesController;
   late DateTime _contractStartDate;
   late DateTime _contractEndDate;
   late int _paymentDueDay;
   late String _status;
+  late String _depositType;
+  late String _depositStatus;
+  DateTime? _depositDate;
   late VillaModel? _selectedVilla;
 
   final _formKey = GlobalKey<FormState>();
@@ -58,6 +63,16 @@ class _AddEditRoomScreenState extends ConsumerState<AddEditRoomScreen> {
           DateTime.now().add(const Duration(days: 365));
       _paymentDueDay = widget.room!.paymentDueDay;
       _status = widget.room!.status;
+      _depositType = widget.room!.depositType;
+      _depositStatus = widget.room!.depositStatus;
+      _depositDate = widget.room!.depositDate;
+      _depositAmountController = TextEditingController(
+        text: widget.room!.depositAmount == 0
+            ? ''
+            : widget.room!.depositAmount.toString(),
+      );
+      _depositNotesController =
+          TextEditingController(text: widget.room!.depositNotes);
       _selectedVilla = null;
     } else {
       _roomNameController = TextEditingController();
@@ -69,6 +84,11 @@ class _AddEditRoomScreenState extends ConsumerState<AddEditRoomScreen> {
       _contractEndDate = DateTime.now().add(const Duration(days: 365));
       _paymentDueDay = 1;
       _status = RoomStatuses.vacant;
+      _depositType = DepositTypes.none;
+      _depositStatus = DepositStatuses.held;
+      _depositDate = null;
+      _depositAmountController = TextEditingController();
+      _depositNotesController = TextEditingController();
       _selectedVilla = null;
     }
   }
@@ -80,6 +100,8 @@ class _AddEditRoomScreenState extends ConsumerState<AddEditRoomScreen> {
     _tenantPhoneController.dispose();
     _monthlyRentController.dispose();
     _paymentDueDayController.dispose();
+    _depositAmountController.dispose();
+    _depositNotesController.dispose();
     super.dispose();
   }
 
@@ -110,7 +132,10 @@ class _AddEditRoomScreenState extends ConsumerState<AddEditRoomScreen> {
       return;
     }
 
-    final room = Room(
+    final depositAmount = _depositType == DepositTypes.none
+        ? 0.0
+        : double.parse(_depositAmountController.text);
+    final room = (widget.room ?? Room.empty()).copyWith(
       id: widget.room?.id ?? DateTime.now().millisecondsSinceEpoch.toString(),
       villaId: _selectedVilla!.id,
       villaName: _selectedVilla!.villaName,
@@ -125,6 +150,14 @@ class _AddEditRoomScreenState extends ConsumerState<AddEditRoomScreen> {
       status: _status,
       createdAt: widget.room?.createdAt ?? DateTime.now(),
       updatedAt: DateTime.now(),
+      depositType: _depositType,
+      depositAmount: depositAmount,
+      depositDate: _depositType == DepositTypes.none
+          ? null
+          : _depositDate ?? DateTime.now(),
+      clearDepositDate: _depositType == DepositTypes.none,
+      depositStatus: _depositStatus,
+      depositNotes: _depositNotesController.text.trim(),
     );
 
     try {
@@ -463,6 +496,73 @@ class _AddEditRoomScreenState extends ConsumerState<AddEditRoomScreen> {
                   ),
                   const SizedBox(height: 24),
                 ],
+
+                _buildSectionHeader(
+                    'Tenant Deposit', Icons.account_balance_wallet_outlined),
+                _buildFormCard(
+                  children: [
+                    AppDropdown<String>(
+                      label: 'Deposit Type',
+                      value: _depositType,
+                      items: DepositTypes.values,
+                      itemLabel: (value) => value,
+                      onChanged: (value) {
+                        if (value == null) return;
+                        setState(() {
+                          _depositType = value;
+                          if (value == DepositTypes.none) {
+                            _depositAmountController.clear();
+                            _depositDate = null;
+                          }
+                        });
+                      },
+                    ),
+                    if (_depositType != DepositTypes.none) ...[
+                      AppTextField(
+                        controller: _depositAmountController,
+                        label: 'Deposit Amount (QAR) *',
+                        hint: '0.00',
+                        prefixIcon: Icons.payments_outlined,
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
+                        validator: (value) {
+                          if (_depositType == DepositTypes.none) return null;
+                          final amount = double.tryParse(value ?? '');
+                          if (amount == null || amount <= 0) {
+                            return 'Enter a deposit amount greater than 0';
+                          }
+                          return null;
+                        },
+                      ),
+                      AppDatePickerField(
+                        label: 'Deposit Date',
+                        value: _depositDate ?? DateTime.now(),
+                        onChanged: (date) =>
+                            setState(() => _depositDate = date),
+                      ),
+                      AppDropdown<String>(
+                        label: 'Deposit Status',
+                        value: _depositStatus,
+                        items: DepositStatuses.values,
+                        itemLabel: (value) => value,
+                        onChanged: (value) {
+                          if (value != null) {
+                            setState(() => _depositStatus = value);
+                          }
+                        },
+                      ),
+                    ],
+                    AppTextField(
+                      controller: _depositNotesController,
+                      label: 'Notes (optional)',
+                      hint: 'Deposit notes',
+                      prefixIcon: Icons.notes_outlined,
+                      maxLines: 3,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 24),
 
                 // Save Button
                 SizedBox(

@@ -301,6 +301,9 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
       monthlyExpenses: monthlyExpenses,
       pendingRentItems: pendingRentItems,
       yearlyItems: yearlyItems,
+      depositRooms: activeRooms
+          .where((room) => room.depositType != DepositTypes.none)
+          .toList(),
     );
   }
 
@@ -332,6 +335,8 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
         return RoomWiseProfitReport(items: data.vacancyItems);
       case ReportType.yearlySummary:
         return YearlySummaryReport(items: data.yearlyItems);
+      case ReportType.depositReport:
+        return _DepositReportView(rooms: data.depositRooms);
     }
   }
 
@@ -602,6 +607,32 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
               )
               .toList(),
           summaryLines: ['Year: $_selectedYear'],
+        );
+      case ReportType.depositReport:
+        return _ExportData(
+          headers: const [
+            'Villa',
+            'Room',
+            'Tenant',
+            'Deposit Type',
+            'Amount',
+            'Status',
+          ],
+          rows: data.depositRooms
+              .map(
+                (room) => [
+                  room.villaName,
+                  room.displayName,
+                  room.tenantName.isEmpty
+                      ? room.lastTenantName
+                      : room.tenantName,
+                  room.depositType,
+                  _money(room.depositAmount),
+                  room.depositStatus,
+                ],
+              )
+              .toList(),
+          summaryLines: const ['Deposits are tracking records, not income.'],
         );
     }
   }
@@ -1941,6 +1972,7 @@ class _ReportData {
   final List<Expense> monthlyExpenses;
   final List<PendingRentReportItem> pendingRentItems;
   final List<YearlySummaryReportItem> yearlyItems;
+  final List<Room> depositRooms;
 
   const _ReportData({
     required this.monthlySummary,
@@ -1951,7 +1983,59 @@ class _ReportData {
     required this.monthlyExpenses,
     required this.pendingRentItems,
     required this.yearlyItems,
+    required this.depositRooms,
   });
+}
+
+class _DepositReportView extends StatelessWidget {
+  final List<Room> rooms;
+
+  const _DepositReportView({required this.rooms});
+
+  @override
+  Widget build(BuildContext context) {
+    if (rooms.isEmpty) {
+      return const _ReportSurface(
+        padding: EdgeInsets.all(24),
+        child: Text('No deposits found.'),
+      );
+    }
+    return _ReportSurface(
+      padding: const EdgeInsets.all(16),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: DataTable(
+          columns: const [
+            DataColumn(label: Text('Villa')),
+            DataColumn(label: Text('Room')),
+            DataColumn(label: Text('Tenant')),
+            DataColumn(label: Text('Type')),
+            DataColumn(label: Text('Amount')),
+            DataColumn(label: Text('Status')),
+          ],
+          rows: rooms
+              .map(
+                (room) => DataRow(
+                  cells: [
+                    DataCell(Text(room.villaName)),
+                    DataCell(Text(room.displayName)),
+                    DataCell(Text(
+                      room.tenantName.isEmpty
+                          ? room.lastTenantName
+                          : room.tenantName,
+                    )),
+                    DataCell(Text(room.depositType)),
+                    DataCell(
+                        Text(CurrencyFormatter.format(room.depositAmount))),
+                    DataCell(Text(room.depositStatus)),
+                  ],
+                ),
+              )
+              .toList(),
+        ),
+      ),
+    );
+  }
 }
 
 class _ExportData {

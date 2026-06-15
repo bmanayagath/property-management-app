@@ -25,6 +25,7 @@ import '../providers/villa_provider.dart';
 import '../providers/room_provider.dart';
 import '../screens/room_media_screen.dart';
 import '../screens/room_media_preview_screen.dart';
+import '../screens/room_detail_screen.dart';
 import '../widgets/premium_widgets.dart';
 import '../widgets/room_card.dart';
 import 'add_edit_villa_screen.dart';
@@ -638,11 +639,14 @@ class VillaDetailScreen extends ConsumerWidget {
                   pendingRentLabel:
                       room.isOccupied ? 'Pending' : 'Potential Loss',
                   onTap: () {
-                    _openRoomMediaGallery(
+                    Navigator.push(
                       context,
-                      room,
-                      canManageRoomMedia: canManageRoomMedia,
-                      canShareRoomMedia: canShareRoomMedia,
+                      MaterialPageRoute(
+                        builder: (context) => RoomDetailScreen(
+                          room: room,
+                          canManage: canManageVillas,
+                        ),
+                      ),
                     );
                   },
                   onAddPhoto: canManageRoomMedia
