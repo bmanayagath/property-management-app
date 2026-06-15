@@ -69,10 +69,10 @@ class _RoomDetailScreenState extends ConsumerState<RoomDetailScreen> {
     return PremiumScaffold(
       appBar: AppBar(title: Text(_room.displayName)),
       body: ListView(
-        padding: const EdgeInsets.all(18),
+        padding: const EdgeInsets.fromLTRB(16, 14, 16, 24),
         children: [
           _tenantCard(),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
           rentSummary.when(
             data: (summary) => _rentCard(summary, lastRentPayment),
             loading: () => const _SectionLoading(title: 'Rent Information'),
@@ -85,10 +85,10 @@ class _RoomDetailScreenState extends ConsumerState<RoomDetailScreen> {
               lastRentPayment,
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
           _depositCard(),
           if (_room.isOccupied && widget.canManage) ...[
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
             _actionsCard(),
           ],
           const SizedBox(height: 24),
@@ -101,7 +101,6 @@ class _RoomDetailScreenState extends ConsumerState<RoomDetailScreen> {
   Widget _tenantCard() {
     final hasPhone = _room.tenantPhone.trim().isNotEmpty;
     return _sectionCard(
-      title: 'Tenant Information',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -111,7 +110,10 @@ class _RoomDetailScreenState extends ConsumerState<RoomDetailScreen> {
                 child: Text(
                   _room.displayName,
                   style: const TextStyle(
-                      fontSize: 24, fontWeight: FontWeight.w800),
+                    fontSize: 22,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: -0.3,
+                  ),
                 ),
               ),
               _statusChip(
@@ -120,43 +122,80 @@ class _RoomDetailScreenState extends ConsumerState<RoomDetailScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 18),
-          Text(
-            _room.tenantName.trim().isEmpty
-                ? 'No current tenant'
-                : _room.tenantName,
-            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            _room.tenantPhone.trim().isEmpty
-                ? 'No phone number'
-                : _room.tenantPhone,
-            style: const TextStyle(color: AppColors.textSecondary),
-          ),
-          const SizedBox(height: 18),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              _quickAction(
-                icon: Icons.call_outlined,
-                label: 'Call',
-                onPressed: hasPhone ? () => _callTenant() : null,
+          const SizedBox(height: 14),
+          if (_room.isOccupied) ...[
+            const Text(
+              'TENANT',
+              style: TextStyle(
+                color: AppColors.textSecondary,
+                fontSize: 11,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 0.7,
               ),
-              _quickAction(
-                icon: Icons.chat_outlined,
-                label: 'WhatsApp',
-                onPressed: hasPhone ? () => _whatsappTenant() : null,
+            ),
+            const SizedBox(height: 5),
+            Text(
+              _room.tenantName.trim().isEmpty
+                  ? 'Tenant name not provided'
+                  : _room.tenantName,
+              style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 3),
+            Text(
+              hasPhone ? _room.tenantPhone : 'Phone number not provided',
+              style: const TextStyle(color: AppColors.textSecondary),
+            ),
+            const SizedBox(height: 14),
+            Row(
+              children: [
+                Expanded(
+                  child: _quickAction(
+                    icon: Icons.call_outlined,
+                    label: 'Call',
+                    onPressed: hasPhone ? () => _callTenant() : null,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _quickAction(
+                    icon: Icons.chat_outlined,
+                    label: 'WhatsApp',
+                    onPressed: hasPhone ? () => _whatsappTenant() : null,
+                  ),
+                ),
+                if (widget.canManage) ...[
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: _quickAction(
+                      icon: Icons.edit_outlined,
+                      label: 'Edit Room',
+                      onPressed: _editRoom,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ] else ...[
+            const Text(
+              'Ready for occupancy',
+              style: TextStyle(
+                color: AppColors.textSecondary,
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
               ),
-              if (widget.canManage)
-                _quickAction(
+            ),
+            if (widget.canManage) ...[
+              const SizedBox(height: 14),
+              SizedBox(
+                width: double.infinity,
+                child: _quickAction(
                   icon: Icons.edit_outlined,
-                  label: 'Edit',
+                  label: 'Edit Room',
                   onPressed: _editRoom,
                 ),
+              ),
             ],
-          ),
+          ],
         ],
       ),
     );
@@ -169,48 +208,48 @@ class _RoomDetailScreenState extends ConsumerState<RoomDetailScreen> {
     return _sectionCard(
       title: 'Rent Information',
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Monthly Rent',
-              style: TextStyle(color: AppColors.textSecondary)),
-          const SizedBox(height: 4),
-          _money(_room.monthlyRent, size: 30),
-          const SizedBox(height: 18),
           Row(
             children: [
+              Expanded(
+                child: _metric(
+                    'Monthly Rent', _room.monthlyRent, AppColors.primary),
+              ),
+              const SizedBox(width: 10),
               Expanded(
                   child: _metric('Collected', collected, AppColors.success)),
-              const SizedBox(width: 12),
-              Expanded(
-                  child: _metric('Pending', pending, AppColors.warningDark)),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 10),
           Row(
             children: [
-              _statusChip(
-                _room.isVacant
-                    ? 'Vacant'
-                    : isCollected
-                        ? 'Collected'
-                        : 'Pending',
-                _room.isVacant
-                    ? AppColors.error
-                    : isCollected
-                        ? AppColors.success
-                        : AppColors.warningDark,
-              ),
-              const Spacer(),
-              Text(
-                lastPayment == null
-                    ? 'No rent payments yet'
-                    : 'Last paid ${DateFormat('dd MMM yyyy').format(lastPayment)}',
-                style: const TextStyle(
-                  color: AppColors.textSecondary,
-                  fontSize: 12,
+              Expanded(
+                  child: _metric('Pending', pending, AppColors.warningDark)),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _dateMetric(
+                  lastPayment == null
+                      ? 'No payment yet'
+                      : DateFormat('dd MMM yyyy').format(lastPayment),
                 ),
               ),
             ],
+          ),
+          const SizedBox(height: 12),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: _statusChip(
+              _room.isVacant
+                  ? 'Vacant'
+                  : isCollected
+                      ? 'Collected'
+                      : 'Pending',
+              _room.isVacant
+                  ? AppColors.error
+                  : isCollected
+                      ? AppColors.success
+                      : AppColors.warningDark,
+            ),
           ),
         ],
       ),
@@ -226,18 +265,24 @@ class _RoomDetailScreenState extends ConsumerState<RoomDetailScreen> {
           ? Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _money(_room.depositAmount, size: 36),
-                const SizedBox(height: 8),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Expanded(child: _money(_room.depositAmount, size: 34)),
+                    _statusChip(
+                      _room.depositStatus,
+                      _depositStatusColor(_room.depositStatus),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 7),
                 Text(
-                  '${_room.depositType} Deposit',
+                  '${_room.depositType} deposit',
                   style: const TextStyle(
                     color: AppColors.textSecondary,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
-                const SizedBox(height: 14),
-                _statusChip(_room.depositStatus,
-                    _depositStatusColor(_room.depositStatus)),
                 if (_room.depositDate != null) ...[
                   const SizedBox(height: 16),
                   const Text(
@@ -436,7 +481,7 @@ class _RoomDetailScreenState extends ConsumerState<RoomDetailScreen> {
   Widget _sectionCard({String? title, required Widget child}) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(16),
@@ -456,7 +501,7 @@ class _RoomDetailScreenState extends ConsumerState<RoomDetailScreen> {
             Text(title,
                 style:
                     const TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
           ],
           child,
         ],
@@ -472,13 +517,17 @@ class _RoomDetailScreenState extends ConsumerState<RoomDetailScreen> {
     return OutlinedButton.icon(
       onPressed: onPressed,
       icon: Icon(icon, size: 18),
-      label: Text(label),
+      label: FittedBox(child: Text(label)),
+      style: OutlinedButton.styleFrom(
+        minimumSize: const Size(0, 44),
+        padding: const EdgeInsets.symmetric(horizontal: 8),
+      ),
     );
   }
 
   Widget _metric(String label, double amount, Color color) {
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(11),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(12),
@@ -489,7 +538,38 @@ class _RoomDetailScreenState extends ConsumerState<RoomDetailScreen> {
           Text(label,
               style: TextStyle(color: color, fontWeight: FontWeight.w700)),
           const SizedBox(height: 5),
-          _money(amount, size: 18),
+          _money(amount, size: 17),
+        ],
+      ),
+    );
+  }
+
+  Widget _dateMetric(String value) {
+    return Container(
+      padding: const EdgeInsets.all(11),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceVariant,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Last Payment',
+            style: TextStyle(
+              color: AppColors.textSecondary,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 5),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              value,
+              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800),
+            ),
+          ),
         ],
       ),
     );

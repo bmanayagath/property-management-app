@@ -53,7 +53,11 @@ class DashboardScreen extends ConsumerWidget {
         child: ListView(
           padding: PremiumTokens.pagePadding,
           children: [
-            const _DashboardHeader(),
+            _DashboardHeader(
+              totalVillas: summary.villas.length,
+              occupiedRooms: dashboard.occupiedRooms,
+              vacantRooms: dashboard.vacantRooms,
+            ),
             const SizedBox(height: 18),
             _MonthFilter(
               selectedMonth: selectedMonth,
@@ -63,11 +67,9 @@ class DashboardScreen extends ConsumerWidget {
             _MetricGrid(
               totalRooms: dashboard.totalRooms,
               occupiedRooms: dashboard.occupiedRooms,
-              vacantRooms: dashboard.vacantRooms,
               totalIncome: summary.totalIncome,
               actualNetProfit: summary.totalIncome - summary.totalExpense,
               pendingRent: dashboard.pendingRent,
-              pendingRooms: dashboard.pendingRooms,
               vacancyLoss: dashboard.vacancyLoss,
             ),
             const SizedBox(height: 12),
@@ -211,7 +213,15 @@ double _calculatePendingRent({
 }
 
 class _DashboardHeader extends ConsumerWidget {
-  const _DashboardHeader();
+  final int totalVillas;
+  final int occupiedRooms;
+  final int vacantRooms;
+
+  const _DashboardHeader({
+    required this.totalVillas,
+    required this.occupiedRooms,
+    required this.vacantRooms,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -219,7 +229,7 @@ class _DashboardHeader extends ConsumerWidget {
         ref.watch(unreadNotificationCountProvider).valueOrNull ?? 0;
 
     return Container(
-      height: 178,
+      height: 194,
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(26),
@@ -260,28 +270,29 @@ class _DashboardHeader extends ConsumerWidget {
               ),
             ),
           ),
-          const Positioned(
+          Positioned(
             left: 22,
-            top: 30,
+            right: 72,
+            top: 24,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'VillaBooks',
-                  style: TextStyle(
+                  _greeting(),
+                  style: const TextStyle(
                     color: Color(0xFF172B3A),
-                    fontSize: 31,
+                    fontSize: 27,
                     fontWeight: FontWeight.w900,
                     height: 1,
                     letterSpacing: -0.8,
                   ),
                 ),
-                SizedBox(height: 9),
-                Text(
-                  'Dashboard',
+                const SizedBox(height: 8),
+                const Text(
+                  'Your property overview',
                   style: TextStyle(
                     color: Color(0xFF60717D),
-                    fontSize: 17,
+                    fontSize: 14,
                     fontWeight: FontWeight.w700,
                     height: 1,
                   ),
@@ -341,8 +352,107 @@ class _DashboardHeader extends ConsumerWidget {
               ),
             ),
           ),
+          Positioned(
+            left: 16,
+            right: 16,
+            bottom: 14,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.88),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Colors.white),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: _HeaderMetric(
+                      label: 'Total Villas',
+                      value: totalVillas,
+                      color: const Color(0xFF2563EB),
+                    ),
+                  ),
+                  const _HeaderDivider(),
+                  Expanded(
+                    child: _HeaderMetric(
+                      label: 'Occupied',
+                      value: occupiedRooms,
+                      color: const Color(0xFF2EA043),
+                    ),
+                  ),
+                  const _HeaderDivider(),
+                  Expanded(
+                    child: _HeaderMetric(
+                      label: 'Vacant',
+                      value: vacantRooms,
+                      color: const Color(0xFFF04438),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
         ],
       ),
+    );
+  }
+
+  String _greeting() {
+    final hour = DateTime.now().hour;
+    return hour < 12 ? 'Good Morning' : 'Good Evening';
+  }
+}
+
+class _HeaderMetric extends StatelessWidget {
+  final String label;
+  final int value;
+  final Color color;
+
+  const _HeaderMetric({
+    required this.label,
+    required this.value,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          '$value',
+          style: TextStyle(
+            color: color,
+            fontSize: 20,
+            fontWeight: FontWeight.w900,
+            height: 1,
+          ),
+        ),
+        const SizedBox(height: 5),
+        Text(
+          label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(
+            color: Color(0xFF60717D),
+            fontSize: 10,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _HeaderDivider extends StatelessWidget {
+  const _HeaderDivider();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 1,
+      height: 32,
+      color: const Color(0xFFD8DCE5),
     );
   }
 }
@@ -608,21 +718,17 @@ class _MonthOptionTile extends StatelessWidget {
 class _MetricGrid extends StatelessWidget {
   final int totalRooms;
   final int occupiedRooms;
-  final int vacantRooms;
   final double totalIncome;
   final double actualNetProfit;
   final double pendingRent;
-  final int pendingRooms;
   final double vacancyLoss;
 
   const _MetricGrid({
     required this.totalRooms,
     required this.occupiedRooms,
-    required this.vacantRooms,
     required this.totalIncome,
     required this.actualNetProfit,
     required this.pendingRent,
-    required this.pendingRooms,
     required this.vacancyLoss,
   });
 
@@ -634,25 +740,27 @@ class _MetricGrid extends StatelessWidget {
           children: [
             Expanded(
               child: _MetricCard(
-                title: 'Total Income',
+                title: 'Income',
                 amount: totalIncome,
                 color: const Color(0xFF2EA043),
                 background: const Color(0xFFF1FCF3),
                 border: const Color(0xFFC8EFD0),
-                icon: Icons.insert_chart_outlined_rounded,
-                iconBackground: const Color(0xFFDDF6E2),
               ),
             ),
             const SizedBox(width: 12),
             Expanded(
               child: _MetricCard(
-                title: 'Actual Net Profit',
+                title: 'Profit',
                 amount: actualNetProfit,
-                color: const Color(0xFF2563EB),
-                background: const Color(0xFFF4F8FF),
-                border: const Color(0xFFD2E2FF),
-                icon: Icons.account_balance_wallet_outlined,
-                iconBackground: const Color(0xFFE2EAFF),
+                color: actualNetProfit >= 0
+                    ? const Color(0xFF2EA043)
+                    : const Color(0xFFF04438),
+                background: actualNetProfit >= 0
+                    ? const Color(0xFFF1FCF3)
+                    : const Color(0xFFFFF6F4),
+                border: actualNetProfit >= 0
+                    ? const Color(0xFFC8EFD0)
+                    : const Color(0xFFFBD2CE),
               ),
             ),
           ],
@@ -664,13 +772,9 @@ class _MetricGrid extends StatelessWidget {
               child: _MetricCard(
                 title: 'Pending Rent',
                 amount: pendingRent,
-                trend: '$pendingRooms Rooms',
                 color: const Color(0xFFF59E0B),
                 background: const Color(0xFFFFFAF0),
                 border: const Color(0xFFF8E4BC),
-                icon: Icons.access_time_rounded,
-                iconBackground: const Color(0xFFFFF0D6),
-                showTrendArrow: false,
               ),
             ),
             const SizedBox(width: 12),
@@ -678,13 +782,9 @@ class _MetricGrid extends StatelessWidget {
               child: _MetricCard(
                 title: 'Vacancy Loss',
                 amount: vacancyLoss,
-                trend: 'Vacant Rooms: $vacantRooms',
-                color: const Color(0xFFEA580C),
-                background: const Color(0xFFFFF7ED),
-                border: const Color(0xFFFED7AA),
-                icon: Icons.home_work_outlined,
-                iconBackground: const Color(0xFFFFEDD5),
-                showTrendArrow: false,
+                color: const Color(0xFFF04438),
+                background: const Color(0xFFFFF6F4),
+                border: const Color(0xFFFBD2CE),
               ),
             ),
           ],
@@ -694,41 +794,24 @@ class _MetricGrid extends StatelessWidget {
           children: [
             Expanded(
               child: _MetricCard(
-                title: 'Total Rooms',
-                value: totalRooms.toString(),
-                color: const Color(0xFF5549DE),
-                background: const Color(0xFFF4F0FF),
-                border: const Color(0xFFE1D6FF),
-                icon: Icons.meeting_room_outlined,
-                iconBackground: const Color(0xFFEDE9FF),
-                showTrendArrow: false,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _MetricCard(
                 title: 'Occupied Rooms',
                 value: occupiedRooms.toString(),
                 color: const Color(0xFF2EA043),
                 background: const Color(0xFFF1FCF3),
                 border: const Color(0xFFC8EFD0),
-                icon: Icons.check_circle_outline_rounded,
-                iconBackground: const Color(0xFFDDF6E2),
-                showTrendArrow: false,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _MetricCard(
+                title: 'Total Rooms',
+                value: totalRooms.toString(),
+                color: const Color(0xFF2563EB),
+                background: const Color(0xFFF4F8FF),
+                border: const Color(0xFFD2E2FF),
               ),
             ),
           ],
-        ),
-        const SizedBox(height: 12),
-        _MetricCard(
-          title: 'Vacant Rooms',
-          value: vacantRooms.toString(),
-          color: const Color(0xFFEA580C),
-          background: const Color(0xFFFFF7ED),
-          border: const Color(0xFFFED7AA),
-          icon: Icons.sensor_door_outlined,
-          iconBackground: const Color(0xFFFFEDD5),
-          showTrendArrow: false,
         ),
       ],
     );
@@ -739,25 +822,17 @@ class _MetricCard extends StatelessWidget {
   final String title;
   final String? value;
   final double? amount;
-  final String? trend;
   final Color color;
   final Color background;
   final Color border;
-  final IconData icon;
-  final Color iconBackground;
-  final bool showTrendArrow;
 
   const _MetricCard({
     required this.title,
     this.value,
     this.amount,
-    this.trend,
     required this.color,
     required this.background,
     required this.border,
-    required this.icon,
-    required this.iconBackground,
-    this.showTrendArrow = true,
   });
 
   @override
@@ -765,8 +840,8 @@ class _MetricCard extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         return Container(
-          height: 104,
-          padding: const EdgeInsets.all(12),
+          height: 72,
+          padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 9),
           decoration: BoxDecoration(
             color: background,
             borderRadius: BorderRadius.circular(18),
@@ -782,85 +857,36 @@ class _MetricCard extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Container(
-                    height: 34,
-                    width: 34,
-                    decoration: BoxDecoration(
-                      color: iconBackground,
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Icon(
-                      icon,
-                      color: color,
-                      size: 19,
-                    ),
-                  ),
-                  const SizedBox(width: 9),
-                  Expanded(
-                    child: Text(
-                      title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: Color(0xFF596070),
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ),
-                ],
+              Text(
+                title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: color,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w800,
+                ),
               ),
-              const Spacer(),
+              const SizedBox(height: 5),
               FittedBox(
                 fit: BoxFit.scaleDown,
                 alignment: Alignment.centerLeft,
                 child: amount != null
                     ? CurrencyAmountText(
                         amount: amount!,
-                        amountFontSize: 22,
-                        currencyFontSize: 11,
+                        amountFontSize: 21,
+                        currencyFontSize: 8,
                       )
                     : Text(
                         value ?? '',
                         maxLines: 1,
                         style: const TextStyle(
                           color: Color(0xFF060B26),
-                          fontSize: 22,
+                          fontSize: 21,
                           fontWeight: FontWeight.w900,
                         ),
                       ),
               ),
-              if (trend != null) ...[
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    if (showTrendArrow)
-                      Icon(
-                        Icons.arrow_upward_rounded,
-                        color: color,
-                        size: 13,
-                      ),
-                    Flexible(
-                      child: Text(
-                        trend!,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: showTrendArrow
-                              ? const Color(0xFF6C7180)
-                              : const Color(0xFF6C7180),
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ] else
-                const SizedBox(height: 15),
             ],
           ),
         );
