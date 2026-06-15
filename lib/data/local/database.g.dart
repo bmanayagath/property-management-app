@@ -1363,6 +1363,28 @@ class $RoomsTable extends Rooms with TableInfo<$RoomsTable, Room> {
       type: DriftSqlType.string,
       requiredDuringInsert: false,
       defaultValue: const Constant(''));
+  static const VerificationMeta _depositIncomeIdMeta =
+      const VerificationMeta('depositIncomeId');
+  @override
+  late final GeneratedColumn<String> depositIncomeId = GeneratedColumn<String>(
+      'deposit_income_id', aliasedName, false,
+      type: DriftSqlType.string,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(''));
+  static const VerificationMeta _depositRefundExpenseIdMeta =
+      const VerificationMeta('depositRefundExpenseId');
+  @override
+  late final GeneratedColumn<String> depositRefundExpenseId =
+      GeneratedColumn<String>('deposit_refund_expense_id', aliasedName, false,
+          type: DriftSqlType.string,
+          requiredDuringInsert: false,
+          defaultValue: const Constant(''));
+  static const VerificationMeta _moveInDateMeta =
+      const VerificationMeta('moveInDate');
+  @override
+  late final GeneratedColumn<DateTime> moveInDate = GeneratedColumn<DateTime>(
+      'move_in_date', aliasedName, true,
+      type: DriftSqlType.dateTime, requiredDuringInsert: false);
   static const VerificationMeta _moveOutDateMeta =
       const VerificationMeta('moveOutDate');
   @override
@@ -1445,6 +1467,9 @@ class $RoomsTable extends Rooms with TableInfo<$RoomsTable, Room> {
         depositDate,
         depositStatus,
         depositNotes,
+        depositIncomeId,
+        depositRefundExpenseId,
+        moveInDate,
         moveOutDate,
         lastTenantName,
         lastTenantPhone,
@@ -1608,6 +1633,24 @@ class $RoomsTable extends Rooms with TableInfo<$RoomsTable, Room> {
           depositNotes.isAcceptableOrUnknown(
               data['deposit_notes']!, _depositNotesMeta));
     }
+    if (data.containsKey('deposit_income_id')) {
+      context.handle(
+          _depositIncomeIdMeta,
+          depositIncomeId.isAcceptableOrUnknown(
+              data['deposit_income_id']!, _depositIncomeIdMeta));
+    }
+    if (data.containsKey('deposit_refund_expense_id')) {
+      context.handle(
+          _depositRefundExpenseIdMeta,
+          depositRefundExpenseId.isAcceptableOrUnknown(
+              data['deposit_refund_expense_id']!, _depositRefundExpenseIdMeta));
+    }
+    if (data.containsKey('move_in_date')) {
+      context.handle(
+          _moveInDateMeta,
+          moveInDate.isAcceptableOrUnknown(
+              data['move_in_date']!, _moveInDateMeta));
+    }
     if (data.containsKey('move_out_date')) {
       context.handle(
           _moveOutDateMeta,
@@ -1711,6 +1754,13 @@ class $RoomsTable extends Rooms with TableInfo<$RoomsTable, Room> {
           .read(DriftSqlType.string, data['${effectivePrefix}deposit_status'])!,
       depositNotes: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}deposit_notes'])!,
+      depositIncomeId: attachedDatabase.typeMapping.read(
+          DriftSqlType.string, data['${effectivePrefix}deposit_income_id'])!,
+      depositRefundExpenseId: attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}deposit_refund_expense_id'])!,
+      moveInDate: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}move_in_date']),
       moveOutDate: attachedDatabase.typeMapping
           .read(DriftSqlType.dateTime, data['${effectivePrefix}move_out_date']),
       lastTenantName: attachedDatabase.typeMapping.read(
@@ -1761,6 +1811,9 @@ class Room extends DataClass implements Insertable<Room> {
   final DateTime? depositDate;
   final String depositStatus;
   final String depositNotes;
+  final String depositIncomeId;
+  final String depositRefundExpenseId;
+  final DateTime? moveInDate;
   final DateTime? moveOutDate;
   final String lastTenantName;
   final String lastTenantPhone;
@@ -1795,6 +1848,9 @@ class Room extends DataClass implements Insertable<Room> {
       this.depositDate,
       required this.depositStatus,
       required this.depositNotes,
+      required this.depositIncomeId,
+      required this.depositRefundExpenseId,
+      this.moveInDate,
       this.moveOutDate,
       required this.lastTenantName,
       required this.lastTenantPhone,
@@ -1853,6 +1909,11 @@ class Room extends DataClass implements Insertable<Room> {
     }
     map['deposit_status'] = Variable<String>(depositStatus);
     map['deposit_notes'] = Variable<String>(depositNotes);
+    map['deposit_income_id'] = Variable<String>(depositIncomeId);
+    map['deposit_refund_expense_id'] = Variable<String>(depositRefundExpenseId);
+    if (!nullToAbsent || moveInDate != null) {
+      map['move_in_date'] = Variable<DateTime>(moveInDate);
+    }
     if (!nullToAbsent || moveOutDate != null) {
       map['move_out_date'] = Variable<DateTime>(moveOutDate);
     }
@@ -1915,6 +1976,11 @@ class Room extends DataClass implements Insertable<Room> {
           : Value(depositDate),
       depositStatus: Value(depositStatus),
       depositNotes: Value(depositNotes),
+      depositIncomeId: Value(depositIncomeId),
+      depositRefundExpenseId: Value(depositRefundExpenseId),
+      moveInDate: moveInDate == null && nullToAbsent
+          ? const Value.absent()
+          : Value(moveInDate),
       moveOutDate: moveOutDate == null && nullToAbsent
           ? const Value.absent()
           : Value(moveOutDate),
@@ -1958,6 +2024,10 @@ class Room extends DataClass implements Insertable<Room> {
       depositDate: serializer.fromJson<DateTime?>(json['depositDate']),
       depositStatus: serializer.fromJson<String>(json['depositStatus']),
       depositNotes: serializer.fromJson<String>(json['depositNotes']),
+      depositIncomeId: serializer.fromJson<String>(json['depositIncomeId']),
+      depositRefundExpenseId:
+          serializer.fromJson<String>(json['depositRefundExpenseId']),
+      moveInDate: serializer.fromJson<DateTime?>(json['moveInDate']),
       moveOutDate: serializer.fromJson<DateTime?>(json['moveOutDate']),
       lastTenantName: serializer.fromJson<String>(json['lastTenantName']),
       lastTenantPhone: serializer.fromJson<String>(json['lastTenantPhone']),
@@ -1997,6 +2067,10 @@ class Room extends DataClass implements Insertable<Room> {
       'depositDate': serializer.toJson<DateTime?>(depositDate),
       'depositStatus': serializer.toJson<String>(depositStatus),
       'depositNotes': serializer.toJson<String>(depositNotes),
+      'depositIncomeId': serializer.toJson<String>(depositIncomeId),
+      'depositRefundExpenseId':
+          serializer.toJson<String>(depositRefundExpenseId),
+      'moveInDate': serializer.toJson<DateTime?>(moveInDate),
       'moveOutDate': serializer.toJson<DateTime?>(moveOutDate),
       'lastTenantName': serializer.toJson<String>(lastTenantName),
       'lastTenantPhone': serializer.toJson<String>(lastTenantPhone),
@@ -2034,6 +2108,9 @@ class Room extends DataClass implements Insertable<Room> {
           Value<DateTime?> depositDate = const Value.absent(),
           String? depositStatus,
           String? depositNotes,
+          String? depositIncomeId,
+          String? depositRefundExpenseId,
+          Value<DateTime?> moveInDate = const Value.absent(),
           Value<DateTime?> moveOutDate = const Value.absent(),
           String? lastTenantName,
           String? lastTenantPhone,
@@ -2073,6 +2150,10 @@ class Room extends DataClass implements Insertable<Room> {
         depositDate: depositDate.present ? depositDate.value : this.depositDate,
         depositStatus: depositStatus ?? this.depositStatus,
         depositNotes: depositNotes ?? this.depositNotes,
+        depositIncomeId: depositIncomeId ?? this.depositIncomeId,
+        depositRefundExpenseId:
+            depositRefundExpenseId ?? this.depositRefundExpenseId,
+        moveInDate: moveInDate.present ? moveInDate.value : this.moveInDate,
         moveOutDate: moveOutDate.present ? moveOutDate.value : this.moveOutDate,
         lastTenantName: lastTenantName ?? this.lastTenantName,
         lastTenantPhone: lastTenantPhone ?? this.lastTenantPhone,
@@ -2130,6 +2211,14 @@ class Room extends DataClass implements Insertable<Room> {
       depositNotes: data.depositNotes.present
           ? data.depositNotes.value
           : this.depositNotes,
+      depositIncomeId: data.depositIncomeId.present
+          ? data.depositIncomeId.value
+          : this.depositIncomeId,
+      depositRefundExpenseId: data.depositRefundExpenseId.present
+          ? data.depositRefundExpenseId.value
+          : this.depositRefundExpenseId,
+      moveInDate:
+          data.moveInDate.present ? data.moveInDate.value : this.moveInDate,
       moveOutDate:
           data.moveOutDate.present ? data.moveOutDate.value : this.moveOutDate,
       lastTenantName: data.lastTenantName.present
@@ -2182,6 +2271,9 @@ class Room extends DataClass implements Insertable<Room> {
           ..write('depositDate: $depositDate, ')
           ..write('depositStatus: $depositStatus, ')
           ..write('depositNotes: $depositNotes, ')
+          ..write('depositIncomeId: $depositIncomeId, ')
+          ..write('depositRefundExpenseId: $depositRefundExpenseId, ')
+          ..write('moveInDate: $moveInDate, ')
           ..write('moveOutDate: $moveOutDate, ')
           ..write('lastTenantName: $lastTenantName, ')
           ..write('lastTenantPhone: $lastTenantPhone, ')
@@ -2221,6 +2313,9 @@ class Room extends DataClass implements Insertable<Room> {
         depositDate,
         depositStatus,
         depositNotes,
+        depositIncomeId,
+        depositRefundExpenseId,
+        moveInDate,
         moveOutDate,
         lastTenantName,
         lastTenantPhone,
@@ -2259,6 +2354,9 @@ class Room extends DataClass implements Insertable<Room> {
           other.depositDate == this.depositDate &&
           other.depositStatus == this.depositStatus &&
           other.depositNotes == this.depositNotes &&
+          other.depositIncomeId == this.depositIncomeId &&
+          other.depositRefundExpenseId == this.depositRefundExpenseId &&
+          other.moveInDate == this.moveInDate &&
           other.moveOutDate == this.moveOutDate &&
           other.lastTenantName == this.lastTenantName &&
           other.lastTenantPhone == this.lastTenantPhone &&
@@ -2295,6 +2393,9 @@ class RoomsCompanion extends UpdateCompanion<Room> {
   final Value<DateTime?> depositDate;
   final Value<String> depositStatus;
   final Value<String> depositNotes;
+  final Value<String> depositIncomeId;
+  final Value<String> depositRefundExpenseId;
+  final Value<DateTime?> moveInDate;
   final Value<DateTime?> moveOutDate;
   final Value<String> lastTenantName;
   final Value<String> lastTenantPhone;
@@ -2330,6 +2431,9 @@ class RoomsCompanion extends UpdateCompanion<Room> {
     this.depositDate = const Value.absent(),
     this.depositStatus = const Value.absent(),
     this.depositNotes = const Value.absent(),
+    this.depositIncomeId = const Value.absent(),
+    this.depositRefundExpenseId = const Value.absent(),
+    this.moveInDate = const Value.absent(),
     this.moveOutDate = const Value.absent(),
     this.lastTenantName = const Value.absent(),
     this.lastTenantPhone = const Value.absent(),
@@ -2366,6 +2470,9 @@ class RoomsCompanion extends UpdateCompanion<Room> {
     this.depositDate = const Value.absent(),
     this.depositStatus = const Value.absent(),
     this.depositNotes = const Value.absent(),
+    this.depositIncomeId = const Value.absent(),
+    this.depositRefundExpenseId = const Value.absent(),
+    this.moveInDate = const Value.absent(),
     this.moveOutDate = const Value.absent(),
     this.lastTenantName = const Value.absent(),
     this.lastTenantPhone = const Value.absent(),
@@ -2408,6 +2515,9 @@ class RoomsCompanion extends UpdateCompanion<Room> {
     Expression<DateTime>? depositDate,
     Expression<String>? depositStatus,
     Expression<String>? depositNotes,
+    Expression<String>? depositIncomeId,
+    Expression<String>? depositRefundExpenseId,
+    Expression<DateTime>? moveInDate,
     Expression<DateTime>? moveOutDate,
     Expression<String>? lastTenantName,
     Expression<String>? lastTenantPhone,
@@ -2444,6 +2554,10 @@ class RoomsCompanion extends UpdateCompanion<Room> {
       if (depositDate != null) 'deposit_date': depositDate,
       if (depositStatus != null) 'deposit_status': depositStatus,
       if (depositNotes != null) 'deposit_notes': depositNotes,
+      if (depositIncomeId != null) 'deposit_income_id': depositIncomeId,
+      if (depositRefundExpenseId != null)
+        'deposit_refund_expense_id': depositRefundExpenseId,
+      if (moveInDate != null) 'move_in_date': moveInDate,
       if (moveOutDate != null) 'move_out_date': moveOutDate,
       if (lastTenantName != null) 'last_tenant_name': lastTenantName,
       if (lastTenantPhone != null) 'last_tenant_phone': lastTenantPhone,
@@ -2482,6 +2596,9 @@ class RoomsCompanion extends UpdateCompanion<Room> {
       Value<DateTime?>? depositDate,
       Value<String>? depositStatus,
       Value<String>? depositNotes,
+      Value<String>? depositIncomeId,
+      Value<String>? depositRefundExpenseId,
+      Value<DateTime?>? moveInDate,
       Value<DateTime?>? moveOutDate,
       Value<String>? lastTenantName,
       Value<String>? lastTenantPhone,
@@ -2517,6 +2634,10 @@ class RoomsCompanion extends UpdateCompanion<Room> {
       depositDate: depositDate ?? this.depositDate,
       depositStatus: depositStatus ?? this.depositStatus,
       depositNotes: depositNotes ?? this.depositNotes,
+      depositIncomeId: depositIncomeId ?? this.depositIncomeId,
+      depositRefundExpenseId:
+          depositRefundExpenseId ?? this.depositRefundExpenseId,
+      moveInDate: moveInDate ?? this.moveInDate,
       moveOutDate: moveOutDate ?? this.moveOutDate,
       lastTenantName: lastTenantName ?? this.lastTenantName,
       lastTenantPhone: lastTenantPhone ?? this.lastTenantPhone,
@@ -2609,6 +2730,16 @@ class RoomsCompanion extends UpdateCompanion<Room> {
     if (depositNotes.present) {
       map['deposit_notes'] = Variable<String>(depositNotes.value);
     }
+    if (depositIncomeId.present) {
+      map['deposit_income_id'] = Variable<String>(depositIncomeId.value);
+    }
+    if (depositRefundExpenseId.present) {
+      map['deposit_refund_expense_id'] =
+          Variable<String>(depositRefundExpenseId.value);
+    }
+    if (moveInDate.present) {
+      map['move_in_date'] = Variable<DateTime>(moveInDate.value);
+    }
     if (moveOutDate.present) {
       map['move_out_date'] = Variable<DateTime>(moveOutDate.value);
     }
@@ -2665,6 +2796,9 @@ class RoomsCompanion extends UpdateCompanion<Room> {
           ..write('depositDate: $depositDate, ')
           ..write('depositStatus: $depositStatus, ')
           ..write('depositNotes: $depositNotes, ')
+          ..write('depositIncomeId: $depositIncomeId, ')
+          ..write('depositRefundExpenseId: $depositRefundExpenseId, ')
+          ..write('moveInDate: $moveInDate, ')
           ..write('moveOutDate: $moveOutDate, ')
           ..write('lastTenantName: $lastTenantName, ')
           ..write('lastTenantPhone: $lastTenantPhone, ')
@@ -2717,6 +2851,14 @@ class $IncomesTable extends Incomes with TableInfo<$IncomesTable, Income> {
   @override
   late final GeneratedColumn<String> roomName = GeneratedColumn<String>(
       'room_name', aliasedName, false,
+      type: DriftSqlType.string,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(''));
+  static const VerificationMeta _tenantNameMeta =
+      const VerificationMeta('tenantName');
+  @override
+  late final GeneratedColumn<String> tenantName = GeneratedColumn<String>(
+      'tenant_name', aliasedName, false,
       type: DriftSqlType.string,
       requiredDuringInsert: false,
       defaultValue: const Constant(''));
@@ -2821,6 +2963,7 @@ class $IncomesTable extends Incomes with TableInfo<$IncomesTable, Income> {
         villaName,
         roomId,
         roomName,
+        tenantName,
         incomeType,
         amount,
         paymentDate,
@@ -2869,6 +3012,12 @@ class $IncomesTable extends Incomes with TableInfo<$IncomesTable, Income> {
     if (data.containsKey('room_name')) {
       context.handle(_roomNameMeta,
           roomName.isAcceptableOrUnknown(data['room_name']!, _roomNameMeta));
+    }
+    if (data.containsKey('tenant_name')) {
+      context.handle(
+          _tenantNameMeta,
+          tenantName.isAcceptableOrUnknown(
+              data['tenant_name']!, _tenantNameMeta));
     }
     if (data.containsKey('income_type')) {
       context.handle(
@@ -2971,6 +3120,8 @@ class $IncomesTable extends Incomes with TableInfo<$IncomesTable, Income> {
           .read(DriftSqlType.string, data['${effectivePrefix}room_id'])!,
       roomName: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}room_name'])!,
+      tenantName: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}tenant_name'])!,
       incomeType: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}income_type'])!,
       amount: attachedDatabase.typeMapping
@@ -3016,6 +3167,7 @@ class Income extends DataClass implements Insertable<Income> {
   final String villaName;
   final String roomId;
   final String roomName;
+  final String tenantName;
   final String incomeType;
   final double amount;
   final DateTime paymentDate;
@@ -3037,6 +3189,7 @@ class Income extends DataClass implements Insertable<Income> {
       required this.villaName,
       required this.roomId,
       required this.roomName,
+      required this.tenantName,
       required this.incomeType,
       required this.amount,
       required this.paymentDate,
@@ -3060,6 +3213,7 @@ class Income extends DataClass implements Insertable<Income> {
     map['villa_name'] = Variable<String>(villaName);
     map['room_id'] = Variable<String>(roomId);
     map['room_name'] = Variable<String>(roomName);
+    map['tenant_name'] = Variable<String>(tenantName);
     map['income_type'] = Variable<String>(incomeType);
     map['amount'] = Variable<double>(amount);
     map['payment_date'] = Variable<DateTime>(paymentDate);
@@ -3099,6 +3253,7 @@ class Income extends DataClass implements Insertable<Income> {
       villaName: Value(villaName),
       roomId: Value(roomId),
       roomName: Value(roomName),
+      tenantName: Value(tenantName),
       incomeType: Value(incomeType),
       amount: Value(amount),
       paymentDate: Value(paymentDate),
@@ -3139,6 +3294,7 @@ class Income extends DataClass implements Insertable<Income> {
       villaName: serializer.fromJson<String>(json['villaName']),
       roomId: serializer.fromJson<String>(json['roomId']),
       roomName: serializer.fromJson<String>(json['roomName']),
+      tenantName: serializer.fromJson<String>(json['tenantName']),
       incomeType: serializer.fromJson<String>(json['incomeType']),
       amount: serializer.fromJson<double>(json['amount']),
       paymentDate: serializer.fromJson<DateTime>(json['paymentDate']),
@@ -3165,6 +3321,7 @@ class Income extends DataClass implements Insertable<Income> {
       'villaName': serializer.toJson<String>(villaName),
       'roomId': serializer.toJson<String>(roomId),
       'roomName': serializer.toJson<String>(roomName),
+      'tenantName': serializer.toJson<String>(tenantName),
       'incomeType': serializer.toJson<String>(incomeType),
       'amount': serializer.toJson<double>(amount),
       'paymentDate': serializer.toJson<DateTime>(paymentDate),
@@ -3189,6 +3346,7 @@ class Income extends DataClass implements Insertable<Income> {
           String? villaName,
           String? roomId,
           String? roomName,
+          String? tenantName,
           String? incomeType,
           double? amount,
           DateTime? paymentDate,
@@ -3210,6 +3368,7 @@ class Income extends DataClass implements Insertable<Income> {
         villaName: villaName ?? this.villaName,
         roomId: roomId ?? this.roomId,
         roomName: roomName ?? this.roomName,
+        tenantName: tenantName ?? this.tenantName,
         incomeType: incomeType ?? this.incomeType,
         amount: amount ?? this.amount,
         paymentDate: paymentDate ?? this.paymentDate,
@@ -3234,6 +3393,8 @@ class Income extends DataClass implements Insertable<Income> {
       villaName: data.villaName.present ? data.villaName.value : this.villaName,
       roomId: data.roomId.present ? data.roomId.value : this.roomId,
       roomName: data.roomName.present ? data.roomName.value : this.roomName,
+      tenantName:
+          data.tenantName.present ? data.tenantName.value : this.tenantName,
       incomeType:
           data.incomeType.present ? data.incomeType.value : this.incomeType,
       amount: data.amount.present ? data.amount.value : this.amount,
@@ -3269,6 +3430,7 @@ class Income extends DataClass implements Insertable<Income> {
           ..write('villaName: $villaName, ')
           ..write('roomId: $roomId, ')
           ..write('roomName: $roomName, ')
+          ..write('tenantName: $tenantName, ')
           ..write('incomeType: $incomeType, ')
           ..write('amount: $amount, ')
           ..write('paymentDate: $paymentDate, ')
@@ -3289,27 +3451,29 @@ class Income extends DataClass implements Insertable<Income> {
   }
 
   @override
-  int get hashCode => Object.hash(
-      id,
-      villaId,
-      villaName,
-      roomId,
-      roomName,
-      incomeType,
-      amount,
-      paymentDate,
-      paymentMethod,
-      monthCovered,
-      notes,
-      createdAt,
-      updatedAt,
-      isDeleted,
-      syncStatus,
-      deletedAt,
-      deletedBy,
-      createdBy,
-      updatedBy,
-      lastSyncedAt);
+  int get hashCode => Object.hashAll([
+        id,
+        villaId,
+        villaName,
+        roomId,
+        roomName,
+        tenantName,
+        incomeType,
+        amount,
+        paymentDate,
+        paymentMethod,
+        monthCovered,
+        notes,
+        createdAt,
+        updatedAt,
+        isDeleted,
+        syncStatus,
+        deletedAt,
+        deletedBy,
+        createdBy,
+        updatedBy,
+        lastSyncedAt
+      ]);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -3319,6 +3483,7 @@ class Income extends DataClass implements Insertable<Income> {
           other.villaName == this.villaName &&
           other.roomId == this.roomId &&
           other.roomName == this.roomName &&
+          other.tenantName == this.tenantName &&
           other.incomeType == this.incomeType &&
           other.amount == this.amount &&
           other.paymentDate == this.paymentDate &&
@@ -3342,6 +3507,7 @@ class IncomesCompanion extends UpdateCompanion<Income> {
   final Value<String> villaName;
   final Value<String> roomId;
   final Value<String> roomName;
+  final Value<String> tenantName;
   final Value<String> incomeType;
   final Value<double> amount;
   final Value<DateTime> paymentDate;
@@ -3364,6 +3530,7 @@ class IncomesCompanion extends UpdateCompanion<Income> {
     this.villaName = const Value.absent(),
     this.roomId = const Value.absent(),
     this.roomName = const Value.absent(),
+    this.tenantName = const Value.absent(),
     this.incomeType = const Value.absent(),
     this.amount = const Value.absent(),
     this.paymentDate = const Value.absent(),
@@ -3387,6 +3554,7 @@ class IncomesCompanion extends UpdateCompanion<Income> {
     this.villaName = const Value.absent(),
     this.roomId = const Value.absent(),
     this.roomName = const Value.absent(),
+    this.tenantName = const Value.absent(),
     required String incomeType,
     required double amount,
     required DateTime paymentDate,
@@ -3416,6 +3584,7 @@ class IncomesCompanion extends UpdateCompanion<Income> {
     Expression<String>? villaName,
     Expression<String>? roomId,
     Expression<String>? roomName,
+    Expression<String>? tenantName,
     Expression<String>? incomeType,
     Expression<double>? amount,
     Expression<DateTime>? paymentDate,
@@ -3439,6 +3608,7 @@ class IncomesCompanion extends UpdateCompanion<Income> {
       if (villaName != null) 'villa_name': villaName,
       if (roomId != null) 'room_id': roomId,
       if (roomName != null) 'room_name': roomName,
+      if (tenantName != null) 'tenant_name': tenantName,
       if (incomeType != null) 'income_type': incomeType,
       if (amount != null) 'amount': amount,
       if (paymentDate != null) 'payment_date': paymentDate,
@@ -3464,6 +3634,7 @@ class IncomesCompanion extends UpdateCompanion<Income> {
       Value<String>? villaName,
       Value<String>? roomId,
       Value<String>? roomName,
+      Value<String>? tenantName,
       Value<String>? incomeType,
       Value<double>? amount,
       Value<DateTime>? paymentDate,
@@ -3486,6 +3657,7 @@ class IncomesCompanion extends UpdateCompanion<Income> {
       villaName: villaName ?? this.villaName,
       roomId: roomId ?? this.roomId,
       roomName: roomName ?? this.roomName,
+      tenantName: tenantName ?? this.tenantName,
       incomeType: incomeType ?? this.incomeType,
       amount: amount ?? this.amount,
       paymentDate: paymentDate ?? this.paymentDate,
@@ -3522,6 +3694,9 @@ class IncomesCompanion extends UpdateCompanion<Income> {
     }
     if (roomName.present) {
       map['room_name'] = Variable<String>(roomName.value);
+    }
+    if (tenantName.present) {
+      map['tenant_name'] = Variable<String>(tenantName.value);
     }
     if (incomeType.present) {
       map['income_type'] = Variable<String>(incomeType.value);
@@ -3582,6 +3757,7 @@ class IncomesCompanion extends UpdateCompanion<Income> {
           ..write('villaName: $villaName, ')
           ..write('roomId: $roomId, ')
           ..write('roomName: $roomName, ')
+          ..write('tenantName: $tenantName, ')
           ..write('incomeType: $incomeType, ')
           ..write('amount: $amount, ')
           ..write('paymentDate: $paymentDate, ')
@@ -5913,6 +6089,9 @@ typedef $$RoomsTableCreateCompanionBuilder = RoomsCompanion Function({
   Value<DateTime?> depositDate,
   Value<String> depositStatus,
   Value<String> depositNotes,
+  Value<String> depositIncomeId,
+  Value<String> depositRefundExpenseId,
+  Value<DateTime?> moveInDate,
   Value<DateTime?> moveOutDate,
   Value<String> lastTenantName,
   Value<String> lastTenantPhone,
@@ -5949,6 +6128,9 @@ typedef $$RoomsTableUpdateCompanionBuilder = RoomsCompanion Function({
   Value<DateTime?> depositDate,
   Value<String> depositStatus,
   Value<String> depositNotes,
+  Value<String> depositIncomeId,
+  Value<String> depositRefundExpenseId,
+  Value<DateTime?> moveInDate,
   Value<DateTime?> moveOutDate,
   Value<String> lastTenantName,
   Value<String> lastTenantPhone,
@@ -6062,6 +6244,17 @@ class $$RoomsTableFilterComposer extends Composer<_$AppDatabase, $RoomsTable> {
 
   ColumnFilters<String> get depositNotes => $composableBuilder(
       column: $table.depositNotes, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get depositIncomeId => $composableBuilder(
+      column: $table.depositIncomeId,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get depositRefundExpenseId => $composableBuilder(
+      column: $table.depositRefundExpenseId,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get moveInDate => $composableBuilder(
+      column: $table.moveInDate, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<DateTime> get moveOutDate => $composableBuilder(
       column: $table.moveOutDate, builder: (column) => ColumnFilters(column));
@@ -6200,6 +6393,17 @@ class $$RoomsTableOrderingComposer
       column: $table.depositNotes,
       builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<String> get depositIncomeId => $composableBuilder(
+      column: $table.depositIncomeId,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get depositRefundExpenseId => $composableBuilder(
+      column: $table.depositRefundExpenseId,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get moveInDate => $composableBuilder(
+      column: $table.moveInDate, builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<DateTime> get moveOutDate => $composableBuilder(
       column: $table.moveOutDate, builder: (column) => ColumnOrderings(column));
 
@@ -6332,6 +6536,15 @@ class $$RoomsTableAnnotationComposer
   GeneratedColumn<String> get depositNotes => $composableBuilder(
       column: $table.depositNotes, builder: (column) => column);
 
+  GeneratedColumn<String> get depositIncomeId => $composableBuilder(
+      column: $table.depositIncomeId, builder: (column) => column);
+
+  GeneratedColumn<String> get depositRefundExpenseId => $composableBuilder(
+      column: $table.depositRefundExpenseId, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get moveInDate => $composableBuilder(
+      column: $table.moveInDate, builder: (column) => column);
+
   GeneratedColumn<DateTime> get moveOutDate => $composableBuilder(
       column: $table.moveOutDate, builder: (column) => column);
 
@@ -6423,6 +6636,9 @@ class $$RoomsTableTableManager extends RootTableManager<
             Value<DateTime?> depositDate = const Value.absent(),
             Value<String> depositStatus = const Value.absent(),
             Value<String> depositNotes = const Value.absent(),
+            Value<String> depositIncomeId = const Value.absent(),
+            Value<String> depositRefundExpenseId = const Value.absent(),
+            Value<DateTime?> moveInDate = const Value.absent(),
             Value<DateTime?> moveOutDate = const Value.absent(),
             Value<String> lastTenantName = const Value.absent(),
             Value<String> lastTenantPhone = const Value.absent(),
@@ -6459,6 +6675,9 @@ class $$RoomsTableTableManager extends RootTableManager<
             depositDate: depositDate,
             depositStatus: depositStatus,
             depositNotes: depositNotes,
+            depositIncomeId: depositIncomeId,
+            depositRefundExpenseId: depositRefundExpenseId,
+            moveInDate: moveInDate,
             moveOutDate: moveOutDate,
             lastTenantName: lastTenantName,
             lastTenantPhone: lastTenantPhone,
@@ -6495,6 +6714,9 @@ class $$RoomsTableTableManager extends RootTableManager<
             Value<DateTime?> depositDate = const Value.absent(),
             Value<String> depositStatus = const Value.absent(),
             Value<String> depositNotes = const Value.absent(),
+            Value<String> depositIncomeId = const Value.absent(),
+            Value<String> depositRefundExpenseId = const Value.absent(),
+            Value<DateTime?> moveInDate = const Value.absent(),
             Value<DateTime?> moveOutDate = const Value.absent(),
             Value<String> lastTenantName = const Value.absent(),
             Value<String> lastTenantPhone = const Value.absent(),
@@ -6531,6 +6753,9 @@ class $$RoomsTableTableManager extends RootTableManager<
             depositDate: depositDate,
             depositStatus: depositStatus,
             depositNotes: depositNotes,
+            depositIncomeId: depositIncomeId,
+            depositRefundExpenseId: depositRefundExpenseId,
+            moveInDate: moveInDate,
             moveOutDate: moveOutDate,
             lastTenantName: lastTenantName,
             lastTenantPhone: lastTenantPhone,
@@ -6599,6 +6824,7 @@ typedef $$IncomesTableCreateCompanionBuilder = IncomesCompanion Function({
   Value<String> villaName,
   Value<String> roomId,
   Value<String> roomName,
+  Value<String> tenantName,
   required String incomeType,
   required double amount,
   required DateTime paymentDate,
@@ -6622,6 +6848,7 @@ typedef $$IncomesTableUpdateCompanionBuilder = IncomesCompanion Function({
   Value<String> villaName,
   Value<String> roomId,
   Value<String> roomName,
+  Value<String> tenantName,
   Value<String> incomeType,
   Value<double> amount,
   Value<DateTime> paymentDate,
@@ -6679,6 +6906,9 @@ class $$IncomesTableFilterComposer
 
   ColumnFilters<String> get roomName => $composableBuilder(
       column: $table.roomName, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get tenantName => $composableBuilder(
+      column: $table.tenantName, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<String> get incomeType => $composableBuilder(
       column: $table.incomeType, builder: (column) => ColumnFilters(column));
@@ -6766,6 +6996,9 @@ class $$IncomesTableOrderingComposer
 
   ColumnOrderings<String> get roomName => $composableBuilder(
       column: $table.roomName, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get tenantName => $composableBuilder(
+      column: $table.tenantName, builder: (column) => ColumnOrderings(column));
 
   ColumnOrderings<String> get incomeType => $composableBuilder(
       column: $table.incomeType, builder: (column) => ColumnOrderings(column));
@@ -6856,6 +7089,9 @@ class $$IncomesTableAnnotationComposer
 
   GeneratedColumn<String> get roomName =>
       $composableBuilder(column: $table.roomName, builder: (column) => column);
+
+  GeneratedColumn<String> get tenantName => $composableBuilder(
+      column: $table.tenantName, builder: (column) => column);
 
   GeneratedColumn<String> get incomeType => $composableBuilder(
       column: $table.incomeType, builder: (column) => column);
@@ -6951,6 +7187,7 @@ class $$IncomesTableTableManager extends RootTableManager<
             Value<String> villaName = const Value.absent(),
             Value<String> roomId = const Value.absent(),
             Value<String> roomName = const Value.absent(),
+            Value<String> tenantName = const Value.absent(),
             Value<String> incomeType = const Value.absent(),
             Value<double> amount = const Value.absent(),
             Value<DateTime> paymentDate = const Value.absent(),
@@ -6974,6 +7211,7 @@ class $$IncomesTableTableManager extends RootTableManager<
             villaName: villaName,
             roomId: roomId,
             roomName: roomName,
+            tenantName: tenantName,
             incomeType: incomeType,
             amount: amount,
             paymentDate: paymentDate,
@@ -6997,6 +7235,7 @@ class $$IncomesTableTableManager extends RootTableManager<
             Value<String> villaName = const Value.absent(),
             Value<String> roomId = const Value.absent(),
             Value<String> roomName = const Value.absent(),
+            Value<String> tenantName = const Value.absent(),
             required String incomeType,
             required double amount,
             required DateTime paymentDate,
@@ -7020,6 +7259,7 @@ class $$IncomesTableTableManager extends RootTableManager<
             villaName: villaName,
             roomId: roomId,
             roomName: roomName,
+            tenantName: tenantName,
             incomeType: incomeType,
             amount: amount,
             paymentDate: paymentDate,

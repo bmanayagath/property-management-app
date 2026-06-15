@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_styles.dart';
+import '../../domain/models/income.dart';
 import '../../domain/models/room.dart';
 import '../../domain/models/villa_model.dart';
 import '../providers/dashboard_provider.dart';
+import '../providers/income_provider.dart';
 import '../providers/room_provider.dart';
 import '../providers/villa_provider.dart';
 import '../widgets/app_text_field.dart';
@@ -42,6 +44,7 @@ class _AddEditRoomScreenState extends ConsumerState<AddEditRoomScreen> {
   late String _depositStatus;
   DateTime? _depositDate;
   late VillaModel? _selectedVilla;
+  bool _isSaving = false;
 
   final _formKey = GlobalKey<FormState>();
 
@@ -107,8 +110,12 @@ class _AddEditRoomScreenState extends ConsumerState<AddEditRoomScreen> {
 
   bool get _isTenantRequired => _status == RoomStatuses.occupied;
 
-  void _saveRoom() async {
+  Future<void> _saveRoom() async {
+    if (_isSaving) return;
+    setState(() => _isSaving = true);
+
     if (!_formKey.currentState!.validate()) {
+      setState(() => _isSaving = false);
       return;
     }
 
@@ -116,6 +123,7 @@ class _AddEditRoomScreenState extends ConsumerState<AddEditRoomScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please select a villa')),
       );
+      setState(() => _isSaving = false);
       return;
     }
 
@@ -129,14 +137,36 @@ class _AddEditRoomScreenState extends ConsumerState<AddEditRoomScreen> {
           ),
         ),
       );
+      setState(() => _isSaving = false);
       return;
     }
 
+    final now = DateTime.now();
+    final roomId = widget.room?.id ?? now.millisecondsSinceEpoch.toString();
+    final startsNewTenancy =
+        _status == RoomStatuses.occupied && !(widget.room?.isOccupied ?? false);
+    final moveInDate = _status == RoomStatuses.occupied
+        ? startsNewTenancy
+            ? _contractStartDate
+            : widget.room?.moveInDate ??
+                widget.room?.contractStartDate ??
+                _contractStartDate
+        : null;
     final depositAmount = _depositType == DepositTypes.none
         ? 0.0
         : double.parse(_depositAmountController.text);
+    final hasDepositIncome = _status == RoomStatuses.occupied &&
+        _tenantNameController.text.trim().isNotEmpty &&
+        _depositType != DepositTypes.none &&
+        depositAmount > 0;
+    final existingDepositIncomeId = widget.room?.depositIncomeId ?? '';
+    final depositIncomeId = hasDepositIncome
+        ? (!startsNewTenancy && existingDepositIncomeId.isNotEmpty
+            ? existingDepositIncomeId
+            : 'deposit-income-$roomId-${now.microsecondsSinceEpoch}')
+        : '';
     final room = (widget.room ?? Room.empty()).copyWith(
-      id: widget.room?.id ?? DateTime.now().millisecondsSinceEpoch.toString(),
+      id: roomId,
       villaId: _selectedVilla!.id,
       villaName: _selectedVilla!.villaName,
       roomName: _roomNameController.text.trim(),
@@ -148,16 +178,25 @@ class _AddEditRoomScreenState extends ConsumerState<AddEditRoomScreen> {
       contractEndDate: _isTenantRequired ? _contractEndDate : null,
       paymentDueDay: _paymentDueDay,
       status: _status,
-      createdAt: widget.room?.createdAt ?? DateTime.now(),
-      updatedAt: DateTime.now(),
+      createdAt: widget.room?.createdAt ?? now,
+      updatedAt: now,
       depositType: _depositType,
       depositAmount: depositAmount,
       depositDate: _depositType == DepositTypes.none
           ? null
           : _depositDate ?? DateTime.now(),
       clearDepositDate: _depositType == DepositTypes.none,
-      depositStatus: _depositStatus,
+      depositStatus: startsNewTenancy ? DepositStatuses.held : _depositStatus,
       depositNotes: _depositNotesController.text.trim(),
+      depositIncomeId: depositIncomeId,
+      clearDepositIncomeId: depositIncomeId.isEmpty,
+      clearDepositRefundExpenseId: startsNewTenancy,
+      moveInDate: moveInDate,
+      clearMoveInDate: moveInDate == null,
+      clearMoveOutDate: startsNewTenancy,
+      refundAmount: startsNewTenancy ? 0 : widget.room?.refundAmount,
+      retainedAmount: startsNewTenancy ? 0 : widget.room?.retainedAmount,
+      depositReason: startsNewTenancy ? '' : widget.room?.depositReason,
     );
 
     try {
@@ -172,15 +211,59 @@ class _AddEditRoomScreenState extends ConsumerState<AddEditRoomScreen> {
           const SnackBar(content: Text('Room updated successfully!')),
         );
       }
+      await _syncDepositIncome(
+        room,
+        previousDepositIncomeId:
+            widget.room?.isOccupied == true && !startsNewTenancy
+                ? existingDepositIncomeId
+                : '',
+      );
       ref.invalidate(allRoomsProvider);
       ref.invalidate(villasProvider);
       ref.invalidate(dashboardSummaryProvider);
       Navigator.pop(context);
     } catch (e) {
+      if (!mounted) return;
+      setState(() => _isSaving = false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error: $e')),
       );
     }
+  }
+
+  Future<void> _syncDepositIncome(
+    Room room, {
+    required String previousDepositIncomeId,
+  }) async {
+    final controller = ref.read(incomeControllerProvider.notifier);
+    if (room.depositIncomeId.isEmpty) {
+      if (previousDepositIncomeId.isNotEmpty) {
+        await controller.deleteIncome(previousDepositIncomeId);
+      }
+      return;
+    }
+
+    final depositDate = room.depositDate ?? DateTime.now();
+    await controller.upsertIncome(
+      Income(
+        id: room.depositIncomeId,
+        villaId: room.villaId,
+        villaName: room.villaName,
+        roomId: room.id,
+        roomName: room.displayName,
+        tenantName: room.tenantName,
+        incomeType: IncomeTypes.deposit,
+        amount: room.depositAmount,
+        paymentDate: depositDate,
+        paymentMethod: room.depositType == DepositTypes.cheque
+            ? IncomePaymentMethods.cheque
+            : IncomePaymentMethods.cash,
+        monthCovered: DateTime(depositDate.year, depositDate.month, 1),
+        notes: 'Tenant deposit for ${room.tenantName}',
+        createdAt: depositDate,
+        updatedAt: DateTime.now(),
+      ),
+    );
   }
 
   Future<String?> _findDuplicateRoomName() async {
@@ -569,8 +652,14 @@ class _AddEditRoomScreenState extends ConsumerState<AddEditRoomScreen> {
                   width: double.infinity,
                   height: 48,
                   child: ElevatedButton.icon(
-                    onPressed: _saveRoom,
-                    icon: Icon(isEditing ? Icons.save : Icons.add),
+                    onPressed: _isSaving ? null : _saveRoom,
+                    icon: _isSaving
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : Icon(isEditing ? Icons.save : Icons.add),
                     label: Text(isEditing ? 'Update Room' : 'Add Room'),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.primary,

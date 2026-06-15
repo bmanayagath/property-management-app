@@ -4,6 +4,7 @@ class Income {
   final String villaName;
   final String roomId;
   final String roomName;
+  final String tenantName;
   final String incomeType;
   final double amount;
   final DateTime paymentDate;
@@ -26,6 +27,7 @@ class Income {
     required this.villaName,
     required this.roomId,
     required this.roomName,
+    this.tenantName = '',
     required this.incomeType,
     required this.amount,
     required this.paymentDate,
@@ -49,6 +51,7 @@ class Income {
     String? villaName,
     String? roomId,
     String? roomName,
+    String? tenantName,
     String? incomeType,
     double? amount,
     DateTime? paymentDate,
@@ -77,6 +80,7 @@ class Income {
       villaName: villaName ?? this.villaName,
       roomId: roomId ?? this.roomId,
       roomName: roomName ?? this.roomName,
+      tenantName: tenantName ?? this.tenantName,
       incomeType: incomeType ?? this.incomeType,
       amount: amount ?? this.amount,
       paymentDate: paymentDate ?? this.paymentDate,
