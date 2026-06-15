@@ -27,6 +27,9 @@ class Room {
   final DateTime? depositDate;
   final String depositStatus;
   final String depositNotes;
+  final String depositIncomeId;
+  final String depositRefundExpenseId;
+  final DateTime? moveInDate;
   final DateTime? moveOutDate;
   final String lastTenantName;
   final String lastTenantPhone;
@@ -62,6 +65,9 @@ class Room {
     this.depositDate,
     this.depositStatus = DepositStatuses.held,
     this.depositNotes = '',
+    this.depositIncomeId = '',
+    this.depositRefundExpenseId = '',
+    this.moveInDate,
     this.moveOutDate,
     this.lastTenantName = '',
     this.lastTenantPhone = '',
@@ -148,6 +154,12 @@ class Room {
     bool clearDepositDate = false,
     String? depositStatus,
     String? depositNotes,
+    String? depositIncomeId,
+    bool clearDepositIncomeId = false,
+    String? depositRefundExpenseId,
+    bool clearDepositRefundExpenseId = false,
+    DateTime? moveInDate,
+    bool clearMoveInDate = false,
     DateTime? moveOutDate,
     bool clearMoveOutDate = false,
     String? lastTenantName,
@@ -188,6 +200,12 @@ class Room {
       depositDate: clearDepositDate ? null : depositDate ?? this.depositDate,
       depositStatus: depositStatus ?? this.depositStatus,
       depositNotes: depositNotes ?? this.depositNotes,
+      depositIncomeId:
+          clearDepositIncomeId ? '' : depositIncomeId ?? this.depositIncomeId,
+      depositRefundExpenseId: clearDepositRefundExpenseId
+          ? ''
+          : depositRefundExpenseId ?? this.depositRefundExpenseId,
+      moveInDate: clearMoveInDate ? null : moveInDate ?? this.moveInDate,
       moveOutDate: clearMoveOutDate ? null : moveOutDate ?? this.moveOutDate,
       lastTenantName: lastTenantName ?? this.lastTenantName,
       lastTenantPhone: lastTenantPhone ?? this.lastTenantPhone,

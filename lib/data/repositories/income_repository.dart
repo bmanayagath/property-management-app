@@ -31,6 +31,7 @@ class IncomeRepository {
         villaName: Value(income.villaName),
         roomId: Value(income.roomId),
         roomName: Value(income.roomName),
+        tenantName: Value(income.tenantName),
         incomeType: Value(income.incomeType),
         amount: Value(income.amount),
         paymentDate: Value(income.paymentDate),
@@ -51,6 +52,7 @@ class IncomeRepository {
         villaName: Value(income.villaName),
         roomId: Value(income.roomId),
         roomName: Value(income.roomName),
+        tenantName: Value(income.tenantName),
         incomeType: Value(income.incomeType),
         amount: Value(income.amount),
         paymentDate: Value(income.paymentDate),
@@ -64,6 +66,33 @@ class IncomeRepository {
 
   Future<void> deleteIncome(String id, {String? deletedBy}) {
     return database.deleteIncome(id, deletedBy: deletedBy);
+  }
+
+  Future<void> upsertIncome(Income income) async {
+    final now = DateTime.now();
+    await database.into(database.incomes).insertOnConflictUpdate(
+          db.IncomesCompanion(
+            id: Value(income.id),
+            villaId: Value(income.villaId),
+            villaName: Value(income.villaName),
+            roomId: Value(income.roomId),
+            roomName: Value(income.roomName),
+            tenantName: Value(income.tenantName),
+            incomeType: Value(income.incomeType),
+            amount: Value(income.amount),
+            paymentDate: Value(income.paymentDate),
+            paymentMethod: Value(income.paymentMethod),
+            monthCovered: Value(_monthStart(income.monthCovered)),
+            notes:
+                Value(income.notes.trim().isEmpty ? null : income.notes.trim()),
+            createdAt: Value(income.createdAt),
+            updatedAt: Value(now),
+            isDeleted: const Value(0),
+            syncStatus: const Value('pending'),
+            deletedAt: const Value(null),
+            deletedBy: const Value(null),
+          ),
+        );
   }
 
   Future<List<Income>> getIncomesByVilla(String villaId) async {
@@ -89,6 +118,7 @@ class IncomeRepository {
           row.villaName.trim().isEmpty ? 'Villa ${row.villaId}' : row.villaName,
       roomId: row.roomId,
       roomName: row.roomName,
+      tenantName: row.tenantName,
       incomeType: _incomeTypeLabel(row.incomeType),
       amount: row.amount,
       paymentDate: row.paymentDate,
