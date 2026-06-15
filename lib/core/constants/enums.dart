@@ -22,6 +22,7 @@ enum ExpenseCategory {
   governmentFee,
   loan,
   ownerRent,
+  depositRefund,
   other,
 }
 
@@ -84,6 +85,8 @@ extension ExpenseCategoryExt on ExpenseCategory {
         return 'Loan';
       case ExpenseCategory.ownerRent:
         return 'Owner Rent';
+      case ExpenseCategory.depositRefund:
+        return 'Deposit Refund';
       case ExpenseCategory.other:
         return 'Other';
     }

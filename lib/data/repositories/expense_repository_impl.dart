@@ -78,6 +78,32 @@ class ExpenseRepositoryImpl implements ExpenseRepository {
   }
 
   @override
+  Future<void> upsertExpense(ExpenseModel expense) async {
+    final now = DateTime.now();
+    await database.into(database.expenses).insertOnConflictUpdate(
+          ExpensesCompanion(
+            id: Value(expense.id),
+            villaId: Value(expense.villaId),
+            villaName: Value(expense.villaName),
+            roomId: Value(expense.roomId),
+            roomName: Value(expense.roomName),
+            category: Value(expense.category.name),
+            amount: Value(expense.amount),
+            expenseDate: Value(expense.expenseDate),
+            paidTo: Value(expense.paidTo),
+            paymentMethod: Value(expense.paymentMethod.name),
+            notes: Value(expense.notes),
+            createdAt: Value(expense.createdAt),
+            updatedAt: Value(now),
+            isDeleted: const Value(0),
+            syncStatus: const Value('pending'),
+            deletedAt: const Value(null),
+            deletedBy: const Value(null),
+          ),
+        );
+  }
+
+  @override
   Future<void> deleteExpense(String id, {String? deletedBy}) async {
     await database.deleteExpense(id, deletedBy: deletedBy);
   }

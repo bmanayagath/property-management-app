@@ -4,9 +4,15 @@ import 'package:intl/intl.dart';
 
 import '../../core/constants/app_colors.dart';
 import '../../core/utils/currency_formatter.dart';
+import '../../data/services/tenant_contact_service.dart';
+import '../../domain/models/expense.dart';
+import '../../domain/models/income.dart';
 import '../../domain/models/room.dart';
+import '../providers/expense_provider.dart';
+import '../providers/income_provider.dart';
 import '../providers/room_provider.dart';
 import '../widgets/premium_widgets.dart';
+import 'add_edit_room_screen.dart';
 
 class RoomDetailScreen extends ConsumerStatefulWidget {
   final Room room;
@@ -23,6 +29,7 @@ class RoomDetailScreen extends ConsumerStatefulWidget {
 }
 
 class _RoomDetailScreenState extends ConsumerState<RoomDetailScreen> {
+  final _contactService = TenantContactService();
   late Room _room;
 
   @override
@@ -33,147 +40,548 @@ class _RoomDetailScreenState extends ConsumerState<RoomDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final currentMonth = DateTime(DateTime.now().year, DateTime.now().month, 1);
+    final rentSummary = ref.watch(
+      rentPaymentSummaryProvider(
+        RentPaymentSummaryRequest(
+          roomId: _room.id,
+          monthlyRent: _room.monthlyRent,
+          month: currentMonth,
+        ),
+      ),
+    );
+    final incomes =
+        ref.watch(incomeListProvider).valueOrNull ?? const <Income>[];
+    final lastRentPayment = incomes
+        .where(
+          (income) =>
+              income.roomId == _room.id &&
+              income.incomeType.toLowerCase() == IncomeTypes.rent.toLowerCase(),
+        )
+        .fold<DateTime?>(
+          null,
+          (latest, income) =>
+              latest == null || income.paymentDate.isAfter(latest)
+                  ? income.paymentDate
+                  : latest,
+        );
+
     return PremiumScaffold(
       appBar: AppBar(title: Text(_room.displayName)),
       body: ListView(
         padding: const EdgeInsets.all(18),
         children: [
-          _section('Current Tenant', [
-            _row('Status', _room.status),
-            _row(
-                'Tenant', _room.tenantName.isEmpty ? 'None' : _room.tenantName),
-            _row('Phone',
-                _room.tenantPhone.isEmpty ? 'None' : _room.tenantPhone),
-          ]),
+          _tenantCard(),
           const SizedBox(height: 16),
-          _section('Tenant Deposit', [
-            _row('Type', _room.depositType),
-            _row('Amount', CurrencyFormatter.format(_room.depositAmount)),
-            _row('Status', _room.depositStatus),
-            if (_room.depositDate != null)
-              _row(
-                'Date',
-                DateFormat('dd MMM yyyy').format(_room.depositDate!),
+          rentSummary.when(
+            data: (summary) => _rentCard(summary, lastRentPayment),
+            loading: () => const _SectionLoading(title: 'Rent Information'),
+            error: (_, __) => _rentCard(
+              RentPaymentSummary(
+                monthlyRent: _room.monthlyRent,
+                paidAmount: 0,
+                remainingRent: _room.monthlyRent,
               ),
-            if (_room.depositNotes.trim().isNotEmpty)
-              _row('Notes', _room.depositNotes),
-          ]),
+              lastRentPayment,
+            ),
+          ),
+          const SizedBox(height: 16),
+          _depositCard(),
           if (_room.isOccupied && widget.canManage) ...[
             const SizedBox(height: 16),
-            SizedBox(
-              height: 48,
-              child: OutlinedButton.icon(
-                onPressed: _vacateRoom,
-                icon: const Icon(Icons.logout_rounded),
-                label: const Text('Vacate Room'),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: AppColors.error,
-                  side: const BorderSide(color: AppColors.error),
-                ),
-              ),
-            ),
+            _actionsCard(),
           ],
           const SizedBox(height: 24),
-          Text(
-            'Tenant History',
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.w800,
-                ),
-          ),
-          const SizedBox(height: 10),
-          if (_room.tenantHistory.isEmpty)
-            const Text('No previous tenants.')
-          else
-            ..._room.tenantHistory.reversed.map(_historyCard),
+          _historySection(),
         ],
       ),
     );
   }
 
-  Widget _section(String title, List<Widget> children) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.border),
-      ),
+  Widget _tenantCard() {
+    final hasPhone = _room.tenantPhone.trim().isNotEmpty;
+    return _sectionCard(
+      title: 'Tenant Information',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            title,
-            style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  _room.displayName,
+                  style: const TextStyle(
+                      fontSize: 24, fontWeight: FontWeight.w800),
+                ),
+              ),
+              _statusChip(
+                _room.isOccupied ? 'Occupied' : 'Vacant',
+                _room.isOccupied ? AppColors.success : AppColors.error,
+              ),
+            ],
           ),
-          const SizedBox(height: 12),
-          ...children,
+          const SizedBox(height: 18),
+          Text(
+            _room.tenantName.trim().isEmpty
+                ? 'No current tenant'
+                : _room.tenantName,
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            _room.tenantPhone.trim().isEmpty
+                ? 'No phone number'
+                : _room.tenantPhone,
+            style: const TextStyle(color: AppColors.textSecondary),
+          ),
+          const SizedBox(height: 18),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _quickAction(
+                icon: Icons.call_outlined,
+                label: 'Call',
+                onPressed: hasPhone ? () => _callTenant() : null,
+              ),
+              _quickAction(
+                icon: Icons.chat_outlined,
+                label: 'WhatsApp',
+                onPressed: hasPhone ? () => _whatsappTenant() : null,
+              ),
+              if (widget.canManage)
+                _quickAction(
+                  icon: Icons.edit_outlined,
+                  label: 'Edit',
+                  onPressed: _editRoom,
+                ),
+            ],
+          ),
         ],
       ),
     );
   }
 
-  Widget _row(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Row(
+  Widget _rentCard(RentPaymentSummary summary, DateTime? lastPayment) {
+    final collected = _room.isOccupied ? summary.paidAmount : 0.0;
+    final pending = _room.isOccupied ? summary.remainingRent : 0.0;
+    final isCollected = pending <= 0 && _room.monthlyRent > 0;
+    return _sectionCard(
+      title: 'Rent Information',
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox(
-            width: 90,
-            child: Text(
-              label,
-              style: const TextStyle(color: AppColors.textSecondary),
-            ),
+          const Text('Monthly Rent',
+              style: TextStyle(color: AppColors.textSecondary)),
+          const SizedBox(height: 4),
+          _money(_room.monthlyRent, size: 30),
+          const SizedBox(height: 18),
+          Row(
+            children: [
+              Expanded(
+                  child: _metric('Collected', collected, AppColors.success)),
+              const SizedBox(width: 12),
+              Expanded(
+                  child: _metric('Pending', pending, AppColors.warningDark)),
+            ],
           ),
-          Expanded(
-            child: Text(
-              value,
-              style: const TextStyle(fontWeight: FontWeight.w700),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              _statusChip(
+                _room.isVacant
+                    ? 'Vacant'
+                    : isCollected
+                        ? 'Collected'
+                        : 'Pending',
+                _room.isVacant
+                    ? AppColors.error
+                    : isCollected
+                        ? AppColors.success
+                        : AppColors.warningDark,
+              ),
+              const Spacer(),
+              Text(
+                lastPayment == null
+                    ? 'No rent payments yet'
+                    : 'Last paid ${DateFormat('dd MMM yyyy').format(lastPayment)}',
+                style: const TextStyle(
+                  color: AppColors.textSecondary,
+                  fontSize: 12,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _depositCard() {
+    final hasDeposit =
+        _room.depositType != DepositTypes.none && _room.depositAmount > 0;
+    return _sectionCard(
+      title: 'Deposit Information',
+      child: hasDeposit
+          ? Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _money(_room.depositAmount, size: 36),
+                const SizedBox(height: 8),
+                Text(
+                  '${_room.depositType} Deposit',
+                  style: const TextStyle(
+                    color: AppColors.textSecondary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 14),
+                _statusChip(_room.depositStatus,
+                    _depositStatusColor(_room.depositStatus)),
+                if (_room.depositDate != null) ...[
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Collected on',
+                    style:
+                        TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    DateFormat('dd MMM yyyy').format(_room.depositDate!),
+                    style: const TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                ],
+                if (_room.depositNotes.trim().isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  Text(
+                    _room.depositNotes,
+                    style: const TextStyle(color: AppColors.textSecondary),
+                  ),
+                ],
+              ],
+            )
+          : const Text(
+              'No tenant deposit recorded.',
+              style: TextStyle(color: AppColors.textSecondary),
+            ),
+    );
+  }
+
+  Widget _actionsCard() {
+    final hasHeldDeposit =
+        _room.depositAmount > 0 && _room.depositStatus == DepositStatuses.held;
+    return _sectionCard(
+      title: 'Room Actions',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (hasHeldDeposit) ...[
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.07),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Deposit Held',
+                    style: TextStyle(color: AppColors.textSecondary),
+                  ),
+                  const SizedBox(height: 4),
+                  _money(_room.depositAmount, size: 24),
+                  const SizedBox(height: 6),
+                  const Text(
+                    'Refund will be processed during vacating.',
+                    style:
+                        TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 14),
+          ],
+          SizedBox(
+            width: double.infinity,
+            height: 48,
+            child: OutlinedButton.icon(
+              onPressed: _vacateRoom,
+              icon: const Icon(Icons.logout_rounded),
+              label: const Text('Vacate Tenant'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppColors.error,
+                side: const BorderSide(color: AppColors.error),
+              ),
             ),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _historySection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Tenant History',
+          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.w800,
+              ),
+        ),
+        const SizedBox(height: 10),
+        if (_room.tenantHistory.isEmpty)
+          _sectionCard(
+            child: const Text(
+              'No previous tenant records.\n\nHistory will appear after the first tenant vacates.',
+              style: TextStyle(color: AppColors.textSecondary),
+            ),
+          )
+        else ...[
+          if (_room.isOccupied) _currentTenantHistoryCard(),
+          ..._room.tenantHistory.reversed.map(_historyCard),
+        ],
+      ],
     );
   }
 
   Widget _historyCard(TenantHistory history) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 10),
-      child: Padding(
-        padding: const EdgeInsets.all(14),
+    final start = history.moveInDate == null
+        ? 'Unknown'
+        : DateFormat('MMM yyyy').format(history.moveInDate!);
+    final end = DateFormat('MMM yyyy').format(history.moveOutDate);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: _sectionCard(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               history.tenantName,
-              style: const TextStyle(fontWeight: FontWeight.w800),
+              style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
             ),
-            const SizedBox(height: 8),
-            _row(
-              'Move out',
-              DateFormat('dd MMM yyyy').format(history.moveOutDate),
+            const SizedBox(height: 4),
+            Text(
+              '$start -> $end',
+              style: const TextStyle(color: AppColors.textSecondary),
             ),
-            _row(
-              'Deposit',
-              '${history.depositType} - '
-                  '${CurrencyFormatter.format(history.depositAmount)}',
+            const SizedBox(height: 14),
+            Row(
+              children: [
+                Expanded(
+                    child: _historyMetric('Deposit', history.depositAmount)),
+                _statusChip(
+                  history.depositStatus,
+                  _depositStatusColor(history.depositStatus),
+                ),
+              ],
             ),
-            _row('Status', history.depositStatus),
-            if (history.refundAmount > 0)
-              _row(
-                'Refunded',
-                CurrencyFormatter.format(history.refundAmount),
+            if (history.refundAmount > 0 || history.retainedAmount > 0) ...[
+              const SizedBox(height: 12),
+              Text(
+                'Refunded ${CurrencyFormatter.format(history.refundAmount)}  |  '
+                'Retained ${CurrencyFormatter.format(history.retainedAmount)}',
+                style: const TextStyle(color: AppColors.textSecondary),
               ),
-            if (history.retainedAmount > 0)
-              _row(
-                'Retained',
-                CurrencyFormatter.format(history.retainedAmount),
-              ),
-            if (history.notes.trim().isNotEmpty) _row('Notes', history.notes),
+            ],
+            if (history.notes.trim().isNotEmpty) ...[
+              const SizedBox(height: 10),
+              Text(history.notes,
+                  style: const TextStyle(color: AppColors.textSecondary)),
+            ],
           ],
         ),
       ),
     );
+  }
+
+  Widget _currentTenantHistoryCard() {
+    final startDate = _room.moveInDate ?? _room.contractStartDate;
+    final start = startDate == null
+        ? 'Unknown'
+        : DateFormat('MMM yyyy').format(startDate);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: _sectionCard(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              _room.tenantName,
+              style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              '$start -> Present',
+              style: const TextStyle(color: AppColors.textSecondary),
+            ),
+            const SizedBox(height: 14),
+            Row(
+              children: [
+                Expanded(child: _historyMetric('Deposit', _room.depositAmount)),
+                _statusChip(
+                  _room.depositStatus,
+                  _depositStatusColor(_room.depositStatus),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _sectionCard({String? title, required Widget child}) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.border),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.035),
+            blurRadius: 14,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (title != null) ...[
+            Text(title,
+                style:
+                    const TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
+            const SizedBox(height: 16),
+          ],
+          child,
+        ],
+      ),
+    );
+  }
+
+  Widget _quickAction({
+    required IconData icon,
+    required String label,
+    required VoidCallback? onPressed,
+  }) {
+    return OutlinedButton.icon(
+      onPressed: onPressed,
+      icon: Icon(icon, size: 18),
+      label: Text(label),
+    );
+  }
+
+  Widget _metric(String label, double amount, Color color) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label,
+              style: TextStyle(color: color, fontWeight: FontWeight.w700)),
+          const SizedBox(height: 5),
+          _money(amount, size: 18),
+        ],
+      ),
+    );
+  }
+
+  Widget _historyMetric(String label, double amount) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label,
+            style:
+                const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+        const SizedBox(height: 2),
+        _money(amount, size: 17),
+      ],
+    );
+  }
+
+  Widget _money(double amount, {required double size}) {
+    return Text.rich(
+      TextSpan(
+        children: [
+          TextSpan(
+            text: CurrencyFormatter.formatAmount(amount),
+            style: TextStyle(fontSize: size, fontWeight: FontWeight.w800),
+          ),
+          TextSpan(
+            text: ' QAR',
+            style: TextStyle(
+              fontSize: size * 0.45,
+              fontWeight: FontWeight.w700,
+              color: AppColors.textSecondary,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _statusChip(String label, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        label,
+        style:
+            TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.w800),
+      ),
+    );
+  }
+
+  Color _depositStatusColor(String status) {
+    switch (status) {
+      case DepositStatuses.refunded:
+        return AppColors.success;
+      case DepositStatuses.partiallyRefunded:
+        return AppColors.warningDark;
+      case DepositStatuses.forfeited:
+        return AppColors.error;
+      default:
+        return AppColors.primary;
+    }
+  }
+
+  Future<void> _callTenant() async {
+    if (!await _contactService.callTenant(_room.tenantPhone) && mounted) {
+      _showMessage('Unable to open the phone app.');
+    }
+  }
+
+  Future<void> _whatsappTenant() async {
+    if (!await _contactService.whatsappTenant(phone: _room.tenantPhone) &&
+        mounted) {
+      _showMessage('Unable to open WhatsApp.');
+    }
+  }
+
+  Future<void> _editRoom() async {
+    await Navigator.push<void>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => AddEditRoomScreen(room: _room, villaId: _room.villaId),
+      ),
+    );
+    ref.invalidate(roomByIdProvider(_room.id));
+    final refreshed = await ref.read(roomByIdProvider(_room.id).future);
+    if (mounted && refreshed != null) {
+      setState(() => _room = refreshed);
+    }
   }
 
   Future<void> _vacateRoom() async {
@@ -184,12 +592,42 @@ class _RoomDetailScreenState extends ConsumerState<RoomDetailScreen> {
     if (result == null) return;
 
     final now = DateTime.now();
+    var refundExpenseId = _room.depositRefundExpenseId;
+    if (result.refundAmount > 0) {
+      final tenancyStart =
+          _room.moveInDate ?? _room.contractStartDate ?? _room.createdAt;
+      refundExpenseId = refundExpenseId.isNotEmpty
+          ? refundExpenseId
+          : _room.depositIncomeId.isNotEmpty
+              ? 'deposit-refund-${_room.depositIncomeId}'
+              : 'deposit-refund-${_room.id}-${tenancyStart.millisecondsSinceEpoch}-${_room.tenantHistory.length}';
+      await ref.read(expenseProvider.notifier).upsertExpense(
+            Expense(
+              id: refundExpenseId,
+              villaId: _room.villaId,
+              villaName: _room.villaName,
+              roomId: _room.id,
+              roomName: _room.displayName,
+              category: ExpenseCategories.depositRefund,
+              amount: result.refundAmount,
+              expenseDate: now,
+              paidTo: _room.tenantName,
+              paymentMethod: _room.depositType == DepositTypes.cheque
+                  ? ExpensePaymentMethods.cheque
+                  : ExpensePaymentMethods.cash,
+              notes: 'Tenant deposit refund for ${_room.tenantName}',
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+    }
+
     final history = TenantHistory(
       roomId: _room.id,
       villaId: _room.villaId,
       tenantName: _room.tenantName,
       tenantPhone: _room.tenantPhone,
-      moveInDate: _room.contractStartDate,
+      moveInDate: _room.moveInDate ?? _room.contractStartDate,
       moveOutDate: now,
       depositType: _room.depositType,
       depositAmount: _room.depositAmount,
@@ -206,6 +644,7 @@ class _RoomDetailScreenState extends ConsumerState<RoomDetailScreen> {
       tenantPhone: '',
       clearContractStartDate: true,
       clearContractEndDate: true,
+      clearMoveInDate: true,
       moveOutDate: now,
       lastTenantName: _room.tenantName,
       lastTenantPhone: _room.tenantPhone,
@@ -213,6 +652,7 @@ class _RoomDetailScreenState extends ConsumerState<RoomDetailScreen> {
       depositAmount: result.noDeposit ? 0 : _room.depositAmount,
       clearDepositDate: result.noDeposit,
       depositStatus: result.status,
+      depositRefundExpenseId: refundExpenseId,
       refundAmount: result.refundAmount,
       retainedAmount: result.retainedAmount,
       depositReason: result.reason,
@@ -223,8 +663,41 @@ class _RoomDetailScreenState extends ConsumerState<RoomDetailScreen> {
     await ref.read(updateRoomProvider(updated).future);
     if (!mounted) return;
     setState(() => _room = updated);
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Room vacated successfully.')),
+    _showMessage('Tenant vacated successfully.');
+  }
+
+  void _showMessage(String message) {
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(message)));
+  }
+}
+
+class _SectionLoading extends StatelessWidget {
+  final String title;
+
+  const _SectionLoading({required this.title});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 150,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title,
+              style:
+                  const TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
+          const Spacer(),
+          const Center(child: CircularProgressIndicator()),
+          const Spacer(),
+        ],
+      ),
     );
   }
 }
@@ -252,43 +725,64 @@ class _VacateRoomDialogState extends State<_VacateRoomDialog> {
   late String _action;
   String? _error;
 
+  double get _partialRefund => double.tryParse(_refundController.text) ?? 0;
+  double get _retained =>
+      (widget.depositAmount - _partialRefund).clamp(0, widget.depositAmount);
+
   @override
   void initState() {
     super.initState();
     _action = widget.depositAmount > 0 ? 'Fully Refunded' : 'No Deposit';
+    _refundController.addListener(_refreshAmounts);
   }
 
   @override
   void dispose() {
+    _refundController.removeListener(_refreshAmounts);
     _refundController.dispose();
     _reasonController.dispose();
     super.dispose();
   }
 
+  void _refreshAmounts() => setState(() => _error = null);
+
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: const Text('Vacate Room'),
+      title: const Text('Vacate Tenant'),
       content: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Vacating this room will mark it as vacant and clear current '
-              'tenant details. Income, expenses, and history will be preserved.',
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('Current Deposit Held',
+                      style: TextStyle(color: AppColors.textSecondary)),
+                  const SizedBox(height: 4),
+                  Text(
+                    '${CurrencyFormatter.formatAmount(widget.depositAmount)} QAR',
+                    style: const TextStyle(
+                        fontSize: 24, fontWeight: FontWeight.w800),
+                  ),
+                ],
+              ),
             ),
-            const SizedBox(height: 18),
+            const SizedBox(height: 16),
             DropdownButtonFormField<String>(
               initialValue: _action,
-              decoration: const InputDecoration(labelText: 'Deposit Action'),
+              decoration: const InputDecoration(labelText: 'Refund Action'),
               items: _actions
-                  .map(
-                    (action) => DropdownMenuItem(
-                      value: action,
-                      child: Text(action),
-                    ),
-                  )
+                  .map((action) =>
+                      DropdownMenuItem(value: action, child: Text(action)))
                   .toList(),
               onChanged: (value) => setState(() {
                 _action = value ?? _action;
@@ -303,6 +797,11 @@ class _VacateRoomDialogState extends State<_VacateRoomDialog> {
                     const TextInputType.numberWithOptions(decimal: true),
                 decoration: const InputDecoration(labelText: 'Refund Amount *'),
               ),
+              const SizedBox(height: 10),
+              Text(
+                'Retained: ${CurrencyFormatter.formatAmount(_retained)} QAR',
+                style: const TextStyle(fontWeight: FontWeight.w700),
+              ),
             ],
             if (_action == 'Partially Refunded' || _action == 'Forfeited') ...[
               const SizedBox(height: 12),
@@ -312,25 +811,23 @@ class _VacateRoomDialogState extends State<_VacateRoomDialog> {
                     const InputDecoration(labelText: 'Reason (optional)'),
               ),
             ],
+            const SizedBox(height: 14),
+            const Text(
+              'The room will become vacant. Tenant history and all financial records will be preserved.',
+              style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+            ),
             if (_error != null) ...[
               const SizedBox(height: 8),
-              Text(
-                _error!,
-                style: const TextStyle(color: AppColors.error),
-              ),
+              Text(_error!, style: const TextStyle(color: AppColors.error)),
             ],
           ],
         ),
       ),
       actions: [
         TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('Cancel'),
-        ),
-        FilledButton(
-          onPressed: _confirm,
-          child: const Text('Confirm Vacate'),
-        ),
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel')),
+        FilledButton(onPressed: _confirm, child: const Text('Confirm Vacate')),
       ],
     );
   }
@@ -346,7 +843,7 @@ class _VacateRoomDialogState extends State<_VacateRoomDialog> {
         status = DepositStatuses.refunded;
         refund = widget.depositAmount;
       case 'Partially Refunded':
-        refund = double.tryParse(_refundController.text) ?? -1;
+        refund = _partialRefund;
         if (refund <= 0 || refund >= widget.depositAmount) {
           setState(() {
             _error = 'Refund must be greater than 0 and less than the deposit.';

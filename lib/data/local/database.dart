@@ -68,6 +68,10 @@ class Rooms extends Table {
   DateTimeColumn get depositDate => dateTime().nullable()();
   TextColumn get depositStatus => text().withDefault(const Constant('Held'))();
   TextColumn get depositNotes => text().withDefault(const Constant(''))();
+  TextColumn get depositIncomeId => text().withDefault(const Constant(''))();
+  TextColumn get depositRefundExpenseId =>
+      text().withDefault(const Constant(''))();
+  DateTimeColumn get moveInDate => dateTime().nullable()();
   DateTimeColumn get moveOutDate => dateTime().nullable()();
   TextColumn get lastTenantName => text().withDefault(const Constant(''))();
   TextColumn get lastTenantPhone => text().withDefault(const Constant(''))();
@@ -88,6 +92,7 @@ class Incomes extends Table {
   TextColumn get villaName => text().withDefault(const Constant(''))();
   TextColumn get roomId => text().withDefault(const Constant(''))();
   TextColumn get roomName => text().withDefault(const Constant(''))();
+  TextColumn get tenantName => text().withDefault(const Constant(''))();
   TextColumn get incomeType =>
       text()(); // rent, deposit, maintenanceCharge, penalty, other
   RealColumn get amount => real()();
@@ -168,7 +173,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 7;
+  int get schemaVersion => 8;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -246,6 +251,12 @@ class AppDatabase extends _$AppDatabase {
             await migrator.addColumn(rooms, rooms.retainedAmount);
             await migrator.addColumn(rooms, rooms.depositReason);
             await migrator.addColumn(rooms, rooms.tenantHistoryJson);
+          }
+          if (from < 8) {
+            await migrator.addColumn(rooms, rooms.depositIncomeId);
+            await migrator.addColumn(rooms, rooms.depositRefundExpenseId);
+            await migrator.addColumn(rooms, rooms.moveInDate);
+            await migrator.addColumn(incomes, incomes.tenantName);
           }
         },
       );

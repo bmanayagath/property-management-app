@@ -72,6 +72,15 @@ class ExpenseNotifier extends StateNotifier<List<Expense>> {
     await loadExpenses();
   }
 
+  Future<void> upsertExpense(Expense expense) async {
+    final syncedExpense = expense.id.trim().isEmpty
+        ? expense.copyWith(id: const Uuid().v4())
+        : expense;
+    await _expenseRepository.upsertExpense(_toExpenseModel(syncedExpense));
+    await _queueExpenseSync(syncedExpense);
+    await loadExpenses();
+  }
+
   Future<void> deleteExpense(String id) async {
     final currentUser = _ref.read(authProvider).currentUser;
     await _expenseRepository.deleteExpense(id, deletedBy: currentUser?.id);
@@ -155,7 +164,7 @@ class ExpenseNotifier extends StateNotifier<List<Expense>> {
       paidTo: expense.paidTo,
       paymentMethod: _paymentMethodFromLabel(expense.paymentMethod),
       notes: expense.notes.trim().isEmpty ? null : expense.notes.trim(),
-      createdAt: DateTime.now(),
+      createdAt: expense.createdAt,
     );
   }
 

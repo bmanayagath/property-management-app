@@ -49,6 +49,7 @@ const _$ExpenseCategoryEnumMap = {
   ExpenseCategory.governmentFee: 'governmentFee',
   ExpenseCategory.loan: 'loan',
   ExpenseCategory.ownerRent: 'ownerRent',
+  ExpenseCategory.depositRefund: 'depositRefund',
   ExpenseCategory.other: 'other',
 };
 

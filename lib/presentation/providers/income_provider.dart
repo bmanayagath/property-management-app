@@ -99,6 +99,13 @@ class IncomeController extends StateNotifier<AsyncValue<void>> {
     });
   }
 
+  Future<void> upsertIncome(Income income) async {
+    await _run(() async {
+      await _repository.upsertIncome(income);
+      await _queueIncomeSync(income);
+    });
+  }
+
   Future<void> deleteIncome(String id) async {
     await _run(() async {
       final currentUser = _ref.read(authProvider).currentUser;
