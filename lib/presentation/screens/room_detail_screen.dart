@@ -5,10 +5,8 @@ import 'package:intl/intl.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/utils/currency_formatter.dart';
 import '../../data/services/tenant_contact_service.dart';
-import '../../domain/models/expense.dart';
 import '../../domain/models/income.dart';
 import '../../domain/models/room.dart';
-import '../providers/expense_provider.dart';
 import '../providers/income_provider.dart';
 import '../providers/room_provider.dart';
 import '../widgets/premium_widgets.dart';
@@ -672,36 +670,6 @@ class _RoomDetailScreenState extends ConsumerState<RoomDetailScreen> {
     if (result == null) return;
 
     final now = DateTime.now();
-    var refundExpenseId = _room.depositRefundExpenseId;
-    if (result.refundAmount > 0) {
-      final tenancyStart =
-          _room.moveInDate ?? _room.contractStartDate ?? _room.createdAt;
-      refundExpenseId = refundExpenseId.isNotEmpty
-          ? refundExpenseId
-          : _room.depositIncomeId.isNotEmpty
-              ? 'deposit-refund-${_room.depositIncomeId}'
-              : 'deposit-refund-${_room.id}-${tenancyStart.millisecondsSinceEpoch}-${_room.tenantHistory.length}';
-      await ref.read(expenseProvider.notifier).upsertExpense(
-            Expense(
-              id: refundExpenseId,
-              villaId: _room.villaId,
-              villaName: _room.villaName,
-              roomId: _room.id,
-              roomName: _room.displayName,
-              category: ExpenseCategories.depositRefund,
-              amount: result.refundAmount,
-              expenseDate: now,
-              paidTo: _room.tenantName,
-              paymentMethod: _room.depositType == DepositTypes.cheque
-                  ? ExpensePaymentMethods.cheque
-                  : ExpensePaymentMethods.cash,
-              notes: 'Tenant deposit refund for ${_room.tenantName}',
-              createdAt: now,
-              updatedAt: now,
-            ),
-          );
-    }
-
     final history = TenantHistory(
       roomId: _room.id,
       villaId: _room.villaId,
@@ -732,7 +700,8 @@ class _RoomDetailScreenState extends ConsumerState<RoomDetailScreen> {
       depositAmount: result.noDeposit ? 0 : _room.depositAmount,
       clearDepositDate: result.noDeposit,
       depositStatus: result.status,
-      depositRefundExpenseId: refundExpenseId,
+      clearDepositIncomeId: true,
+      clearDepositRefundExpenseId: true,
       refundAmount: result.refundAmount,
       retainedAmount: result.retainedAmount,
       depositReason: result.reason,
@@ -938,7 +907,7 @@ class _VacateRoomDialogState extends State<_VacateRoomDialog> {
       case 'Keep Held':
         status = DepositStatuses.held;
       case 'No Deposit':
-        status = DepositStatuses.held;
+        status = DepositStatuses.none;
         noDeposit = true;
     }
 

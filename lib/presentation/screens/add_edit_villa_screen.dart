@@ -690,10 +690,15 @@ class _RoomFormSheetState extends State<_RoomFormSheet> {
   late final TextEditingController _tenantPhoneController;
   late final TextEditingController _monthlyRentController;
   late final TextEditingController _paymentDueDayController;
+  late final TextEditingController _depositAmountController;
+  late final TextEditingController _depositNotesController;
 
   late DateTime _contractStartDate;
   late DateTime _contractEndDate;
+  DateTime? _depositDate;
   late String _status;
+  late String _depositType;
+  late String _depositStatus;
 
   bool get _isEditing => widget.room != null;
   bool get _isTenantRequired => _status == RoomStatuses.occupied;
@@ -714,10 +719,20 @@ class _RoomFormSheetState extends State<_RoomFormSheet> {
     _paymentDueDayController = TextEditingController(
       text: (room?.paymentDueDay ?? 1).toString(),
     );
+    _depositAmountController = TextEditingController(
+      text: room == null || room.depositAmount == 0
+          ? ''
+          : room.depositAmount.toString(),
+    );
+    _depositNotesController =
+        TextEditingController(text: room?.depositNotes ?? '');
     _contractStartDate = room?.contractStartDate ?? DateTime.now();
     _contractEndDate =
         room?.contractEndDate ?? DateTime.now().add(const Duration(days: 365));
+    _depositDate = room?.depositDate;
     _status = room?.status ?? RoomStatuses.vacant;
+    _depositType = room?.depositType ?? DepositTypes.none;
+    _depositStatus = room?.depositStatus ?? DepositStatuses.none;
   }
 
   @override
@@ -727,6 +742,8 @@ class _RoomFormSheetState extends State<_RoomFormSheet> {
     _tenantPhoneController.dispose();
     _monthlyRentController.dispose();
     _paymentDueDayController.dispose();
+    _depositAmountController.dispose();
+    _depositNotesController.dispose();
     super.dispose();
   }
 
@@ -734,6 +751,14 @@ class _RoomFormSheetState extends State<_RoomFormSheet> {
     if (!_formKey.currentState!.validate()) return;
 
     final now = DateTime.now();
+    final depositAmount = _depositType == DepositTypes.none
+        ? 0.0
+        : double.parse(_depositAmountController.text.trim());
+    final depositStatus = _depositType == DepositTypes.none
+        ? DepositStatuses.none
+        : _depositStatus == DepositStatuses.none
+            ? DepositStatuses.held
+            : _depositStatus;
     final room = Room(
       id: widget.room?.id ?? now.microsecondsSinceEpoch.toString(),
       villaId: widget.room?.villaId ?? '',
@@ -749,6 +774,13 @@ class _RoomFormSheetState extends State<_RoomFormSheet> {
       contractEndDate: _isTenantRequired ? _contractEndDate : null,
       createdAt: widget.room?.createdAt ?? now,
       updatedAt: _isEditing ? now : null,
+      depositType: _depositType,
+      depositAmount: depositAmount,
+      depositDate: _depositType == DepositTypes.none
+          ? null
+          : _depositDate ?? DateTime.now(),
+      depositStatus: depositStatus,
+      depositNotes: _depositNotesController.text.trim(),
     );
 
     Navigator.pop(context, room);
@@ -891,6 +923,77 @@ class _RoomFormSheetState extends State<_RoomFormSheet> {
                   },
                 ),
               ],
+              const SizedBox(height: 16),
+              Text(
+                'Deposit Details',
+                style: AppStyles.titleMedium.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 12),
+              AppDropdown<String>(
+                label: 'Deposit Type',
+                value: _depositType,
+                items: DepositTypes.values,
+                itemLabel: (value) => value,
+                onChanged: (value) {
+                  if (value == null) return;
+                  setState(() {
+                    _depositType = value;
+                    if (value == DepositTypes.none) {
+                      _depositAmountController.clear();
+                      _depositDate = null;
+                      _depositStatus = DepositStatuses.none;
+                    } else if (_depositStatus == DepositStatuses.none) {
+                      _depositStatus = DepositStatuses.held;
+                    }
+                  });
+                },
+              ),
+              if (_depositType != DepositTypes.none) ...[
+                const SizedBox(height: 16),
+                AppTextField(
+                  controller: _depositAmountController,
+                  label: 'Deposit Amount *',
+                  hint: '0.00',
+                  prefixIcon: Icons.payments_outlined,
+                  keyboardType:
+                      const TextInputType.numberWithOptions(decimal: true),
+                  validator: (value) {
+                    if (_depositType == DepositTypes.none) return null;
+                    final amount = double.tryParse(value?.trim() ?? '');
+                    if (amount == null || amount <= 0) {
+                      return 'Enter a deposit amount greater than 0';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 16),
+                AppDatePickerField(
+                  label: 'Deposit Date',
+                  value: _depositDate ?? DateTime.now(),
+                  onChanged: (date) => setState(() => _depositDate = date),
+                ),
+                const SizedBox(height: 16),
+                AppDropdown<String>(
+                  label: 'Deposit Status',
+                  value: _depositStatus,
+                  items: DepositStatuses.values,
+                  itemLabel: (value) => value,
+                  onChanged: (value) {
+                    if (value == null) return;
+                    setState(() => _depositStatus = value);
+                  },
+                ),
+              ],
+              const SizedBox(height: 16),
+              AppTextField(
+                controller: _depositNotesController,
+                label: 'Deposit Notes',
+                hint: 'Optional',
+                prefixIcon: Icons.notes_outlined,
+                maxLines: 3,
+              ),
               const SizedBox(height: 24),
               SizedBox(
                 width: double.infinity,

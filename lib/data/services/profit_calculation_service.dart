@@ -200,11 +200,13 @@ class ProfitCalculationService {
     final activeRoomIds = activeRooms.map((room) => room.id).toSet();
     final activeIncomes = incomes.where((income) {
       if (income.isDeleted) return false;
+      if (_isDepositIncome(income)) return false;
       if (income.roomId.trim().isEmpty) return true;
       return activeRoomIds.contains(income.roomId);
     }).toList();
     final activeExpenses = expenses.where((expense) {
       if (expense.isDeleted) return false;
+      if (_isDepositRefundExpense(expense)) return false;
       final roomId = expense.roomId;
       if (roomId == null || roomId.trim().isEmpty) return true;
       return activeRoomIds.contains(roomId);
@@ -351,6 +353,15 @@ class ProfitCalculationService {
     return income.incomeType.toLowerCase() == IncomeTypes.rent.toLowerCase();
   }
 
+  bool _isDepositIncome(Income income) {
+    return income.incomeType.toLowerCase() == IncomeTypes.deposit.toLowerCase();
+  }
+
+  bool _isDepositRefundExpense(Expense expense) {
+    return expense.category.toLowerCase() ==
+        ExpenseCategories.depositRefund.toLowerCase();
+  }
+
   RoomProfitSummary _calculateRoomProfitSummary({
     required Room room,
     required List<Income> monthlyCashIncomes,
@@ -449,6 +460,7 @@ class ProfitCalculationService {
   ) {
     return incomes.where((income) {
       if (income.isDeleted) return false;
+      if (_isDepositIncome(income)) return false;
       if (!villaIds.contains(income.villaId)) return false;
       if (income.roomId.trim().isEmpty) return true;
       return roomIds.contains(income.roomId);
@@ -462,6 +474,7 @@ class ProfitCalculationService {
   ) {
     return expenses.where((expense) {
       if (expense.isDeleted) return false;
+      if (_isDepositRefundExpense(expense)) return false;
       final villaId = expense.villaId;
       if (villaId == null || villaId.trim().isEmpty) return true;
       if (!villaIds.contains(villaId)) return false;

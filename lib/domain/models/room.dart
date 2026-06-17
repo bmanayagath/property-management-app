@@ -297,11 +297,12 @@ class DepositTypes {
 
 class DepositStatuses {
   DepositStatuses._();
+  static const none = 'None';
   static const held = 'Held';
   static const refunded = 'Refunded';
   static const partiallyRefunded = 'Partially Refunded';
   static const forfeited = 'Forfeited';
-  static const values = [held, refunded, partiallyRefunded, forfeited];
+  static const values = [none, held, refunded, partiallyRefunded, forfeited];
 }
 
 class RoomStatuses {
