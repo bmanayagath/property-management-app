@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/services/notification_service.dart';
 import '../../domain/models/app_notification.dart';
+import 'active_org_provider.dart';
 import 'auth_provider.dart';
 import 'sync_provider.dart';
 
@@ -18,10 +19,17 @@ final userNotificationsProvider = StreamProvider<List<AppNotification>>((ref) {
 
   final service = ref.watch(notificationServiceProvider);
   final syncService = ref.watch(firebaseSyncServiceProvider);
+  final orgId = ref.watch(activeOrgProvider);
 
   return _mergeNotificationStreams(
-    localStream: service.watchNotificationsForUser(currentUser.id),
-    cloudStream: syncService.watchCloudNotificationsForUser(currentUser.id),
+    localStream: service.watchNotificationsForUser(
+      currentUser.id,
+      orgId: orgId,
+    ),
+    cloudStream: syncService.watchCloudNotificationsForUser(
+      currentUser.id,
+      orgId: orgId,
+    ),
   );
 });
 
@@ -47,10 +55,13 @@ class NotificationController {
   const NotificationController(this._ref);
 
   Future<void> createNotification(AppNotification notification) async {
+    final orgNotification = notification.copyWith(
+      orgId: _ref.read(activeOrgProvider),
+    );
     await _ref
         .read(notificationServiceProvider)
-        .createNotification(notification);
-    await _queueNotificationSync(notification);
+        .createNotification(orgNotification);
+    await _queueNotificationSync(orgNotification);
     _ref.invalidate(userNotificationsProvider);
   }
 

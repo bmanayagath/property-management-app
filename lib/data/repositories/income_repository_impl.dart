@@ -7,24 +7,25 @@ import '../../core/constants/enums.dart';
 
 class IncomeRepositoryImpl implements IncomeRepository {
   final AppDatabase database;
+  final String orgId;
 
-  IncomeRepositoryImpl(this.database);
+  IncomeRepositoryImpl(this.database, {required this.orgId});
 
   @override
   Future<List<IncomeModel>> getAllIncomes() async {
-    final incomes = await database.getAllIncomes();
+    final incomes = await database.getAllIncomes(orgId: orgId);
     return incomes.map((income) => _mapToModel(income)).toList();
   }
 
   @override
   Future<List<IncomeModel>> getIncomesByVillaId(String villaId) async {
-    final incomes = await database.getIncomesByVillaId(villaId);
+    final incomes = await database.getIncomesByVillaId(villaId, orgId: orgId);
     return incomes.map((income) => _mapToModel(income)).toList();
   }
 
   @override
   Future<List<IncomeModel>> getIncomesByMonth(DateTime month) async {
-    final incomes = await database.getIncomesByMonth(month);
+    final incomes = await database.getIncomesByMonth(month, orgId: orgId);
     return incomes.map((income) => _mapToModel(income)).toList();
   }
 
@@ -35,6 +36,7 @@ class IncomeRepositoryImpl implements IncomeRepository {
     await database.insertIncome(
       IncomesCompanion(
         id: Value(id),
+        orgId: Value(orgId),
         villaId: Value(income.villaId),
         villaName: Value(income.villaName),
         roomId: Value(income.roomId),
@@ -56,6 +58,7 @@ class IncomeRepositoryImpl implements IncomeRepository {
     await database.updateIncome(
       IncomesCompanion(
         id: Value(income.id),
+        orgId: Value(orgId),
         villaId: Value(income.villaId),
         villaName: Value(income.villaName),
         roomId: Value(income.roomId),
@@ -77,17 +80,18 @@ class IncomeRepositoryImpl implements IncomeRepository {
 
   @override
   Future<double> getTotalIncomeForMonth(DateTime month) {
-    return database.getTotalIncomeForMonth(month);
+    return database.getTotalIncomeForMonth(month, orgId: orgId);
   }
 
   @override
   Future<Map<String, double>> getIncomeByVillaSummary(DateTime month) {
-    return database.getIncomeByVillaSummary(month);
+    return database.getIncomeByVillaSummary(month, orgId: orgId);
   }
 
   IncomeModel _mapToModel(Income income) {
     return IncomeModel(
       id: income.id,
+      orgId: income.orgId,
       villaId: income.villaId,
       villaName: income.villaName,
       roomId: income.roomId,

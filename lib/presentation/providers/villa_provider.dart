@@ -6,6 +6,7 @@ import 'package:uuid/uuid.dart';
 
 import '../../domain/models/app_notification.dart';
 import '../../domain/models/villa_model.dart';
+import 'active_org_provider.dart';
 import 'auth_provider.dart';
 import 'dashboard_provider.dart';
 import 'expense_provider.dart';
@@ -18,9 +19,10 @@ import 'sync_provider.dart';
 final villasProvider = StreamProvider<List<VillaModel>>((ref) {
   final repository = ref.watch(villaRepositoryProvider);
   final syncService = ref.watch(firebaseSyncServiceProvider);
+  final orgId = ref.watch(activeOrgProvider);
   return _mergeVillaStreams(
     localStream: repository.watchActiveVillas(),
-    cloudStream: syncService.watchCloudVillas(),
+    cloudStream: syncService.watchCloudVillas(orgId: orgId),
   );
 });
 
@@ -39,7 +41,8 @@ final addVillaProvider =
   final id = await repository.addVilla(villa);
   final currentUser = ref.read(authProvider).currentUser;
   if (currentUser != null) {
-    final syncedVilla = villa.copyWith(id: id);
+    final syncedVilla =
+        villa.copyWith(id: id, orgId: ref.read(activeOrgProvider));
     await ref.read(firebaseSyncServiceProvider).queueVilla(
           villa: syncedVilla,
           userId: currentUser.id,
@@ -151,6 +154,7 @@ Future<void> _createVillaNotification(
 
   final notification = AppNotification(
     id: const Uuid().v4(),
+    orgId: ref.read(activeOrgProvider),
     title: title,
     body: body,
     type: type,

@@ -25,12 +25,32 @@ service cloud.firestore {
       return role() == 'Admin';
     }
 
+    function isSuperAdmin() {
+      return role() == 'SuperAdmin';
+    }
+
     function isContributor() {
       return role() == 'Contributor';
     }
 
     function isReader() {
       return role() == 'Reader';
+    }
+
+    function userOrgId() {
+      return userProfile(request.auth.uid).data.orgId;
+    }
+
+    function sameOrgOnExisting() {
+      return resource.data.orgId == userOrgId();
+    }
+
+    function sameOrgOnRequest() {
+      return request.resource.data.orgId == userOrgId();
+    }
+
+    function sameOrg() {
+      return sameOrgOnExisting() && sameOrgOnRequest();
     }
 
     function isSoftDelete() {
@@ -60,7 +80,12 @@ service cloud.firestore {
 
     match /users/{userId} {
       allow read: if signedIn()
-        && (firstAdminNotCreated() || request.auth.uid == userId || isAdmin());
+        && (
+          firstAdminNotCreated() ||
+          request.auth.uid == userId ||
+          isSuperAdmin() ||
+          (isAdmin() && resource.data.orgId == userOrgId())
+        );
       allow create: if signedIn() && (
         (
           firstAdminNotCreated() &&
@@ -73,14 +98,17 @@ service cloud.firestore {
           !exists(/databases/$(database)/documents/users/$(userId)) &&
           request.resource.data.role == 'Reader'
         ) ||
-        isAdmin()
+        isSuperAdmin() ||
+        (isAdmin() && sameOrgOnRequest())
       );
       allow update: if signedIn() && (
-        isAdmin() ||
+        isSuperAdmin() ||
+        (isAdmin() && sameOrg()) ||
         reactivatesOwnProfile(userId) ||
         (
           request.auth.uid == userId &&
           request.resource.data.role == resource.data.role &&
+          request.resource.data.orgId == resource.data.orgId &&
           request.resource.data.isDeleted != true
         )
       );
@@ -92,52 +120,86 @@ service cloud.firestore {
       allow create: if signedIn()
         && firstAdminNotCreated()
         && request.resource.data.firstAdminUid == request.auth.uid;
-      allow update, delete: if isAdmin();
+      allow update, delete: if isAdmin() || isSuperAdmin();
+    }
+
+    match /organizations/{orgId} {
+      allow read: if signedIn()
+        && (isSuperAdmin() || orgId == userOrgId());
+      allow create, update: if signedIn() && isSuperAdmin();
+      allow delete: if noHardDelete();
     }
 
     match /villas/{villaId} {
-      allow read: if signedIn();
-      allow create, update: if signedIn() && isAdmin();
+      allow read: if signedIn() && (isSuperAdmin() || sameOrgOnExisting());
+      allow create: if signedIn()
+        && (isSuperAdmin() || (isAdmin() && sameOrgOnRequest()));
+      allow update: if signedIn()
+        && (isSuperAdmin() || (isAdmin() && sameOrg()));
       allow delete: if noHardDelete();
     }
 
     match /rooms/{roomId} {
-      allow read: if signedIn();
-      allow create, update: if signedIn() && isAdmin();
+      allow read: if signedIn() && (isSuperAdmin() || sameOrgOnExisting());
+      allow create: if signedIn()
+        && (isSuperAdmin() || (isAdmin() && sameOrgOnRequest()));
+      allow update: if signedIn()
+        && (isSuperAdmin() || (isAdmin() && sameOrg()));
       allow delete: if noHardDelete();
     }
 
     match /incomes/{incomeId} {
-      allow read: if signedIn();
+      allow read: if signedIn() && (isSuperAdmin() || sameOrgOnExisting());
       allow create: if signedIn()
-        && (isAdmin() || (isContributor() && createsActiveRecord()));
+        && (
+          isSuperAdmin() ||
+          ((isAdmin() || isContributor()) && sameOrgOnRequest() && createsActiveRecord())
+        );
       allow update: if signedIn()
-        && (isAdmin() || (isContributor() && updatesActiveRecord()));
+        && (
+          isSuperAdmin() ||
+          ((isAdmin() || isContributor()) && sameOrg() && updatesActiveRecord())
+        );
       allow delete: if noHardDelete();
     }
 
     match /expenses/{expenseId} {
-      allow read: if signedIn();
+      allow read: if signedIn() && (isSuperAdmin() || sameOrgOnExisting());
       allow create: if signedIn()
-        && (isAdmin() || (isContributor() && createsActiveRecord()));
+        && (
+          isSuperAdmin() ||
+          ((isAdmin() || isContributor()) && sameOrgOnRequest() && createsActiveRecord())
+        );
       allow update: if signedIn()
-        && (isAdmin() || (isContributor() && updatesActiveRecord()));
+        && (
+          isSuperAdmin() ||
+          ((isAdmin() || isContributor()) && sameOrg() && updatesActiveRecord())
+        );
       allow delete: if noHardDelete();
     }
 
     match /notifications/{notificationId} {
-      allow read: if signedIn();
+      allow read: if signedIn() && (isSuperAdmin() || sameOrgOnExisting());
       allow create: if signedIn()
-        && (isAdmin() || (isContributor() && createsActiveRecord()));
+        && (
+          isSuperAdmin() ||
+          ((isAdmin() || isContributor()) && sameOrgOnRequest() && createsActiveRecord())
+        );
       allow update: if signedIn()
-        && (isAdmin() || (isContributor() && updatesActiveRecord()));
+        && (
+          isSuperAdmin() ||
+          ((isAdmin() || isContributor()) && sameOrg() && updatesActiveRecord())
+        );
       allow delete: if noHardDelete();
     }
 
     match /room_media/{mediaId} {
-      allow read: if signedIn();
+      allow read: if signedIn() && (isSuperAdmin() || sameOrgOnExisting());
       allow create: if signedIn()
-        && (isAdmin() || (isContributor() && createsActiveRecord()))
+        && (
+          isSuperAdmin() ||
+          ((isAdmin() || isContributor()) && sameOrgOnRequest() && createsActiveRecord())
+        )
         && !request.resource.data.keys().hasAny(['localPath'])
         && request.resource.data.storagePath is string
         && request.resource.data.storagePath.size() > 0
@@ -145,7 +207,10 @@ service cloud.firestore {
         && request.resource.data.downloadUrl.size() > 0
         && request.resource.data.syncStatus == 'synced';
       allow update: if signedIn()
-        && (isAdmin() || (isContributor() && updatesActiveRecord()))
+        && (
+          isSuperAdmin() ||
+          ((isAdmin() || isContributor()) && sameOrg() && updatesActiveRecord())
+        )
         && !request.resource.data.keys().hasAny(['localPath']);
       allow delete: if noHardDelete();
     }

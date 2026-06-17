@@ -5,21 +5,24 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/repositories/income_repository.dart';
 import '../../domain/models/income.dart';
+import 'active_org_provider.dart';
 import 'auth_provider.dart';
 import 'database_provider.dart';
 import 'sync_provider.dart';
 
 final incomeRepositoryProvider = Provider<IncomeRepository>((ref) {
   final database = ref.watch(databaseProvider);
-  return IncomeRepository(database);
+  final orgId = ref.watch(activeOrgProvider);
+  return IncomeRepository(database, orgId: orgId);
 });
 
 final incomeListProvider = StreamProvider<List<Income>>((ref) {
   final repository = ref.watch(incomeRepositoryProvider);
   final syncService = ref.watch(firebaseSyncServiceProvider);
+  final orgId = ref.watch(activeOrgProvider);
   return _mergeIncomeStreams(
     localStream: repository.watchAllIncomes(),
-    cloudStream: syncService.watchCloudIncomes(),
+    cloudStream: syncService.watchCloudIncomes(orgId: orgId),
   );
 });
 
@@ -87,22 +90,25 @@ class IncomeController extends StateNotifier<AsyncValue<void>> {
 
   Future<void> addIncome(Income income) async {
     await _run(() async {
-      await _repository.addIncome(income);
-      await _queueIncomeSync(income);
+      final orgIncome = income.copyWith(orgId: _ref.read(activeOrgProvider));
+      await _repository.addIncome(orgIncome);
+      await _queueIncomeSync(orgIncome);
     });
   }
 
   Future<void> updateIncome(Income income) async {
     await _run(() async {
-      await _repository.updateIncome(income);
-      await _queueIncomeSync(income);
+      final orgIncome = income.copyWith(orgId: _ref.read(activeOrgProvider));
+      await _repository.updateIncome(orgIncome);
+      await _queueIncomeSync(orgIncome);
     });
   }
 
   Future<void> upsertIncome(Income income) async {
     await _run(() async {
-      await _repository.upsertIncome(income);
-      await _queueIncomeSync(income);
+      final orgIncome = income.copyWith(orgId: _ref.read(activeOrgProvider));
+      await _repository.upsertIncome(orgIncome);
+      await _queueIncomeSync(orgIncome);
     });
   }
 

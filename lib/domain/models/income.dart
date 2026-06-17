@@ -1,5 +1,6 @@
 class Income {
   final String id;
+  final String orgId;
   final String villaId;
   final String villaName;
   final String roomId;
@@ -23,6 +24,7 @@ class Income {
 
   const Income({
     required this.id,
+    this.orgId = 'default_org',
     required this.villaId,
     required this.villaName,
     required this.roomId,
@@ -47,6 +49,7 @@ class Income {
 
   Income copyWith({
     String? id,
+    String? orgId,
     String? villaId,
     String? villaName,
     String? roomId,
@@ -76,6 +79,7 @@ class Income {
   }) {
     return Income(
       id: id ?? this.id,
+      orgId: orgId ?? this.orgId,
       villaId: villaId ?? this.villaId,
       villaName: villaName ?? this.villaName,
       roomId: roomId ?? this.roomId,

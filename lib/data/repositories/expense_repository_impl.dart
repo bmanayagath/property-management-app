@@ -7,31 +7,32 @@ import '../../core/constants/enums.dart';
 
 class ExpenseRepositoryImpl implements ExpenseRepository {
   final AppDatabase database;
+  final String orgId;
 
-  ExpenseRepositoryImpl(this.database);
+  ExpenseRepositoryImpl(this.database, {required this.orgId});
 
   @override
   Future<List<ExpenseModel>> getAllExpenses() async {
-    final expenses = await database.getAllExpenses();
+    final expenses = await database.getAllExpenses(orgId: orgId);
     return expenses.map((expense) => _mapToModel(expense)).toList();
   }
 
   @override
   Stream<List<ExpenseModel>> watchAllExpenses() {
-    return database.watchAllExpenses().map(
+    return database.watchAllExpenses(orgId: orgId).map(
           (expenses) => expenses.map(_mapToModel).toList(),
         );
   }
 
   @override
   Future<List<ExpenseModel>> getExpensesByVillaId(String villaId) async {
-    final expenses = await database.getExpensesByVillaId(villaId);
+    final expenses = await database.getExpensesByVillaId(villaId, orgId: orgId);
     return expenses.map((expense) => _mapToModel(expense)).toList();
   }
 
   @override
   Future<List<ExpenseModel>> getExpensesByMonth(DateTime month) async {
-    final expenses = await database.getExpensesByMonth(month);
+    final expenses = await database.getExpensesByMonth(month, orgId: orgId);
     return expenses.map((expense) => _mapToModel(expense)).toList();
   }
 
@@ -42,6 +43,7 @@ class ExpenseRepositoryImpl implements ExpenseRepository {
     await database.insertExpense(
       ExpensesCompanion(
         id: Value(id),
+        orgId: Value(orgId),
         villaId: Value(expense.villaId),
         villaName: Value(expense.villaName),
         roomId: Value(expense.roomId),
@@ -63,6 +65,7 @@ class ExpenseRepositoryImpl implements ExpenseRepository {
     await database.updateExpense(
       ExpensesCompanion(
         id: Value(expense.id),
+        orgId: Value(orgId),
         villaId: Value(expense.villaId),
         villaName: Value(expense.villaName),
         roomId: Value(expense.roomId),
@@ -83,6 +86,7 @@ class ExpenseRepositoryImpl implements ExpenseRepository {
     await database.into(database.expenses).insertOnConflictUpdate(
           ExpensesCompanion(
             id: Value(expense.id),
+            orgId: Value(orgId),
             villaId: Value(expense.villaId),
             villaName: Value(expense.villaName),
             roomId: Value(expense.roomId),
@@ -110,17 +114,18 @@ class ExpenseRepositoryImpl implements ExpenseRepository {
 
   @override
   Future<double> getTotalExpenseForMonth(DateTime month) {
-    return database.getTotalExpenseForMonth(month);
+    return database.getTotalExpenseForMonth(month, orgId: orgId);
   }
 
   @override
   Future<Map<String, double>> getExpensesByCategory(DateTime month) {
-    return database.getExpensesByCategory(month);
+    return database.getExpensesByCategory(month, orgId: orgId);
   }
 
   ExpenseModel _mapToModel(Expense expense) {
     return ExpenseModel(
       id: expense.id,
+      orgId: expense.orgId,
       villaId: expense.villaId,
       villaName: expense.villaName,
       roomId: expense.roomId,

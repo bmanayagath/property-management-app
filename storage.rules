@@ -2,8 +2,30 @@ rules_version = '2';
 
 service firebase.storage {
   match /b/{bucket}/o {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function profile() {
+      return firestore.get(
+        /databases/(default)/documents/users/$(request.auth.uid)
+      );
+    }
+
+    function isSuperAdmin() {
+      return signedIn() && profile().data.role == 'SuperAdmin';
+    }
+
+    function sameOrg(orgId) {
+      return signedIn() && profile().data.orgId == orgId;
+    }
+
+    match /organizations/{orgId}/villas/{villaId}/rooms/{roomId}/media/{fileName} {
+      allow read, write: if isSuperAdmin() || sameOrg(orgId);
+    }
+
     match /villas/{villaId}/rooms/{roomId}/media/{fileName} {
-      allow read, write: if request.auth != null;
+      allow read, write: if signedIn();
     }
   }
 }

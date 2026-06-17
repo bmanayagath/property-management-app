@@ -8,26 +8,31 @@ import '../../domain/repositories/villa_repository.dart';
 import '../../domain/repositories/room_repository.dart';
 import '../../domain/repositories/income_repository.dart';
 import '../../domain/repositories/expense_repository.dart';
+import 'active_org_provider.dart';
 import 'database_provider.dart';
 
 final villaRepositoryProvider = Provider<VillaRepository>((ref) {
   final database = ref.watch(databaseProvider);
-  return VillaRepositoryImpl(database);
+  final orgId = ref.watch(activeOrgProvider);
+  return VillaRepositoryImpl(database, orgId: orgId);
 });
 
 final roomRepositoryProvider = Provider<RoomRepository>((ref) {
   final database = ref.watch(databaseProvider);
-  return RoomRepositoryImpl(database);
+  final orgId = ref.watch(activeOrgProvider);
+  return RoomRepositoryImpl(database, orgId: orgId);
 });
 
 final incomeRepositoryProvider = Provider<IncomeRepository>((ref) {
   final database = ref.watch(databaseProvider);
-  return IncomeRepositoryImpl(database);
+  final orgId = ref.watch(activeOrgProvider);
+  return IncomeRepositoryImpl(database, orgId: orgId);
 });
 
 final expenseRepositoryProvider = Provider<ExpenseRepository>((ref) {
   final database = ref.watch(databaseProvider);
-  return ExpenseRepositoryImpl(database);
+  final orgId = ref.watch(activeOrgProvider);
+  return ExpenseRepositoryImpl(database, orgId: orgId);
 });
 
 final localDatabaseRepositoryProvider =

@@ -9,6 +9,7 @@ import '../../domain/models/expense.dart';
 import '../../domain/models/expense_model.dart';
 import '../../domain/repositories/expense_repository.dart';
 import '../../domain/repositories/villa_repository.dart';
+import 'active_org_provider.dart';
 import 'auth_provider.dart';
 import 'repository_provider.dart';
 import 'sync_provider.dart';
@@ -16,11 +17,12 @@ import 'sync_provider.dart';
 final expenseListProvider = StreamProvider<List<Expense>>((ref) {
   final repository = ref.watch(expenseRepositoryProvider);
   final syncService = ref.watch(firebaseSyncServiceProvider);
+  final orgId = ref.watch(activeOrgProvider);
   return _mergeExpenseStreams(
     localStream: repository.watchAllExpenses().map(
           (models) => models.map(_expenseFromModel).toList(),
         ),
-    cloudStream: syncService.watchCloudExpenses(),
+    cloudStream: syncService.watchCloudExpenses(orgId: orgId),
   );
 });
 
@@ -58,7 +60,8 @@ class ExpenseNotifier extends StateNotifier<List<Expense>> {
 
   Future<void> addExpense(Expense expense) async {
     final id = expense.id.trim().isEmpty ? const Uuid().v4() : expense.id;
-    final syncedExpense = expense.copyWith(id: id);
+    final syncedExpense =
+        expense.copyWith(id: id, orgId: _ref.read(activeOrgProvider));
     await _expenseRepository.addExpense(
       _toExpenseModel(syncedExpense),
     );
@@ -67,15 +70,19 @@ class ExpenseNotifier extends StateNotifier<List<Expense>> {
   }
 
   Future<void> updateExpense(Expense expense) async {
-    await _expenseRepository.updateExpense(_toExpenseModel(expense));
-    await _queueExpenseSync(expense);
+    final orgExpense = expense.copyWith(orgId: _ref.read(activeOrgProvider));
+    await _expenseRepository.updateExpense(_toExpenseModel(orgExpense));
+    await _queueExpenseSync(orgExpense);
     await loadExpenses();
   }
 
   Future<void> upsertExpense(Expense expense) async {
     final syncedExpense = expense.id.trim().isEmpty
-        ? expense.copyWith(id: const Uuid().v4())
-        : expense;
+        ? expense.copyWith(
+            id: const Uuid().v4(),
+            orgId: _ref.read(activeOrgProvider),
+          )
+        : expense.copyWith(orgId: _ref.read(activeOrgProvider));
     await _expenseRepository.upsertExpense(_toExpenseModel(syncedExpense));
     await _queueExpenseSync(syncedExpense);
     await loadExpenses();
@@ -135,6 +142,7 @@ class ExpenseNotifier extends StateNotifier<List<Expense>> {
 
     return Expense(
       id: model.id,
+      orgId: model.orgId,
       villaId: model.villaId,
       villaName: model.villaName.isNotEmpty
           ? model.villaName
@@ -154,6 +162,7 @@ class ExpenseNotifier extends StateNotifier<List<Expense>> {
   ExpenseModel _toExpenseModel(Expense expense) {
     return ExpenseModel(
       id: expense.id,
+      orgId: expense.orgId,
       villaId: expense.villaId,
       villaName: expense.villaName,
       roomId: expense.roomId,
@@ -232,6 +241,7 @@ class ExpenseNotifier extends StateNotifier<List<Expense>> {
 Expense _expenseFromModel(ExpenseModel model) {
   return Expense(
     id: model.id,
+    orgId: model.orgId,
     villaId: model.villaId,
     villaName: model.villaName.isNotEmpty
         ? model.villaName

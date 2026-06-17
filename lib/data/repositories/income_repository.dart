@@ -6,16 +6,17 @@ import '../local/database.dart' as db;
 
 class IncomeRepository {
   final db.AppDatabase database;
+  final String orgId;
 
-  IncomeRepository(this.database);
+  IncomeRepository(this.database, {required this.orgId});
 
   Future<List<Income>> getAllIncomes() async {
-    final rows = await database.getAllIncomes();
+    final rows = await database.getAllIncomes(orgId: orgId);
     return rows.map(_mapRowToIncome).toList();
   }
 
   Stream<List<Income>> watchAllIncomes() {
-    return database.watchAllIncomes().map(
+    return database.watchAllIncomes(orgId: orgId).map(
           (rows) => rows.map(_mapRowToIncome).toList(),
         );
   }
@@ -27,6 +28,7 @@ class IncomeRepository {
     await database.insertIncome(
       db.IncomesCompanion(
         id: Value(id),
+        orgId: Value(orgId),
         villaId: Value(income.villaId),
         villaName: Value(income.villaName),
         roomId: Value(income.roomId),
@@ -48,6 +50,7 @@ class IncomeRepository {
     await database.updateIncome(
       db.IncomesCompanion(
         id: Value(income.id),
+        orgId: Value(orgId),
         villaId: Value(income.villaId),
         villaName: Value(income.villaName),
         roomId: Value(income.roomId),
@@ -73,6 +76,7 @@ class IncomeRepository {
     await database.into(database.incomes).insertOnConflictUpdate(
           db.IncomesCompanion(
             id: Value(income.id),
+            orgId: Value(orgId),
             villaId: Value(income.villaId),
             villaName: Value(income.villaName),
             roomId: Value(income.roomId),
@@ -96,7 +100,7 @@ class IncomeRepository {
   }
 
   Future<List<Income>> getIncomesByVilla(String villaId) async {
-    final rows = await database.getIncomesByVillaId(villaId);
+    final rows = await database.getIncomesByVillaId(villaId, orgId: orgId);
     return rows.map(_mapRowToIncome).toList();
   }
 
@@ -106,13 +110,14 @@ class IncomeRepository {
   }
 
   Future<List<Income>> getIncomesForMonth(DateTime month) async {
-    final rows = await database.getIncomesByMonth(month);
+    final rows = await database.getIncomesByMonth(month, orgId: orgId);
     return rows.map(_mapRowToIncome).toList();
   }
 
   Income _mapRowToIncome(db.Income row) {
     return Income(
       id: row.id,
+      orgId: row.orgId,
       villaId: row.villaId,
       villaName:
           row.villaName.trim().isEmpty ? 'Villa ${row.villaId}' : row.villaName,

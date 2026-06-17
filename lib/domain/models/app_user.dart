@@ -4,9 +4,11 @@ class AppUser {
   final String password;
   final String displayName;
   final String role;
+  final String? orgId;
   final bool isActive;
   final DateTime createdAt;
   final DateTime? updatedAt;
+  final String? createdBy;
 
   const AppUser({
     required this.id,
@@ -14,9 +16,11 @@ class AppUser {
     this.password = '',
     this.displayName = '',
     required this.role,
+    this.orgId,
     this.isActive = true,
     required this.createdAt,
     this.updatedAt,
+    this.createdBy,
   });
 
   factory AppUser.fromJson(Map<String, dynamic> json) {
@@ -26,12 +30,14 @@ class AppUser {
       password: json['password'] as String? ?? '',
       displayName: json['displayName'] as String? ?? '',
       role: json['role'] as String? ?? 'Reader',
+      orgId: json['orgId'] as String?,
       isActive: json['isActive'] as bool? ?? true,
       createdAt: DateTime.tryParse(json['createdAt'] as String? ?? '') ??
           DateTime.now(),
       updatedAt: json['updatedAt'] == null
           ? null
           : DateTime.tryParse(json['updatedAt'] as String),
+      createdBy: json['createdBy'] as String?,
     );
   }
 
@@ -42,9 +48,11 @@ class AppUser {
       'email': username,
       'displayName': displayName,
       'role': role,
+      'orgId': orgId,
       'isActive': isActive,
       'createdAt': createdAt.toIso8601String(),
       'updatedAt': updatedAt?.toIso8601String(),
+      'createdBy': createdBy,
     };
   }
 
@@ -54,9 +62,12 @@ class AppUser {
     String? password,
     String? displayName,
     String? role,
+    String? orgId,
+    bool clearOrgId = false,
     bool? isActive,
     DateTime? createdAt,
     DateTime? updatedAt,
+    String? createdBy,
   }) {
     return AppUser(
       id: id ?? this.id,
@@ -64,9 +75,11 @@ class AppUser {
       password: password ?? this.password,
       displayName: displayName ?? this.displayName,
       role: role ?? this.role,
+      orgId: clearOrgId ? null : orgId ?? this.orgId,
       isActive: isActive ?? this.isActive,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      createdBy: createdBy ?? this.createdBy,
     );
   }
 }

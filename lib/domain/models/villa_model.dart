@@ -8,6 +8,7 @@ part 'villa_model.g.dart';
 class VillaModel with _$VillaModel {
   const factory VillaModel({
     required String id,
+    @Default('default_org') String orgId,
     required String villaName,
     required String location,
     // Legacy compatibility field for old local/Firebase records.

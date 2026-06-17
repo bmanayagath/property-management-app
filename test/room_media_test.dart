@@ -60,19 +60,21 @@ void main() {
 
     expect(
       service.imagePath(
+        orgId: 'org123',
         villaId: 'villa123',
         roomId: 'room456',
         mediaId: 'media789',
       ),
-      'villas/villa123/rooms/room456/media/media789.jpg',
+      'organizations/org123/villas/villa123/rooms/room456/media/media789.jpg',
     );
     expect(
       service.videoPath(
+        orgId: 'org123',
         villaId: 'villa123',
         roomId: 'room456',
         mediaId: 'media789',
       ),
-      'villas/villa123/rooms/room456/media/media789.mp4',
+      'organizations/org123/villas/villa123/rooms/room456/media/media789.mp4',
     );
   });
 }

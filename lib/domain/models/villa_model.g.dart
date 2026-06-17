@@ -9,6 +9,7 @@ part of 'villa_model.dart';
 _$VillaModelImpl _$$VillaModelImplFromJson(Map<String, dynamic> json) =>
     _$VillaModelImpl(
       id: json['id'] as String,
+      orgId: json['orgId'] as String? ?? 'default_org',
       villaName: json['villaName'] as String,
       location: json['location'] as String,
       villaNumber: json['villaNumber'] as String? ?? '',
@@ -38,6 +39,7 @@ _$VillaModelImpl _$$VillaModelImplFromJson(Map<String, dynamic> json) =>
 Map<String, dynamic> _$$VillaModelImplToJson(_$VillaModelImpl instance) =>
     <String, dynamic>{
       'id': instance.id,
+      'orgId': instance.orgId,
       'villaName': instance.villaName,
       'location': instance.location,
       'villaNumber': instance.villaNumber,
