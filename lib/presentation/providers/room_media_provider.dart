@@ -5,17 +5,17 @@ import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
 import '../../data/repositories/room_media_repository.dart';
 import '../../data/services/firebase_storage_service.dart';
 import '../../models/room_media.dart';
+import 'active_org_provider.dart';
 
 final roomMediaRepositoryProvider = Provider<RoomMediaRepository>((ref) {
-  return RoomMediaRepository();
+  return RoomMediaRepository(orgId: ref.watch(activeOrgProvider));
 });
 
 final roomMediaUploadProvider = Provider<RoomMediaUploadActions>((ref) {
   return RoomMediaUploadActions(ref.watch(roomMediaRepositoryProvider));
 });
 
-final roomMediaAuthStateProvider =
-    StreamProvider<firebase_auth.User?>((ref) {
+final roomMediaAuthStateProvider = StreamProvider<firebase_auth.User?>((ref) {
   return firebase_auth.FirebaseAuth.instance.authStateChanges();
 });
 
@@ -23,7 +23,8 @@ final roomMediaProvider = StreamProvider.family<List<RoomMedia>, RoomMediaKey>(
   (ref, key) {
     final authUser = ref.watch(roomMediaAuthStateProvider).valueOrNull;
     if (authUser == null) {
-      debugPrint('[RoomMediaProvider] user is logged out; media query skipped.');
+      debugPrint(
+          '[RoomMediaProvider] user is logged out; media query skipped.');
       return Stream.value(const <RoomMedia>[]);
     }
     final repository = ref.watch(roomMediaRepositoryProvider);

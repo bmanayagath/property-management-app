@@ -5,7 +5,9 @@ import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../core/constants/app_roles.dart';
+import '../../core/constants/default_organization.dart';
 import '../../domain/models/app_user.dart';
+import '../repositories/organization_repository.dart';
 import 'firebase_sync_service.dart';
 import 'logger_service.dart';
 
@@ -41,11 +43,15 @@ class AuthService {
     FirebaseSyncService? firebaseSyncService,
   })  : _auth = firebaseAuth ?? firebase_auth.FirebaseAuth.instance,
         _firestore = firestore ?? FirebaseFirestore.instance,
-        _firebaseSyncService = firebaseSyncService;
+        _firebaseSyncService = firebaseSyncService,
+        _organizationRepository = OrganizationRepository(
+          firestore: firestore ?? FirebaseFirestore.instance,
+        );
 
   final firebase_auth.FirebaseAuth _auth;
   final FirebaseFirestore _firestore;
   final FirebaseSyncService? _firebaseSyncService;
+  final OrganizationRepository _organizationRepository;
 
   Stream<firebase_auth.User?> authStateChanges() {
     return _auth.authStateChanges();
@@ -130,6 +136,7 @@ class AuthService {
     required String password,
     required String role,
     String displayName = '',
+    String? orgId,
   }) async {
     firebase_auth.FirebaseAuth? secondaryAuth;
     firebase_auth.User? createdFirebaseUser;
@@ -150,8 +157,12 @@ class AuthService {
         username: email.trim().toLowerCase(),
         displayName: displayName.trim(),
         role: role,
+        orgId: role == AppRoles.superAdmin
+            ? null
+            : orgId ?? DefaultOrganization.id,
         isActive: true,
         createdAt: DateTime.now(),
+        createdBy: _auth.currentUser?.uid,
       );
       await saveUserProfile(appUser);
       return appUser;
@@ -199,6 +210,19 @@ class AuthService {
 
   Future<List<AppUser>> fetchUsers() async {
     final snapshot = await _firestore.collection('users').get();
+    final users = snapshot.docs
+        .map((doc) => _appUserFromCloud(doc.id, doc.data()))
+        .where((user) => user.isActive)
+        .toList()
+      ..sort((a, b) => a.username.compareTo(b.username));
+    return users;
+  }
+
+  Future<List<AppUser>> fetchUsersForOrg(String orgId) async {
+    final snapshot = await _firestore
+        .collection('users')
+        .where('orgId', isEqualTo: orgId)
+        .get();
     final users = snapshot.docs
         .map((doc) => _appUserFromCloud(doc.id, doc.data()))
         .where((user) => user.isActive)
@@ -276,6 +300,17 @@ class AuthService {
           'This account is disabled. Contact admin.',
         );
       }
+      if (user.role != AppRoles.superAdmin) {
+        final orgId = user.orgId ?? DefaultOrganization.id;
+        final organization =
+            await _organizationRepository.getOrganization(orgId);
+        if (organization != null && !organization.isActive) {
+          await _auth.signOut();
+          throw const AuthServiceException(
+            'Your organization is inactive. Please contact support.',
+          );
+        }
+      }
       return user;
     }
 
@@ -311,6 +346,14 @@ class AuthService {
     );
 
     final batch = _firestore.batch();
+    batch.set(
+        _firestore.collection('organizations').doc(DefaultOrganization.id), {
+      'id': DefaultOrganization.id,
+      'name': DefaultOrganization.name,
+      'isActive': true,
+      'createdAt': FieldValue.serverTimestamp(),
+      'createdBy': user.id,
+    });
     batch.set(_firestore.collection('users').doc(user.id), _profileData(user));
     batch.set(_firestore.collection('appConfig').doc('auth'), {
       'firstAdminUid': user.id,
@@ -328,9 +371,13 @@ class AuthService {
       'username': user.username,
       'displayName': user.displayName,
       'role': user.role,
+      'orgId': user.role == AppRoles.superAdmin
+          ? null
+          : user.orgId ?? DefaultOrganization.id,
       'isActive': user.isActive,
       'isDeleted': !user.isActive,
       'createdAt': Timestamp.fromDate(user.createdAt),
+      'createdBy': user.createdBy,
       'updatedAt': FieldValue.serverTimestamp(),
     };
   }
@@ -342,9 +389,13 @@ class AuthService {
       username: email,
       displayName: data['displayName'] as String? ?? '',
       role: data['role'] as String? ?? AppRoles.reader,
+      orgId: data['role'] == AppRoles.superAdmin
+          ? null
+          : data['orgId'] as String? ?? DefaultOrganization.id,
       isActive: data['isActive'] as bool? ?? data['isDeleted'] != true,
       createdAt: _readCloudDate(data['createdAt']) ?? DateTime.now(),
       updatedAt: _readCloudDate(data['updatedAt']),
+      createdBy: data['createdBy'] as String?,
     );
   }
 

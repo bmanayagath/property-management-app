@@ -8,6 +8,7 @@ part 'expense_model.g.dart';
 class ExpenseModel with _$ExpenseModel {
   const factory ExpenseModel({
     required String id,
+    @Default('default_org') String orgId,
     String? villaId,
     @Default('') String villaName,
     String? roomId,

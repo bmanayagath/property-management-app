@@ -12,14 +12,17 @@ import '../services/firebase_storage_service.dart';
 
 class RoomMediaRepository {
   RoomMediaRepository({
+    required String orgId,
     FirebaseFirestore? firestore,
     FirebaseStorageService? storageService,
-  })  : _firestore = firestore,
+  })  : _orgId = orgId,
+        _firestore = firestore,
         _storageService = storageService ?? FirebaseStorageService();
 
   static const collectionName = 'room_media';
 
   FirebaseFirestore? _firestore;
+  final String _orgId;
   final FirebaseStorageService _storageService;
   final _uuid = const Uuid();
   final Map<String, String> _localPathByMediaId = {};
@@ -57,6 +60,7 @@ class RoomMediaRepository {
     return collection
         .where('villaId', isEqualTo: villaId)
         .where('roomId', isEqualTo: roomId)
+        .where('orgId', isEqualTo: _orgId)
         .where('isDeleted', isEqualTo: false)
         .snapshots()
         .map((snapshot) {
@@ -82,6 +86,7 @@ class RoomMediaRepository {
     final snapshot = await collection
         .where('villaId', isEqualTo: villaId)
         .where('roomId', isEqualTo: roomId)
+        .where('orgId', isEqualTo: _orgId)
         .where('isDeleted', isEqualTo: false)
         .get();
     final media = snapshot.docs
@@ -105,7 +110,9 @@ class RoomMediaRepository {
     final snapshot = await collection.doc(mediaId).get();
     final data = snapshot.data();
     if (!snapshot.exists || data == null) return null;
-    return _withCachedLocalPath(RoomMedia.fromJson({...data, 'id': mediaId}));
+    final media = RoomMedia.fromJson({...data, 'id': mediaId});
+    if (media.orgId != _orgId) return null;
+    return _withCachedLocalPath(media);
   }
 
   Future<void> softDeleteMedia(RoomMedia media, {String? deletedBy}) async {
@@ -132,6 +139,7 @@ class RoomMediaRepository {
     final createdAt = DateTime.now();
     final pendingMedia = RoomMedia(
       id: id,
+      orgId: _orgId,
       villaId: villaId,
       roomId: roomId,
       fileType: fileType,
@@ -150,6 +158,7 @@ class RoomMediaRepository {
       final uploaded = await _uploadFile(
         file: file,
         fileType: fileType,
+        orgId: _orgId,
         villaId: villaId,
         roomId: roomId,
         mediaId: id,
@@ -214,6 +223,7 @@ class RoomMediaRepository {
       final uploaded = await _uploadFile(
         file: file,
         fileType: media.fileType,
+        orgId: media.orgId,
         villaId: media.villaId,
         roomId: media.roomId,
         mediaId: media.id,
@@ -270,6 +280,7 @@ class RoomMediaRepository {
         final uploaded = await _uploadFile(
           file: file,
           fileType: media.fileType,
+          orgId: media.orgId,
           villaId: media.villaId,
           roomId: media.roomId,
           mediaId: media.id,
@@ -300,6 +311,7 @@ class RoomMediaRepository {
   Future<StorageUploadResult> _uploadFile({
     required File file,
     required String fileType,
+    required String orgId,
     required String villaId,
     required String roomId,
     required String mediaId,
@@ -309,6 +321,7 @@ class RoomMediaRepository {
     if (fileType == RoomMediaFileType.video) {
       return _storageService.uploadVideo(
         file: file,
+        orgId: orgId,
         villaId: villaId,
         roomId: roomId,
         mediaId: mediaId,
@@ -319,6 +332,7 @@ class RoomMediaRepository {
     }
     return _storageService.uploadImage(
       file: file,
+      orgId: orgId,
       villaId: villaId,
       roomId: roomId,
       mediaId: mediaId,

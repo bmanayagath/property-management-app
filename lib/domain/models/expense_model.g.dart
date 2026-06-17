@@ -9,6 +9,7 @@ part of 'expense_model.dart';
 _$ExpenseModelImpl _$$ExpenseModelImplFromJson(Map<String, dynamic> json) =>
     _$ExpenseModelImpl(
       id: json['id'] as String,
+      orgId: json['orgId'] as String? ?? 'default_org',
       villaId: json['villaId'] as String?,
       villaName: json['villaName'] as String? ?? '',
       roomId: json['roomId'] as String?,
@@ -25,6 +26,7 @@ _$ExpenseModelImpl _$$ExpenseModelImplFromJson(Map<String, dynamic> json) =>
 Map<String, dynamic> _$$ExpenseModelImplToJson(_$ExpenseModelImpl instance) =>
     <String, dynamic>{
       'id': instance.id,
+      'orgId': instance.orgId,
       'villaId': instance.villaId,
       'villaName': instance.villaName,
       'roomId': instance.roomId,

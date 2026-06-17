@@ -1,5 +1,6 @@
 class Expense {
   final String id;
+  final String orgId;
   final String? villaId;
   final String villaName;
   final String? roomId;
@@ -22,6 +23,7 @@ class Expense {
 
   const Expense({
     required this.id,
+    this.orgId = 'default_org',
     required this.villaId,
     required this.villaName,
     required this.roomId,
@@ -45,6 +47,7 @@ class Expense {
 
   Expense copyWith({
     String? id,
+    String? orgId,
     String? villaId,
     bool clearVillaId = false,
     String? villaName,
@@ -76,6 +79,7 @@ class Expense {
   }) {
     return Expense(
       id: id ?? this.id,
+      orgId: orgId ?? this.orgId,
       villaId: clearVillaId ? null : villaId ?? this.villaId,
       villaName: villaName ?? this.villaName,
       roomId: clearRoomId ? null : roomId ?? this.roomId,

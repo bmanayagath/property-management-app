@@ -21,6 +21,7 @@ VillaModel _$VillaModelFromJson(Map<String, dynamic> json) {
 /// @nodoc
 mixin _$VillaModel {
   String get id => throw _privateConstructorUsedError;
+  String get orgId => throw _privateConstructorUsedError;
   String get villaName => throw _privateConstructorUsedError;
   String get location =>
       throw _privateConstructorUsedError; // Legacy compatibility field for old local/Firebase records.
@@ -60,6 +61,7 @@ abstract class $VillaModelCopyWith<$Res> {
   @useResult
   $Res call(
       {String id,
+      String orgId,
       String villaName,
       String location,
       String villaNumber,
@@ -96,6 +98,7 @@ class _$VillaModelCopyWithImpl<$Res, $Val extends VillaModel>
   @override
   $Res call({
     Object? id = null,
+    Object? orgId = null,
     Object? villaName = null,
     Object? location = null,
     Object? villaNumber = null,
@@ -119,6 +122,10 @@ class _$VillaModelCopyWithImpl<$Res, $Val extends VillaModel>
       id: null == id
           ? _value.id
           : id // ignore: cast_nullable_to_non_nullable
+              as String,
+      orgId: null == orgId
+          ? _value.orgId
+          : orgId // ignore: cast_nullable_to_non_nullable
               as String,
       villaName: null == villaName
           ? _value.villaName
@@ -206,6 +213,7 @@ abstract class _$$VillaModelImplCopyWith<$Res>
   @useResult
   $Res call(
       {String id,
+      String orgId,
       String villaName,
       String location,
       String villaNumber,
@@ -240,6 +248,7 @@ class __$$VillaModelImplCopyWithImpl<$Res>
   @override
   $Res call({
     Object? id = null,
+    Object? orgId = null,
     Object? villaName = null,
     Object? location = null,
     Object? villaNumber = null,
@@ -263,6 +272,10 @@ class __$$VillaModelImplCopyWithImpl<$Res>
       id: null == id
           ? _value.id
           : id // ignore: cast_nullable_to_non_nullable
+              as String,
+      orgId: null == orgId
+          ? _value.orgId
+          : orgId // ignore: cast_nullable_to_non_nullable
               as String,
       villaName: null == villaName
           ? _value.villaName
@@ -345,6 +358,7 @@ class __$$VillaModelImplCopyWithImpl<$Res>
 class _$VillaModelImpl implements _VillaModel {
   const _$VillaModelImpl(
       {required this.id,
+      this.orgId = 'default_org',
       required this.villaName,
       required this.location,
       this.villaNumber = '',
@@ -369,6 +383,9 @@ class _$VillaModelImpl implements _VillaModel {
 
   @override
   final String id;
+  @override
+  @JsonKey()
+  final String orgId;
   @override
   final String villaName;
   @override
@@ -414,7 +431,7 @@ class _$VillaModelImpl implements _VillaModel {
 
   @override
   String toString() {
-    return 'VillaModel(id: $id, villaName: $villaName, location: $location, villaNumber: $villaNumber, notes: $notes, createdAt: $createdAt, updatedAt: $updatedAt, isDeleted: $isDeleted, syncStatus: $syncStatus, deletedAt: $deletedAt, deletedBy: $deletedBy, createdBy: $createdBy, updatedBy: $updatedBy, lastSyncedAt: $lastSyncedAt, latitude: $latitude, longitude: $longitude, mapAddress: $mapAddress, googleMapsUrl: $googleMapsUrl, wazeUrl: $wazeUrl)';
+    return 'VillaModel(id: $id, orgId: $orgId, villaName: $villaName, location: $location, villaNumber: $villaNumber, notes: $notes, createdAt: $createdAt, updatedAt: $updatedAt, isDeleted: $isDeleted, syncStatus: $syncStatus, deletedAt: $deletedAt, deletedBy: $deletedBy, createdBy: $createdBy, updatedBy: $updatedBy, lastSyncedAt: $lastSyncedAt, latitude: $latitude, longitude: $longitude, mapAddress: $mapAddress, googleMapsUrl: $googleMapsUrl, wazeUrl: $wazeUrl)';
   }
 
   @override
@@ -423,6 +440,7 @@ class _$VillaModelImpl implements _VillaModel {
         (other.runtimeType == runtimeType &&
             other is _$VillaModelImpl &&
             (identical(other.id, id) || other.id == id) &&
+            (identical(other.orgId, orgId) || other.orgId == orgId) &&
             (identical(other.villaName, villaName) ||
                 other.villaName == villaName) &&
             (identical(other.location, location) ||
@@ -464,6 +482,7 @@ class _$VillaModelImpl implements _VillaModel {
   int get hashCode => Object.hashAll([
         runtimeType,
         id,
+        orgId,
         villaName,
         location,
         villaNumber,
@@ -503,6 +522,7 @@ class _$VillaModelImpl implements _VillaModel {
 abstract class _VillaModel implements VillaModel {
   const factory _VillaModel(
       {required final String id,
+      final String orgId,
       required final String villaName,
       required final String location,
       final String villaNumber,
@@ -527,6 +547,8 @@ abstract class _VillaModel implements VillaModel {
 
   @override
   String get id;
+  @override
+  String get orgId;
   @override
   String get villaName;
   @override

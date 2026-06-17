@@ -8,6 +8,7 @@ part 'income_model.g.dart';
 class IncomeModel with _$IncomeModel {
   const factory IncomeModel({
     required String id,
+    @Default('default_org') String orgId,
     required String villaId,
     @Default('') String villaName,
     @Default('') String roomId,

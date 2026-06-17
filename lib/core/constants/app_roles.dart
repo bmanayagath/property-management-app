@@ -4,10 +4,12 @@ class AppRoles {
   AppRoles._();
 
   static const admin = 'Admin';
+  static const superAdmin = 'SuperAdmin';
   static const contributor = 'Contributor';
   static const reader = 'Reader';
 
   static const values = [
+    superAdmin,
     admin,
     contributor,
     reader,
@@ -15,6 +17,21 @@ class AppRoles {
 
   static List<String> permissionsForRole(String role) {
     switch (role) {
+      case superAdmin:
+        return const [
+          AppPermissions.viewDashboard,
+          AppPermissions.viewVillas,
+          AppPermissions.manageVillas,
+          AppPermissions.viewIncome,
+          AppPermissions.manageIncome,
+          AppPermissions.viewExpenses,
+          AppPermissions.manageExpenses,
+          AppPermissions.viewReports,
+          AppPermissions.exportReports,
+          AppPermissions.manageUsers,
+          AppPermissions.manageSettings,
+          AppPermissions.deleteRecords,
+        ];
       case admin:
         return const [
           AppPermissions.viewDashboard,

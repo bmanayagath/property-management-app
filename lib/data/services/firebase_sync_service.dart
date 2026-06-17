@@ -303,7 +303,7 @@ class FirebaseSyncService {
     );
   }
 
-  Stream<List<VillaModel>> watchCloudVillas() {
+  Stream<List<VillaModel>> watchCloudVillas({String orgId = 'default_org'}) {
     if (_usesRestSync) {
       debugPrint(
           '[FirebaseSync] cloud villa stream disabled on Windows REST sync.');
@@ -318,6 +318,7 @@ class FirebaseSyncService {
 
     return firestore
         .collection('villas')
+        .where('orgId', isEqualTo: orgId)
         .snapshots()
         .asyncMap((snapshot) async {
       await _applyDeletedDocsToLocal('villas', snapshot.docs);
@@ -340,7 +341,7 @@ class FirebaseSyncService {
     });
   }
 
-  Stream<List<Room>> watchCloudRooms() {
+  Stream<List<Room>> watchCloudRooms({String orgId = 'default_org'}) {
     if (_usesRestSync) {
       debugPrint(
           '[FirebaseSync] cloud room stream disabled on Windows REST sync.');
@@ -353,7 +354,11 @@ class FirebaseSyncService {
       return Stream.value(const []);
     }
 
-    return firestore.collection('rooms').snapshots().asyncMap((snapshot) async {
+    return firestore
+        .collection('rooms')
+        .where('orgId', isEqualTo: orgId)
+        .snapshots()
+        .asyncMap((snapshot) async {
       await _applyDeletedDocsToLocal('rooms', snapshot.docs);
       final activeDocs = snapshot.docs
           .where((doc) => doc.data()['isDeleted'] != true)
@@ -373,7 +378,10 @@ class FirebaseSyncService {
     });
   }
 
-  Stream<List<AppNotification>> watchCloudNotificationsForUser(String userId) {
+  Stream<List<AppNotification>> watchCloudNotificationsForUser(
+    String userId, {
+    String orgId = 'default_org',
+  }) {
     if (_usesRestSync) {
       debugPrint(
         '[FirebaseSync] cloud notification stream disabled on Windows REST sync.',
@@ -389,6 +397,7 @@ class FirebaseSyncService {
 
     return firestore
         .collection('notifications')
+        .where('orgId', isEqualTo: orgId)
         .where('targetUserIds', arrayContains: userId)
         .snapshots()
         .asyncMap((snapshot) async {
@@ -417,7 +426,7 @@ class FirebaseSyncService {
     });
   }
 
-  Stream<List<Income>> watchCloudIncomes() {
+  Stream<List<Income>> watchCloudIncomes({String orgId = 'default_org'}) {
     if (_usesRestSync) {
       debugPrint(
           '[FirebaseSync] cloud income stream disabled on Windows REST sync.');
@@ -432,6 +441,7 @@ class FirebaseSyncService {
 
     return firestore
         .collection('incomes')
+        .where('orgId', isEqualTo: orgId)
         .snapshots()
         .asyncMap((snapshot) async {
       await _applyDeletedDocsToLocal('incomes', snapshot.docs);
@@ -454,7 +464,7 @@ class FirebaseSyncService {
     });
   }
 
-  Stream<List<Expense>> watchCloudExpenses() {
+  Stream<List<Expense>> watchCloudExpenses({String orgId = 'default_org'}) {
     if (_usesRestSync) {
       debugPrint(
           '[FirebaseSync] cloud expense stream disabled on Windows REST sync.');
@@ -469,6 +479,7 @@ class FirebaseSyncService {
 
     return firestore
         .collection('expenses')
+        .where('orgId', isEqualTo: orgId)
         .snapshots()
         .asyncMap((snapshot) async {
       await _applyDeletedDocsToLocal('expenses', snapshot.docs);
@@ -976,6 +987,7 @@ class FirebaseSyncService {
   Map<String, dynamic> _villaToJson(VillaModel villa) {
     return {
       'id': villa.id,
+      'orgId': villa.orgId,
       'villaName': villa.villaName,
       'villaNumber': villa.villaNumber,
       'location': villa.location,
@@ -1000,6 +1012,7 @@ class FirebaseSyncService {
   Map<String, dynamic> _roomToJson(Room room) {
     return {
       'id': room.id,
+      'orgId': room.orgId,
       'villaId': room.villaId,
       'villaName': room.villaName,
       'roomName': room.roomName,
@@ -1041,6 +1054,7 @@ class FirebaseSyncService {
   Map<String, dynamic> _incomeToJson(Income income) {
     return {
       'id': income.id,
+      'orgId': income.orgId,
       'villaId': income.villaId,
       'villaName': income.villaName,
       'roomId': income.roomId,
@@ -1067,6 +1081,7 @@ class FirebaseSyncService {
   Map<String, dynamic> _expenseToJson(Expense expense) {
     return {
       'id': expense.id,
+      'orgId': expense.orgId,
       'villaId': expense.villaId,
       'villaName': expense.villaName,
       'roomId': expense.roomId,
@@ -1095,6 +1110,7 @@ class FirebaseSyncService {
       'username': user.username,
       'email': user.username,
       'role': user.role,
+      'orgId': user.orgId,
       'isActive': true,
       'isDeleted': false,
       'createdAt': user.createdAt.toIso8601String(),
@@ -1105,6 +1121,7 @@ class FirebaseSyncService {
   VillaModel _villaFromJson(Map<String, dynamic> json) {
     return VillaModel(
       id: json['id'] as String,
+      orgId: json['orgId'] as String? ?? 'default_org',
       villaName: json['villaName'] as String? ?? '',
       villaNumber: json['villaNumber'] as String? ?? '',
       location: json['location'] as String? ?? '',
@@ -1129,6 +1146,7 @@ class FirebaseSyncService {
   Room _roomFromJson(Map<String, dynamic> json) {
     return Room(
       id: json['id'] as String,
+      orgId: json['orgId'] as String? ?? 'default_org',
       villaId: json['villaId'] as String? ?? '',
       villaName: json['villaName'] as String? ?? '',
       roomName: json['roomName'] as String? ?? '',
@@ -1173,6 +1191,7 @@ class FirebaseSyncService {
   Income _incomeFromJson(Map<String, dynamic> json) {
     return Income(
       id: json['id'] as String,
+      orgId: json['orgId'] as String? ?? 'default_org',
       villaId: json['villaId'] as String? ?? '',
       villaName: json['villaName'] as String? ?? '',
       roomId: json['roomId'] as String? ?? '',
@@ -1200,6 +1219,7 @@ class FirebaseSyncService {
   Expense _expenseFromJson(Map<String, dynamic> json) {
     return Expense(
       id: json['id'] as String,
+      orgId: json['orgId'] as String? ?? 'default_org',
       villaId: json['villaId'] as String?,
       villaName: json['villaName'] as String? ?? 'General Expense',
       roomId: json['roomId'] as String?,
@@ -1229,6 +1249,7 @@ class FirebaseSyncService {
       id: json['id'] as String,
       username: json['username'] as String? ?? json['email'] as String? ?? '',
       role: json['role'] as String? ?? AppRoles.reader,
+      orgId: json['orgId'] as String?,
       createdAt: createdAt,
       updatedAt: _readNullableDateTime(json['updatedAt']),
     );

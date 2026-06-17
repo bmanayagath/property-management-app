@@ -10,6 +10,7 @@ part 'database.g.dart';
 // Villa Table
 class Villas extends Table {
   TextColumn get id => text()();
+  TextColumn get orgId => text().withDefault(const Constant('default_org'))();
   TextColumn get villaName => text()();
   TextColumn get villaNumber => text().withDefault(const Constant(''))();
   TextColumn get location => text()();
@@ -43,6 +44,7 @@ class Villas extends Table {
 // Room Table
 class Rooms extends Table {
   TextColumn get id => text()();
+  TextColumn get orgId => text().withDefault(const Constant('default_org'))();
   TextColumn get villaId => text().references(Villas, #id)();
   TextColumn get villaName => text()();
   TextColumn get roomName => text()();
@@ -88,6 +90,7 @@ class Rooms extends Table {
 // Income Table
 class Incomes extends Table {
   TextColumn get id => text()();
+  TextColumn get orgId => text().withDefault(const Constant('default_org'))();
   TextColumn get villaId => text().references(Villas, #id)();
   TextColumn get villaName => text().withDefault(const Constant(''))();
   TextColumn get roomId => text().withDefault(const Constant(''))();
@@ -118,6 +121,7 @@ class Incomes extends Table {
 // Expense Table
 class Expenses extends Table {
   TextColumn get id => text()();
+  TextColumn get orgId => text().withDefault(const Constant('default_org'))();
   TextColumn get villaId => text().nullable().references(Villas, #id)();
   TextColumn get villaName => text().withDefault(const Constant(''))();
   TextColumn get roomId => text().nullable()();
@@ -173,7 +177,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 8;
+  int get schemaVersion => 9;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -258,8 +262,22 @@ class AppDatabase extends _$AppDatabase {
             await migrator.addColumn(rooms, rooms.moveInDate);
             await migrator.addColumn(incomes, incomes.tenantName);
           }
+          if (from < 9) {
+            await _addOrgColumns();
+          }
         },
       );
+
+  Future<void> _addOrgColumns() async {
+    await _addColumnIfMissingSql(
+        'villas', 'org_id', "TEXT NOT NULL DEFAULT 'default_org'");
+    await _addColumnIfMissingSql(
+        'rooms', 'org_id', "TEXT NOT NULL DEFAULT 'default_org'");
+    await _addColumnIfMissingSql(
+        'incomes', 'org_id', "TEXT NOT NULL DEFAULT 'default_org'");
+    await _addColumnIfMissingSql(
+        'expenses', 'org_id', "TEXT NOT NULL DEFAULT 'default_org'");
+  }
 
   Future<void> _addVillaLocationColumns() async {
     await _addColumnIfMissingSql('villas', 'latitude', 'REAL');
@@ -337,11 +355,19 @@ class AppDatabase extends _$AppDatabase {
     return row.read<int>('count');
   }
 
-  Future<List<Villa>> getAllVillas() =>
-      (select(villas)..where((tbl) => tbl.isDeleted.equals(0))).get();
+  Future<List<Villa>> getAllVillas({String orgId = 'default_org'}) =>
+      (select(villas)
+            ..where(
+              (tbl) => tbl.isDeleted.equals(0) & tbl.orgId.equals(orgId),
+            ))
+          .get();
 
-  Stream<List<Villa>> watchAllVillas() =>
-      (select(villas)..where((tbl) => tbl.isDeleted.equals(0))).watch();
+  Stream<List<Villa>> watchAllVillas({String orgId = 'default_org'}) =>
+      (select(villas)
+            ..where(
+              (tbl) => tbl.isDeleted.equals(0) & tbl.orgId.equals(orgId),
+            ))
+          .watch();
 
   Future<Villa?> getVillaById(String id) =>
       (select(villas)..where((tbl) => tbl.id.equals(id))).getSingleOrNull();
@@ -504,19 +530,29 @@ class AppDatabase extends _$AppDatabase {
     return row.read<int>('count');
   }
 
-  Future<List<Room>> getAllRooms() {
+  Future<List<Room>> getAllRooms({String orgId = 'default_org'}) {
     final query = select(rooms).join([
       innerJoin(villas, villas.id.equalsExp(rooms.villaId)),
     ])
-      ..where(rooms.isDeleted.equals(0) & villas.isDeleted.equals(0));
+      ..where(
+        rooms.isDeleted.equals(0) &
+            rooms.orgId.equals(orgId) &
+            villas.isDeleted.equals(0) &
+            villas.orgId.equals(orgId),
+      );
     return query.map((row) => row.readTable(rooms)).get();
   }
 
-  Stream<List<Room>> watchAllRooms() {
+  Stream<List<Room>> watchAllRooms({String orgId = 'default_org'}) {
     final query = select(rooms).join([
       innerJoin(villas, villas.id.equalsExp(rooms.villaId)),
     ])
-      ..where(rooms.isDeleted.equals(0) & villas.isDeleted.equals(0));
+      ..where(
+        rooms.isDeleted.equals(0) &
+            rooms.orgId.equals(orgId) &
+            villas.isDeleted.equals(0) &
+            villas.orgId.equals(orgId),
+      );
     return query.map((row) => row.readTable(rooms)).watch();
   }
 
@@ -667,40 +703,60 @@ class AppDatabase extends _$AppDatabase {
   Future<Room?> getRoomById(String id) =>
       (select(rooms)..where((tbl) => tbl.id.equals(id))).getSingleOrNull();
 
-  Future<List<Room>> getRoomsByVillaId(String villaId) => (select(rooms)
-        ..where(
-          (tbl) =>
-              tbl.villaId.equals(villaId) &
-              tbl.isDeleted.equals(0) &
-              existsQuery(
-                selectOnly(villas)
-                  ..addColumns([villas.id])
-                  ..where(
-                    villas.id.equals(villaId) & villas.isDeleted.equals(0),
+  Future<List<Room>> getRoomsByVillaId(
+    String villaId, {
+    String orgId = 'default_org',
+  }) =>
+      (select(rooms)
+            ..where(
+              (tbl) =>
+                  tbl.villaId.equals(villaId) &
+                  tbl.orgId.equals(orgId) &
+                  tbl.isDeleted.equals(0) &
+                  existsQuery(
+                    selectOnly(villas)
+                      ..addColumns([villas.id])
+                      ..where(
+                        villas.id.equals(villaId) &
+                            villas.orgId.equals(orgId) &
+                            villas.isDeleted.equals(0),
+                      ),
                   ),
-              ),
-        ))
-      .get();
+            ))
+          .get();
 
-  Stream<List<Room>> watchRoomsByVillaId(String villaId) => (select(rooms)
-        ..where(
-          (tbl) =>
-              tbl.villaId.equals(villaId) &
-              tbl.isDeleted.equals(0) &
-              existsQuery(
-                selectOnly(villas)
-                  ..addColumns([villas.id])
-                  ..where(
-                    villas.id.equals(villaId) & villas.isDeleted.equals(0),
+  Stream<List<Room>> watchRoomsByVillaId(
+    String villaId, {
+    String orgId = 'default_org',
+  }) =>
+      (select(rooms)
+            ..where(
+              (tbl) =>
+                  tbl.villaId.equals(villaId) &
+                  tbl.orgId.equals(orgId) &
+                  tbl.isDeleted.equals(0) &
+                  existsQuery(
+                    selectOnly(villas)
+                      ..addColumns([villas.id])
+                      ..where(
+                        villas.id.equals(villaId) &
+                            villas.orgId.equals(orgId) &
+                            villas.isDeleted.equals(0),
+                      ),
                   ),
-              ),
-        ))
-      .watch();
+            ))
+          .watch();
 
-  Stream<List<Room>> watchActiveRoomsByVilla(String villaId) {
+  Stream<List<Room>> watchActiveRoomsByVilla(
+    String villaId, {
+    String orgId = 'default_org',
+  }) {
     return (select(rooms)
           ..where(
-            (tbl) => tbl.villaId.equals(villaId) & tbl.isDeleted.equals(0),
+            (tbl) =>
+                tbl.villaId.equals(villaId) &
+                tbl.orgId.equals(orgId) &
+                tbl.isDeleted.equals(0),
           ))
         .watch();
   }
@@ -744,24 +800,43 @@ class AppDatabase extends _$AppDatabase {
   }
 
   // Income Queries
-  Future<List<Income>> getAllIncomes() =>
-      (select(incomes)..where((tbl) => tbl.isDeleted.equals(0))).get();
+  Future<List<Income>> getAllIncomes({String orgId = 'default_org'}) =>
+      (select(incomes)
+            ..where(
+              (tbl) => tbl.isDeleted.equals(0) & tbl.orgId.equals(orgId),
+            ))
+          .get();
 
-  Stream<List<Income>> watchAllIncomes() =>
-      (select(incomes)..where((tbl) => tbl.isDeleted.equals(0))).watch();
+  Stream<List<Income>> watchAllIncomes({String orgId = 'default_org'}) =>
+      (select(incomes)
+            ..where(
+              (tbl) => tbl.isDeleted.equals(0) & tbl.orgId.equals(orgId),
+            ))
+          .watch();
 
-  Future<List<Income>> getIncomesByVillaId(String villaId) => (select(incomes)
-        ..where(
-          (tbl) => tbl.villaId.equals(villaId) & tbl.isDeleted.equals(0),
-        ))
-      .get();
+  Future<List<Income>> getIncomesByVillaId(
+    String villaId, {
+    String orgId = 'default_org',
+  }) =>
+      (select(incomes)
+            ..where(
+              (tbl) =>
+                  tbl.villaId.equals(villaId) &
+                  tbl.orgId.equals(orgId) &
+                  tbl.isDeleted.equals(0),
+            ))
+          .get();
 
-  Future<List<Income>> getIncomesByMonth(DateTime month) async {
+  Future<List<Income>> getIncomesByMonth(
+    DateTime month, {
+    String orgId = 'default_org',
+  }) async {
     final startOfMonth = DateTime(month.year, month.month, 1);
     final endOfMonth = DateTime(month.year, month.month + 1, 0);
     return (select(incomes)
           ..where((tbl) =>
               tbl.paymentDate.isBetweenValues(startOfMonth, endOfMonth) &
+              tbl.orgId.equals(orgId) &
               tbl.isDeleted.equals(0)))
         .get();
   }
@@ -816,25 +891,43 @@ class AppDatabase extends _$AppDatabase {
   }
 
   // Expense Queries
-  Future<List<Expense>> getAllExpenses() =>
-      (select(expenses)..where((tbl) => tbl.isDeleted.equals(0))).get();
-
-  Stream<List<Expense>> watchAllExpenses() =>
-      (select(expenses)..where((tbl) => tbl.isDeleted.equals(0))).watch();
-
-  Future<List<Expense>> getExpensesByVillaId(String villaId) =>
+  Future<List<Expense>> getAllExpenses({String orgId = 'default_org'}) =>
       (select(expenses)
             ..where(
-              (tbl) => tbl.villaId.equals(villaId) & tbl.isDeleted.equals(0),
+              (tbl) => tbl.isDeleted.equals(0) & tbl.orgId.equals(orgId),
             ))
           .get();
 
-  Future<List<Expense>> getExpensesByMonth(DateTime month) async {
+  Stream<List<Expense>> watchAllExpenses({String orgId = 'default_org'}) =>
+      (select(expenses)
+            ..where(
+              (tbl) => tbl.isDeleted.equals(0) & tbl.orgId.equals(orgId),
+            ))
+          .watch();
+
+  Future<List<Expense>> getExpensesByVillaId(
+    String villaId, {
+    String orgId = 'default_org',
+  }) =>
+      (select(expenses)
+            ..where(
+              (tbl) =>
+                  tbl.villaId.equals(villaId) &
+                  tbl.orgId.equals(orgId) &
+                  tbl.isDeleted.equals(0),
+            ))
+          .get();
+
+  Future<List<Expense>> getExpensesByMonth(
+    DateTime month, {
+    String orgId = 'default_org',
+  }) async {
     final startOfMonth = DateTime(month.year, month.month, 1);
     final endOfMonth = DateTime(month.year, month.month + 1, 0);
     return (select(expenses)
           ..where((tbl) =>
               tbl.expenseDate.isBetweenValues(startOfMonth, endOfMonth) &
+              tbl.orgId.equals(orgId) &
               tbl.isDeleted.equals(0)))
         .get();
   }
@@ -932,36 +1025,48 @@ class AppDatabase extends _$AppDatabase {
   }
 
   // Dashboard Queries
-  Future<double> getTotalIncomeForMonth(DateTime month) async {
+  Future<double> getTotalIncomeForMonth(
+    DateTime month, {
+    String orgId = 'default_org',
+  }) async {
     final startOfMonth = DateTime(month.year, month.month, 1);
     final endOfMonth = DateTime(month.year, month.month + 1, 0);
     final result = await (select(incomes)
           ..where((tbl) =>
               tbl.paymentDate.isBetweenValues(startOfMonth, endOfMonth) &
+              tbl.orgId.equals(orgId) &
               tbl.isDeleted.equals(0)))
         .map((r) => r.amount)
         .get();
     return result.fold<double>(0, (sum, amount) => sum + amount);
   }
 
-  Future<double> getTotalExpenseForMonth(DateTime month) async {
+  Future<double> getTotalExpenseForMonth(
+    DateTime month, {
+    String orgId = 'default_org',
+  }) async {
     final startOfMonth = DateTime(month.year, month.month, 1);
     final endOfMonth = DateTime(month.year, month.month + 1, 0);
     final result = await (select(expenses)
           ..where((tbl) =>
               tbl.expenseDate.isBetweenValues(startOfMonth, endOfMonth) &
+              tbl.orgId.equals(orgId) &
               tbl.isDeleted.equals(0)))
         .map((r) => r.amount)
         .get();
     return result.fold<double>(0, (sum, amount) => sum + amount);
   }
 
-  Future<Map<String, double>> getExpensesByCategory(DateTime month) async {
+  Future<Map<String, double>> getExpensesByCategory(
+    DateTime month, {
+    String orgId = 'default_org',
+  }) async {
     final startOfMonth = DateTime(month.year, month.month, 1);
     final endOfMonth = DateTime(month.year, month.month + 1, 0);
     final expenseList = await (select(expenses)
           ..where((tbl) =>
               tbl.expenseDate.isBetweenValues(startOfMonth, endOfMonth) &
+              tbl.orgId.equals(orgId) &
               tbl.isDeleted.equals(0)))
         .get();
 
@@ -976,12 +1081,16 @@ class AppDatabase extends _$AppDatabase {
     return categoryMap;
   }
 
-  Future<Map<String, double>> getIncomeByVillaSummary(DateTime month) async {
+  Future<Map<String, double>> getIncomeByVillaSummary(
+    DateTime month, {
+    String orgId = 'default_org',
+  }) async {
     final startOfMonth = DateTime(month.year, month.month, 1);
     final endOfMonth = DateTime(month.year, month.month + 1, 0);
     final incomeList = await (select(incomes)
           ..where((tbl) =>
               tbl.paymentDate.isBetweenValues(startOfMonth, endOfMonth) &
+              tbl.orgId.equals(orgId) &
               tbl.isDeleted.equals(0)))
         .get();
 

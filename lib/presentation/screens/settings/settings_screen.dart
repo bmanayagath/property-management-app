@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:drift/drift.dart' show Variable;
 
 import '../../../core/constants/app_permissions.dart';
 import '../../../core/constants/app_roles.dart';
+import '../../../domain/models/expense.dart';
+import '../../../domain/models/income.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/database_provider.dart';
 import '../../providers/sync_provider.dart';
 import '../../widgets/premium_widgets.dart';
 import 'developer_logs_screen.dart';
@@ -94,6 +98,15 @@ class SettingsScreen extends ConsumerWidget {
             subtitle: 'Soft delete rooms without an active villa',
             onTap: () => _cleanupOrphanRecords(context, ref),
           ),
+          if (authState.hasPermission(AppPermissions.manageSettings)) ...[
+            const SizedBox(height: 10),
+            _SettingsActionTile(
+              icon: Icons.account_balance_wallet_outlined,
+              title: 'Remove Auto-created Deposit Income/Expense',
+              subtitle: 'Soft delete generated deposit accounting records',
+              onTap: () => _cleanupAutoDepositRecords(context, ref),
+            ),
+          ],
           if (authState.hasPermission(AppPermissions.manageUsers)) ...[
             const SizedBox(height: 10),
             _SettingsActionTile(
@@ -177,6 +190,103 @@ class SettingsScreen extends ConsumerWidget {
       if (!context.mounted) return;
       messenger.showSnackBar(
         SnackBar(content: Text('Cleanup failed: $error')),
+      );
+    }
+  }
+
+  Future<void> _cleanupAutoDepositRecords(
+    BuildContext context,
+    WidgetRef ref,
+  ) async {
+    final confirmed = await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Remove auto-created deposit records?'),
+            content: const Text(
+              'This will soft delete only generated Deposit income and Deposit Refund expense records. Manual records are left untouched.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: const Text('Remove'),
+              ),
+            ],
+          ),
+        ) ??
+        false;
+    if (!confirmed) return;
+
+    final messenger = ScaffoldMessenger.of(context);
+    final database = ref.read(databaseProvider);
+    final now = DateTime.now();
+    final currentUser = ref.read(authProvider).currentUser;
+    try {
+      final incomeCount = await database.customUpdate(
+        '''
+        UPDATE incomes
+        SET is_deleted = 1,
+            sync_status = 'pending',
+            deleted_at = ?,
+            deleted_by = ?,
+            updated_at = ?,
+            updated_by = ?
+        WHERE is_deleted = 0
+          AND LOWER(income_type) = LOWER(?)
+          AND (
+            LOWER(COALESCE(notes, '')) LIKE '%deposit collected%'
+            OR LOWER(COALESCE(notes, '')) LIKE 'tenant deposit for%'
+          )
+        ''',
+        variables: [
+          Variable<DateTime>(now),
+          Variable<String>(currentUser?.id),
+          Variable<DateTime>(now),
+          Variable<String>(currentUser?.id),
+          Variable<String>(IncomeTypes.deposit),
+        ],
+        updates: {database.incomes},
+      );
+      final expenseCount = await database.customUpdate(
+        '''
+        UPDATE expenses
+        SET is_deleted = 1,
+            sync_status = 'pending',
+            deleted_at = ?,
+            deleted_by = ?,
+            updated_at = ?,
+            updated_by = ?
+        WHERE is_deleted = 0
+          AND LOWER(category) = LOWER(?)
+          AND (
+            LOWER(COALESCE(notes, '')) LIKE '%deposit refund%'
+            OR LOWER(COALESCE(notes, '')) LIKE 'tenant deposit refund%'
+          )
+        ''',
+        variables: [
+          Variable<DateTime>(now),
+          Variable<String>(currentUser?.id),
+          Variable<DateTime>(now),
+          Variable<String>(currentUser?.id),
+          Variable<String>(ExpenseCategories.depositRefund),
+        ],
+        updates: {database.expenses},
+      );
+      if (!context.mounted) return;
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(
+            'Deposit cleanup complete: $incomeCount income and $expenseCount expense record(s) soft deleted.',
+          ),
+        ),
+      );
+    } catch (error) {
+      if (!context.mounted) return;
+      messenger.showSnackBar(
+        SnackBar(content: Text('Deposit cleanup failed: $error')),
       );
     }
   }

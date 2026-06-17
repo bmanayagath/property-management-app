@@ -1,5 +1,6 @@
 class AppNotification {
   final String id;
+  final String orgId;
   final String title;
   final String body;
   final String type;
@@ -12,6 +13,7 @@ class AppNotification {
 
   const AppNotification({
     required this.id,
+    this.orgId = 'default_org',
     required this.title,
     required this.body,
     required this.type,
@@ -26,6 +28,7 @@ class AppNotification {
   factory AppNotification.fromJson(Map<String, dynamic> json) {
     return AppNotification(
       id: json['id'] as String,
+      orgId: json['orgId'] as String? ?? 'default_org',
       title: json['title'] as String,
       body: json['body'] as String,
       type: json['type'] as String,
@@ -43,6 +46,7 @@ class AppNotification {
   Map<String, dynamic> toJson() {
     return {
       'id': id,
+      'orgId': orgId,
       'title': title,
       'body': body,
       'type': type,
@@ -59,6 +63,7 @@ class AppNotification {
 
   AppNotification copyWith({
     String? id,
+    String? orgId,
     String? title,
     String? body,
     String? type,
@@ -72,6 +77,7 @@ class AppNotification {
   }) {
     return AppNotification(
       id: id ?? this.id,
+      orgId: orgId ?? this.orgId,
       title: title ?? this.title,
       body: body ?? this.body,
       type: type ?? this.type,

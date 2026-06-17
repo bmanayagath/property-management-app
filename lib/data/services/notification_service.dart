@@ -32,17 +32,19 @@ class NotificationService {
   }
 
   Stream<List<AppNotification>> watchNotificationsForUser(
-      String userId) async* {
+    String userId, {
+    String orgId = 'default_org',
+  }) async* {
     debugPrint('[NotificationService] watch notifications for user=$userId');
 
-    final initial = await _loadNotificationsForUser(userId);
+    final initial = await _loadNotificationsForUser(userId, orgId: orgId);
     debugPrint(
       '[NotificationService] notifications loaded for user=$userId count=${initial.length}',
     );
     yield initial;
 
     yield* _notificationsController.stream.map((notifications) {
-      final filtered = _filterForUser(notifications, userId);
+      final filtered = _filterForUser(notifications, userId, orgId: orgId);
       debugPrint(
         '[NotificationService] notifications loaded for user=$userId count=${filtered.length}',
       );
@@ -90,17 +92,25 @@ class NotificationService {
     return null;
   }
 
-  Future<List<AppNotification>> _loadNotificationsForUser(String userId) async {
+  Future<List<AppNotification>> _loadNotificationsForUser(
+    String userId, {
+    String orgId = 'default_org',
+  }) async {
     final notifications = await _loadNotifications();
-    return _filterForUser(notifications, userId);
+    return _filterForUser(notifications, userId, orgId: orgId);
   }
 
   List<AppNotification> _filterForUser(
     List<AppNotification> notifications,
-    String userId,
-  ) {
+    String userId, {
+    String orgId = 'default_org',
+  }) {
     final filtered = notifications
-        .where((notification) => notification.targetUserIds.contains(userId))
+        .where(
+          (notification) =>
+              notification.orgId == orgId &&
+              notification.targetUserIds.contains(userId),
+        )
         .toList()
       ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
     return filtered;

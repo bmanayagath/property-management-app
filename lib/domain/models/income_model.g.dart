@@ -9,6 +9,7 @@ part of 'income_model.dart';
 _$IncomeModelImpl _$$IncomeModelImplFromJson(Map<String, dynamic> json) =>
     _$IncomeModelImpl(
       id: json['id'] as String,
+      orgId: json['orgId'] as String? ?? 'default_org',
       villaId: json['villaId'] as String,
       villaName: json['villaName'] as String? ?? '',
       roomId: json['roomId'] as String? ?? '',
@@ -25,6 +26,7 @@ _$IncomeModelImpl _$$IncomeModelImplFromJson(Map<String, dynamic> json) =>
 Map<String, dynamic> _$$IncomeModelImplToJson(_$IncomeModelImpl instance) =>
     <String, dynamic>{
       'id': instance.id,
+      'orgId': instance.orgId,
       'villaId': instance.villaId,
       'villaName': instance.villaName,
       'roomId': instance.roomId,

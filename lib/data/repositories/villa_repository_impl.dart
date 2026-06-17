@@ -6,18 +6,19 @@ import '../local/database.dart';
 
 class VillaRepositoryImpl implements VillaRepository {
   final AppDatabase database;
+  final String orgId;
 
-  VillaRepositoryImpl(this.database);
+  VillaRepositoryImpl(this.database, {required this.orgId});
 
   @override
   Future<List<VillaModel>> getAllVillas() async {
-    final villas = await database.getAllVillas();
+    final villas = await database.getAllVillas(orgId: orgId);
     return villas.map((villa) => _mapToModel(villa)).toList();
   }
 
   @override
   Stream<List<VillaModel>> watchVillas() {
-    return database.watchAllVillas().map(
+    return database.watchAllVillas(orgId: orgId).map(
           (villas) => villas.map(_mapToModel).toList(),
         );
   }
@@ -41,6 +42,7 @@ class VillaRepositoryImpl implements VillaRepository {
     await database.insertVilla(
       VillasCompanion(
         id: Value(id),
+        orgId: Value(orgId),
         villaName: Value(villa.villaName),
         villaNumber: Value(villa.villaNumber),
         location: Value(villa.location),
@@ -71,6 +73,7 @@ class VillaRepositoryImpl implements VillaRepository {
     await database.updateVilla(
       VillasCompanion(
         id: Value(villa.id),
+        orgId: Value(orgId),
         villaName: Value(villa.villaName),
         villaNumber: Value(villa.villaNumber),
         location: Value(villa.location),
@@ -102,6 +105,7 @@ class VillaRepositoryImpl implements VillaRepository {
   VillaModel _mapToModel(Villa villa) {
     return VillaModel(
       id: villa.id,
+      orgId: villa.orgId,
       villaName: villa.villaName,
       villaNumber: villa.villaNumber,
       location: villa.location,

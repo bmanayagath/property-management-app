@@ -1,5 +1,6 @@
 class Room {
   final String id;
+  final String orgId;
   final String villaId;
   final String villaName;
   final String roomName;
@@ -40,6 +41,7 @@ class Room {
 
   const Room({
     required this.id,
+    this.orgId = 'default_org',
     required this.villaId,
     required this.villaName,
     required this.roomName,
@@ -84,6 +86,7 @@ class Room {
   }) {
     return Room(
       id: id,
+      orgId: 'default_org',
       villaId: villaId,
       villaName: villaName,
       roomName: '',
@@ -120,6 +123,7 @@ class Room {
 
   Room copyWith({
     String? id,
+    String? orgId,
     String? villaId,
     String? villaName,
     String? roomName,
@@ -171,6 +175,7 @@ class Room {
   }) {
     return Room(
       id: id ?? this.id,
+      orgId: orgId ?? this.orgId,
       villaId: villaId ?? this.villaId,
       villaName: villaName ?? this.villaName,
       roomName: roomName ?? this.roomName,
@@ -219,6 +224,7 @@ class Room {
 
 class TenantHistory {
   final String roomId;
+  final String orgId;
   final String villaId;
   final String tenantName;
   final String tenantPhone;
@@ -233,6 +239,7 @@ class TenantHistory {
 
   const TenantHistory({
     required this.roomId,
+    this.orgId = 'default_org',
     required this.villaId,
     required this.tenantName,
     required this.tenantPhone,
@@ -248,6 +255,7 @@ class TenantHistory {
 
   Map<String, dynamic> toJson() => {
         'roomId': roomId,
+        'orgId': orgId,
         'villaId': villaId,
         'tenantName': tenantName,
         'tenantPhone': tenantPhone,
@@ -263,6 +271,7 @@ class TenantHistory {
 
   factory TenantHistory.fromJson(Map<String, dynamic> json) => TenantHistory(
         roomId: json['roomId'] as String? ?? '',
+        orgId: json['orgId'] as String? ?? 'default_org',
         villaId: json['villaId'] as String? ?? '',
         tenantName: json['tenantName'] as String? ?? '',
         tenantPhone: json['tenantPhone'] as String? ?? '',
@@ -288,11 +297,12 @@ class DepositTypes {
 
 class DepositStatuses {
   DepositStatuses._();
+  static const none = 'None';
   static const held = 'Held';
   static const refunded = 'Refunded';
   static const partiallyRefunded = 'Partially Refunded';
   static const forfeited = 'Forfeited';
-  static const values = [held, refunded, partiallyRefunded, forfeited];
+  static const values = [none, held, refunded, partiallyRefunded, forfeited];
 }
 
 class RoomStatuses {

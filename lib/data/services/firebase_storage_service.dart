@@ -22,25 +22,28 @@ class FirebaseStorageService {
   }
 
   String imagePath({
+    required String orgId,
     required String villaId,
     required String roomId,
     required String mediaId,
     String extension = 'jpg',
   }) {
     final normalizedExtension = _normalizeImageExtension(extension);
-    return 'villas/$villaId/rooms/$roomId/media/$mediaId.$normalizedExtension';
+    return 'organizations/$orgId/villas/$villaId/rooms/$roomId/media/$mediaId.$normalizedExtension';
   }
 
   String videoPath({
+    required String orgId,
     required String villaId,
     required String roomId,
     required String mediaId,
   }) {
-    return 'villas/$villaId/rooms/$roomId/media/$mediaId.mp4';
+    return 'organizations/$orgId/villas/$villaId/rooms/$roomId/media/$mediaId.mp4';
   }
 
   Future<StorageUploadResult> uploadImage({
     required File file,
+    required String orgId,
     required String villaId,
     required String roomId,
     required String mediaId,
@@ -48,12 +51,14 @@ class FirebaseStorageService {
     RoomMediaUploadController? uploadController,
     ValueChanged<double>? onProgress,
   }) async {
+    _validatePathSegment('orgId', orgId);
     _validatePathSegment('villaId', villaId);
     _validatePathSegment('roomId', roomId);
     _validatePathSegment('mediaId', mediaId);
     final normalizedExtension = _normalizeImageExtension(extension);
     final path = imagePath(
       villaId: villaId,
+      orgId: orgId,
       roomId: roomId,
       mediaId: mediaId,
       extension: normalizedExtension,
@@ -69,6 +74,7 @@ class FirebaseStorageService {
 
   Future<StorageUploadResult> uploadVideo({
     required File file,
+    required String orgId,
     required String villaId,
     required String roomId,
     required String mediaId,
@@ -76,14 +82,20 @@ class FirebaseStorageService {
     RoomMediaUploadController? uploadController,
     ValueChanged<double>? onProgress,
   }) async {
+    _validatePathSegment('orgId', orgId);
     _validatePathSegment('villaId', villaId);
     _validatePathSegment('roomId', roomId);
     _validatePathSegment('mediaId', mediaId);
     final normalizedExtension =
         extension.toLowerCase() == 'mov' ? 'mov' : 'mp4';
     final path = normalizedExtension == 'mov'
-        ? 'villas/$villaId/rooms/$roomId/media/$mediaId.mov'
-        : videoPath(villaId: villaId, roomId: roomId, mediaId: mediaId);
+        ? 'organizations/$orgId/villas/$villaId/rooms/$roomId/media/$mediaId.mov'
+        : videoPath(
+            orgId: orgId,
+            villaId: villaId,
+            roomId: roomId,
+            mediaId: mediaId,
+          );
     return _uploadFile(
       file: file,
       path: path,
@@ -269,13 +281,15 @@ class FirebaseStorageService {
     required String bucketName,
   }) {
     final segments = path.split('/');
-    final villaId = segments.length > 1 ? segments[1] : '';
-    final roomId = segments.length > 3 ? segments[3] : '';
+    final orgId = segments.length > 1 ? segments[1] : '';
+    final villaId = segments.length > 3 ? segments[3] : '';
+    final roomId = segments.length > 5 ? segments[5] : '';
     final fileName = segments.isNotEmpty ? segments.last : '';
     final mediaId = fileName.contains('.')
         ? fileName.substring(0, fileName.lastIndexOf('.'))
         : fileName;
     return [
+      'OrgId: $orgId',
       'VillaId: $villaId',
       'RoomId: $roomId',
       'MediaId: $mediaId',

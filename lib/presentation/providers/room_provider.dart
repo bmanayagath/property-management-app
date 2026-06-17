@@ -7,6 +7,7 @@ import 'package:uuid/uuid.dart';
 import '../../domain/models/app_notification.dart';
 import '../../domain/models/room.dart';
 import '../../domain/models/villa_model.dart';
+import 'active_org_provider.dart';
 import 'active_data_helpers.dart';
 import 'auth_provider.dart';
 import 'dashboard_provider.dart';
@@ -26,9 +27,10 @@ List<Room> activeRoomsOnly({
 final allRoomsProvider = StreamProvider<List<Room>>((ref) {
   final repository = ref.watch(roomRepositoryProvider);
   final syncService = ref.watch(firebaseSyncServiceProvider);
+  final orgId = ref.watch(activeOrgProvider);
   return _mergeRoomStreams(
     localStream: repository.watchActiveRooms(),
-    cloudStream: syncService.watchCloudRooms(),
+    cloudStream: syncService.watchCloudRooms(orgId: orgId),
   );
 });
 
@@ -78,7 +80,8 @@ final addRoomProvider = FutureProvider.family<String, Room>((ref, room) async {
   final id = await repository.addRoom(room);
   final currentUser = ref.read(authProvider).currentUser;
   if (currentUser != null) {
-    final syncedRoom = room.copyWith(id: id);
+    final syncedRoom =
+        room.copyWith(id: id, orgId: ref.read(activeOrgProvider));
     await ref.read(firebaseSyncServiceProvider).queueRoom(
           room: syncedRoom,
           userId: currentUser.id,
@@ -110,17 +113,18 @@ final updateRoomProvider = FutureProvider.family<void, Room>((ref, room) async {
   await repository.updateRoom(room);
   final currentUser = ref.read(authProvider).currentUser;
   if (currentUser != null) {
+    final syncedRoom = room.copyWith(orgId: ref.read(activeOrgProvider));
     await ref.read(firebaseSyncServiceProvider).queueRoom(
-          room: room,
+          room: syncedRoom,
           userId: currentUser.id,
         );
     await _createRoomNotification(
       ref,
-      room: room,
+      room: syncedRoom,
       type: NotificationTypes.roomUpdated,
       title: 'Room updated',
       body:
-          '${_roomLabel(room)} in ${_villaLabel(room)} was updated by ${currentUser.username}',
+          '${_roomLabel(syncedRoom)} in ${_villaLabel(syncedRoom)} was updated by ${currentUser.username}',
     );
     ref.read(syncRefreshProvider.notifier).state++;
   }
@@ -195,6 +199,7 @@ Future<void> _createRoomNotification(
 
   final notification = AppNotification(
     id: const Uuid().v4(),
+    orgId: ref.read(activeOrgProvider),
     title: title,
     body: body,
     type: type,

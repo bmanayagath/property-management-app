@@ -21,6 +21,7 @@ IncomeModel _$IncomeModelFromJson(Map<String, dynamic> json) {
 /// @nodoc
 mixin _$IncomeModel {
   String get id => throw _privateConstructorUsedError;
+  String get orgId => throw _privateConstructorUsedError;
   String get villaId => throw _privateConstructorUsedError;
   String get villaName => throw _privateConstructorUsedError;
   String get roomId => throw _privateConstructorUsedError;
@@ -51,6 +52,7 @@ abstract class $IncomeModelCopyWith<$Res> {
   @useResult
   $Res call(
       {String id,
+      String orgId,
       String villaId,
       String villaName,
       String roomId,
@@ -80,6 +82,7 @@ class _$IncomeModelCopyWithImpl<$Res, $Val extends IncomeModel>
   @override
   $Res call({
     Object? id = null,
+    Object? orgId = null,
     Object? villaId = null,
     Object? villaName = null,
     Object? roomId = null,
@@ -96,6 +99,10 @@ class _$IncomeModelCopyWithImpl<$Res, $Val extends IncomeModel>
       id: null == id
           ? _value.id
           : id // ignore: cast_nullable_to_non_nullable
+              as String,
+      orgId: null == orgId
+          ? _value.orgId
+          : orgId // ignore: cast_nullable_to_non_nullable
               as String,
       villaId: null == villaId
           ? _value.villaId
@@ -155,6 +162,7 @@ abstract class _$$IncomeModelImplCopyWith<$Res>
   @useResult
   $Res call(
       {String id,
+      String orgId,
       String villaId,
       String villaName,
       String roomId,
@@ -182,6 +190,7 @@ class __$$IncomeModelImplCopyWithImpl<$Res>
   @override
   $Res call({
     Object? id = null,
+    Object? orgId = null,
     Object? villaId = null,
     Object? villaName = null,
     Object? roomId = null,
@@ -198,6 +207,10 @@ class __$$IncomeModelImplCopyWithImpl<$Res>
       id: null == id
           ? _value.id
           : id // ignore: cast_nullable_to_non_nullable
+              as String,
+      orgId: null == orgId
+          ? _value.orgId
+          : orgId // ignore: cast_nullable_to_non_nullable
               as String,
       villaId: null == villaId
           ? _value.villaId
@@ -252,6 +265,7 @@ class __$$IncomeModelImplCopyWithImpl<$Res>
 class _$IncomeModelImpl implements _IncomeModel {
   const _$IncomeModelImpl(
       {required this.id,
+      this.orgId = 'default_org',
       required this.villaId,
       this.villaName = '',
       this.roomId = '',
@@ -269,6 +283,9 @@ class _$IncomeModelImpl implements _IncomeModel {
 
   @override
   final String id;
+  @override
+  @JsonKey()
+  final String orgId;
   @override
   final String villaId;
   @override
@@ -297,7 +314,7 @@ class _$IncomeModelImpl implements _IncomeModel {
 
   @override
   String toString() {
-    return 'IncomeModel(id: $id, villaId: $villaId, villaName: $villaName, roomId: $roomId, roomName: $roomName, incomeType: $incomeType, amount: $amount, paymentDate: $paymentDate, paymentMethod: $paymentMethod, monthCovered: $monthCovered, notes: $notes, createdAt: $createdAt)';
+    return 'IncomeModel(id: $id, orgId: $orgId, villaId: $villaId, villaName: $villaName, roomId: $roomId, roomName: $roomName, incomeType: $incomeType, amount: $amount, paymentDate: $paymentDate, paymentMethod: $paymentMethod, monthCovered: $monthCovered, notes: $notes, createdAt: $createdAt)';
   }
 
   @override
@@ -306,6 +323,7 @@ class _$IncomeModelImpl implements _IncomeModel {
         (other.runtimeType == runtimeType &&
             other is _$IncomeModelImpl &&
             (identical(other.id, id) || other.id == id) &&
+            (identical(other.orgId, orgId) || other.orgId == orgId) &&
             (identical(other.villaId, villaId) || other.villaId == villaId) &&
             (identical(other.villaName, villaName) ||
                 other.villaName == villaName) &&
@@ -331,6 +349,7 @@ class _$IncomeModelImpl implements _IncomeModel {
   int get hashCode => Object.hash(
       runtimeType,
       id,
+      orgId,
       villaId,
       villaName,
       roomId,
@@ -362,6 +381,7 @@ class _$IncomeModelImpl implements _IncomeModel {
 abstract class _IncomeModel implements IncomeModel {
   const factory _IncomeModel(
       {required final String id,
+      final String orgId,
       required final String villaId,
       final String villaName,
       final String roomId,
@@ -379,6 +399,8 @@ abstract class _IncomeModel implements IncomeModel {
 
   @override
   String get id;
+  @override
+  String get orgId;
   @override
   String get villaId;
   @override

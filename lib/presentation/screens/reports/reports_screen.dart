@@ -156,12 +156,14 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
     final activeRoomIds = activeRooms.map((room) => room.id).toSet();
     final activeIncomes = incomes.where((income) {
       if (income.isDeleted) return false;
+      if (_isDepositIncome(income)) return false;
       if (!activeVillaIds.contains(income.villaId)) return false;
       if (income.roomId.trim().isEmpty) return true;
       return activeRoomIds.contains(income.roomId);
     }).toList();
     final activeExpenses = expenses.where((expense) {
       if (expense.isDeleted) return false;
+      if (_isDepositRefundExpense(expense)) return false;
       final villaId = expense.villaId;
       if (villaId == null || villaId.trim().isEmpty) return true;
       if (!activeVillaIds.contains(villaId)) return false;
@@ -617,6 +619,8 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
             'Deposit Type',
             'Amount',
             'Status',
+            'Refund Amount',
+            'Retained Amount',
           ],
           rows: data.depositRooms
               .map(
@@ -629,6 +633,8 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                   room.depositType,
                   _money(room.depositAmount),
                   room.depositStatus,
+                  _money(room.refundAmount),
+                  _money(room.retainedAmount),
                 ],
               )
               .toList(),
@@ -692,6 +698,15 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
   }
 
   String _money(double value) => CurrencyFormatter.formatQAR(value);
+
+  bool _isDepositIncome(Income income) {
+    return income.incomeType.toLowerCase() == IncomeTypes.deposit.toLowerCase();
+  }
+
+  bool _isDepositRefundExpense(Expense expense) {
+    return expense.category.toLowerCase() ==
+        ExpenseCategories.depositRefund.toLowerCase();
+  }
 
   List<Room> _filteredRooms(List<Room> rooms) {
     return rooms.where((room) {
@@ -2012,6 +2027,8 @@ class _DepositReportView extends StatelessWidget {
             DataColumn(label: Text('Type')),
             DataColumn(label: Text('Amount')),
             DataColumn(label: Text('Status')),
+            DataColumn(label: Text('Refund')),
+            DataColumn(label: Text('Retained')),
           ],
           rows: rooms
               .map(
@@ -2028,6 +2045,9 @@ class _DepositReportView extends StatelessWidget {
                     DataCell(
                         Text(CurrencyFormatter.format(room.depositAmount))),
                     DataCell(Text(room.depositStatus)),
+                    DataCell(Text(CurrencyFormatter.format(room.refundAmount))),
+                    DataCell(
+                        Text(CurrencyFormatter.format(room.retainedAmount))),
                   ],
                 ),
               )

@@ -8,18 +8,19 @@ import '../local/database.dart' as db;
 
 class RoomRepositoryImpl implements RoomRepository {
   final db.AppDatabase database;
+  final String orgId;
 
-  RoomRepositoryImpl(this.database);
+  RoomRepositoryImpl(this.database, {required this.orgId});
 
   @override
   Future<List<Room>> getAllRooms() async {
-    final rooms = await database.getAllRooms();
+    final rooms = await database.getAllRooms(orgId: orgId);
     return rooms.map(_mapToModel).toList();
   }
 
   @override
   Stream<List<Room>> watchRooms() {
-    return database.watchAllRooms().map(
+    return database.watchAllRooms(orgId: orgId).map(
           (rooms) => rooms.map(_mapToModel).toList(),
         );
   }
@@ -38,19 +39,19 @@ class RoomRepositoryImpl implements RoomRepository {
 
   @override
   Future<List<Room>> getRoomsByVillaId(String villaId) async {
-    final rooms = await database.getRoomsByVillaId(villaId);
+    final rooms = await database.getRoomsByVillaId(villaId, orgId: orgId);
     return rooms.map(_mapToModel).toList();
   }
 
   @override
   Stream<List<Room>> watchRoomsByVillaId(String villaId) =>
-      database.watchRoomsByVillaId(villaId).map(
+      database.watchRoomsByVillaId(villaId, orgId: orgId).map(
             (rooms) => rooms.map(_mapToModel).toList(),
           );
 
   @override
   Stream<List<Room>> watchActiveRoomsByVilla(String villaId) =>
-      database.watchActiveRoomsByVilla(villaId).map(
+      database.watchActiveRoomsByVilla(villaId, orgId: orgId).map(
             (rooms) => rooms.map(_mapToModel).toList(),
           );
 
@@ -74,6 +75,7 @@ class RoomRepositoryImpl implements RoomRepository {
     await database.insertRoom(
       db.RoomsCompanion(
         id: Value(id),
+        orgId: Value(orgId),
         villaId: Value(room.villaId),
         villaName: Value(room.villaName),
         roomName: Value(room.roomName),
@@ -121,6 +123,7 @@ class RoomRepositoryImpl implements RoomRepository {
     await database.updateRoom(
       db.RoomsCompanion(
         id: Value(room.id),
+        orgId: Value(orgId),
         villaId: Value(room.villaId),
         villaName: Value(room.villaName),
         roomName: Value(room.roomName),
@@ -166,7 +169,7 @@ class RoomRepositoryImpl implements RoomRepository {
 
   @override
   Future<double> getTotalExpectedRentForVilla(String villaId) async {
-    final rooms = await database.getRoomsByVillaId(villaId);
+    final rooms = await database.getRoomsByVillaId(villaId, orgId: orgId);
     return rooms
         .map(_mapToModel)
         .where((room) => room.isOccupied)
@@ -175,7 +178,7 @@ class RoomRepositoryImpl implements RoomRepository {
 
   @override
   Future<double> getTotalExpectedRentForAllVillas() async {
-    final rooms = await database.getAllRooms();
+    final rooms = await database.getAllRooms(orgId: orgId);
     return rooms
         .map(_mapToModel)
         .where((room) => room.isOccupied)
@@ -185,6 +188,7 @@ class RoomRepositoryImpl implements RoomRepository {
   Room _mapToModel(db.Room room) {
     return Room(
       id: room.id,
+      orgId: room.orgId,
       villaId: room.villaId,
       villaName: room.villaName,
       roomName: room.roomName,

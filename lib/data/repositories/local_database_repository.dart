@@ -128,6 +128,7 @@ class LocalDatabaseRepository {
 
     final companion = db.VillasCompanion(
       id: Value(villa.id),
+      orgId: Value(villa.orgId),
       villaName: Value(villa.villaName),
       villaNumber: Value(villa.villaNumber),
       location: Value(villa.location),
@@ -177,6 +178,7 @@ class LocalDatabaseRepository {
 
     final companion = db.RoomsCompanion(
       id: Value(room.id),
+      orgId: Value(room.orgId),
       villaId: Value(room.villaId),
       villaName: Value(room.villaName),
       roomName: Value(room.roomName),
@@ -236,6 +238,7 @@ class LocalDatabaseRepository {
 
     final companion = db.IncomesCompanion(
       id: Value(income.id),
+      orgId: Value(income.orgId),
       villaId: Value(income.villaId),
       villaName: Value(income.villaName),
       roomId: Value(income.roomId),
@@ -278,6 +281,7 @@ class LocalDatabaseRepository {
 
     final companion = db.ExpensesCompanion(
       id: Value(expense.id),
+      orgId: Value(expense.orgId),
       villaId: Value(expense.villaId),
       villaName: Value(expense.villaName),
       roomId: Value(expense.roomId),

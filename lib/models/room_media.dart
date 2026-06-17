@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 class RoomMedia {
   final String id;
+  final String orgId;
   final String villaId;
   final String roomId;
   final String fileType;
@@ -20,6 +21,7 @@ class RoomMedia {
 
   const RoomMedia({
     required this.id,
+    this.orgId = 'default_org',
     required this.villaId,
     required this.roomId,
     required this.fileType,
@@ -56,6 +58,7 @@ class RoomMedia {
 
   RoomMedia copyWith({
     String? id,
+    String? orgId,
     String? villaId,
     String? roomId,
     String? fileType,
@@ -78,6 +81,7 @@ class RoomMedia {
   }) {
     return RoomMedia(
       id: id ?? this.id,
+      orgId: orgId ?? this.orgId,
       villaId: villaId ?? this.villaId,
       roomId: roomId ?? this.roomId,
       fileType: fileType ?? this.fileType,
@@ -100,6 +104,7 @@ class RoomMedia {
     return {
       'id': id,
       'mediaId': id,
+      'orgId': orgId,
       'villaId': villaId,
       'roomId': roomId,
       'fileType': fileType,
@@ -139,6 +144,7 @@ class RoomMedia {
     final uploadedAt = _dateFromJson(json['uploadedAt']);
     return RoomMedia(
       id: id,
+      orgId: json['orgId'] as String? ?? 'default_org',
       villaId: json['villaId'] as String? ?? '',
       roomId: json['roomId'] as String? ?? '',
       fileType: fileType,

@@ -21,6 +21,7 @@ ExpenseModel _$ExpenseModelFromJson(Map<String, dynamic> json) {
 /// @nodoc
 mixin _$ExpenseModel {
   String get id => throw _privateConstructorUsedError;
+  String get orgId => throw _privateConstructorUsedError;
   String? get villaId => throw _privateConstructorUsedError;
   String get villaName => throw _privateConstructorUsedError;
   String? get roomId => throw _privateConstructorUsedError;
@@ -51,6 +52,7 @@ abstract class $ExpenseModelCopyWith<$Res> {
   @useResult
   $Res call(
       {String id,
+      String orgId,
       String? villaId,
       String villaName,
       String? roomId,
@@ -80,6 +82,7 @@ class _$ExpenseModelCopyWithImpl<$Res, $Val extends ExpenseModel>
   @override
   $Res call({
     Object? id = null,
+    Object? orgId = null,
     Object? villaId = freezed,
     Object? villaName = null,
     Object? roomId = freezed,
@@ -96,6 +99,10 @@ class _$ExpenseModelCopyWithImpl<$Res, $Val extends ExpenseModel>
       id: null == id
           ? _value.id
           : id // ignore: cast_nullable_to_non_nullable
+              as String,
+      orgId: null == orgId
+          ? _value.orgId
+          : orgId // ignore: cast_nullable_to_non_nullable
               as String,
       villaId: freezed == villaId
           ? _value.villaId
@@ -155,6 +162,7 @@ abstract class _$$ExpenseModelImplCopyWith<$Res>
   @useResult
   $Res call(
       {String id,
+      String orgId,
       String? villaId,
       String villaName,
       String? roomId,
@@ -182,6 +190,7 @@ class __$$ExpenseModelImplCopyWithImpl<$Res>
   @override
   $Res call({
     Object? id = null,
+    Object? orgId = null,
     Object? villaId = freezed,
     Object? villaName = null,
     Object? roomId = freezed,
@@ -198,6 +207,10 @@ class __$$ExpenseModelImplCopyWithImpl<$Res>
       id: null == id
           ? _value.id
           : id // ignore: cast_nullable_to_non_nullable
+              as String,
+      orgId: null == orgId
+          ? _value.orgId
+          : orgId // ignore: cast_nullable_to_non_nullable
               as String,
       villaId: freezed == villaId
           ? _value.villaId
@@ -252,6 +265,7 @@ class __$$ExpenseModelImplCopyWithImpl<$Res>
 class _$ExpenseModelImpl implements _ExpenseModel {
   const _$ExpenseModelImpl(
       {required this.id,
+      this.orgId = 'default_org',
       this.villaId,
       this.villaName = '',
       this.roomId,
@@ -269,6 +283,9 @@ class _$ExpenseModelImpl implements _ExpenseModel {
 
   @override
   final String id;
+  @override
+  @JsonKey()
+  final String orgId;
   @override
   final String? villaId;
   @override
@@ -295,7 +312,7 @@ class _$ExpenseModelImpl implements _ExpenseModel {
 
   @override
   String toString() {
-    return 'ExpenseModel(id: $id, villaId: $villaId, villaName: $villaName, roomId: $roomId, roomName: $roomName, category: $category, amount: $amount, expenseDate: $expenseDate, paidTo: $paidTo, paymentMethod: $paymentMethod, notes: $notes, createdAt: $createdAt)';
+    return 'ExpenseModel(id: $id, orgId: $orgId, villaId: $villaId, villaName: $villaName, roomId: $roomId, roomName: $roomName, category: $category, amount: $amount, expenseDate: $expenseDate, paidTo: $paidTo, paymentMethod: $paymentMethod, notes: $notes, createdAt: $createdAt)';
   }
 
   @override
@@ -304,6 +321,7 @@ class _$ExpenseModelImpl implements _ExpenseModel {
         (other.runtimeType == runtimeType &&
             other is _$ExpenseModelImpl &&
             (identical(other.id, id) || other.id == id) &&
+            (identical(other.orgId, orgId) || other.orgId == orgId) &&
             (identical(other.villaId, villaId) || other.villaId == villaId) &&
             (identical(other.villaName, villaName) ||
                 other.villaName == villaName) &&
@@ -328,6 +346,7 @@ class _$ExpenseModelImpl implements _ExpenseModel {
   int get hashCode => Object.hash(
       runtimeType,
       id,
+      orgId,
       villaId,
       villaName,
       roomId,
@@ -359,6 +378,7 @@ class _$ExpenseModelImpl implements _ExpenseModel {
 abstract class _ExpenseModel implements ExpenseModel {
   const factory _ExpenseModel(
       {required final String id,
+      final String orgId,
       final String? villaId,
       final String villaName,
       final String? roomId,
@@ -376,6 +396,8 @@ abstract class _ExpenseModel implements ExpenseModel {
 
   @override
   String get id;
+  @override
+  String get orgId;
   @override
   String? get villaId;
   @override

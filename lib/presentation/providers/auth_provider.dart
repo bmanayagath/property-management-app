@@ -238,6 +238,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
         password: password,
         role: user.role,
         displayName: user.displayName,
+        orgId: user.orgId ?? state.currentUser?.orgId,
       );
       final users = [...state.users, savedUser]
         ..sort((a, b) => a.username.compareTo(b.username));
@@ -381,8 +382,11 @@ class AuthNotifier extends StateNotifier<AuthState> {
     AuthService service,
     AppUser currentUser,
   ) async {
-    if (currentUser.role != AppRoles.admin) return [currentUser];
-    return service.fetchUsers();
+    if (currentUser.role == AppRoles.superAdmin) return service.fetchUsers();
+    if (currentUser.role == AppRoles.admin) {
+      return service.fetchUsersForOrg(currentUser.orgId ?? 'default_org');
+    }
+    return [currentUser];
   }
 
   @override
