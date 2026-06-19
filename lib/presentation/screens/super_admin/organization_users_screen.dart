@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/constants/app_roles.dart';
+import '../../../data/services/logger_service.dart';
 import '../../../domain/models/app_user.dart';
 import '../../../domain/models/organization_model.dart';
 import '../../providers/auth_provider.dart';
+import '../../widgets/destructive_action_dialog.dart';
 
 class OrganizationUsersScreen extends ConsumerWidget {
   final OrganizationModel organization;
@@ -50,8 +52,11 @@ class OrganizationUsersScreen extends ConsumerWidget {
                     ? IconButton(
                         tooltip: 'Disable',
                         icon: const Icon(Icons.block_rounded),
-                        onPressed: () =>
-                            ref.read(authProvider.notifier).deleteUser(user.id),
+                        onPressed: () => _confirmDisableUser(
+                          context,
+                          ref,
+                          user,
+                        ),
                       )
                     : const Icon(Icons.block_rounded),
               );
@@ -140,5 +145,46 @@ class OrganizationUsersScreen extends ConsumerWidget {
     emailController.dispose();
     displayNameController.dispose();
     passwordController.dispose();
+  }
+
+  Future<void> _confirmDisableUser(
+    BuildContext context,
+    WidgetRef ref,
+    AppUser user,
+  ) async {
+    final confirmed = await showDestructiveActionDialog(
+      context: context,
+      title: 'Disable User?',
+      message: disableUserConfirmationMessage,
+      confirmLabel: 'Disable User',
+    );
+    if (!confirmed) return;
+
+    try {
+      await ref.read(authProvider.notifier).deleteUser(user.id);
+      await LoggerService.logInfo(
+        screenName: 'OrganizationUsersScreen',
+        operation: 'DisableUser',
+        message: 'Organization user disabled.',
+        details:
+            'userId: ${user.id}\nemail: ${user.username}\norgId: ${organization.id}',
+      );
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('User disabled.')),
+      );
+    } catch (error, stackTrace) {
+      await LoggerService.logError(
+        screenName: 'OrganizationUsersScreen',
+        operation: 'DisableUser',
+        message: 'Organization user disable failed.',
+        details: 'userId: ${user.id}\n$error',
+        stackTrace: stackTrace.toString(),
+      );
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Unable to disable user.')),
+      );
+    }
   }
 }

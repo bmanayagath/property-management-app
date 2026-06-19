@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_styles.dart';
 import '../../core/constants/app_permissions.dart';
+import '../../data/services/logger_service.dart';
 import '../../domain/models/income.dart';
 import '../../domain/models/room.dart';
 import '../../domain/models/villa_model.dart';
@@ -13,6 +14,7 @@ import '../providers/income_provider.dart';
 import '../providers/room_provider.dart';
 import '../providers/villa_provider.dart';
 import '../widgets/premium_widgets.dart';
+import '../widgets/destructive_action_dialog.dart';
 import '../widgets/villa_summary_card.dart';
 import 'add_edit_villa_screen.dart';
 import 'villa_detail_screen.dart';
@@ -336,40 +338,46 @@ class _VillasScreenState extends ConsumerState<VillasScreen> {
     });
   }
 
-  void _showDeleteConfirmation(BuildContext context, String villaId) {
-    showDialog(
+  Future<void> _showDeleteConfirmation(
+    BuildContext context,
+    String villaId,
+  ) async {
+    final confirmed = await showDestructiveActionDialog(
       context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Delete Villa?'),
-          content: const Text(
-            'Deleting this villa will also remove all rooms, income, and expenses linked to it from active records. This action will sync to other devices. Do you want to continue?',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel'),
-            ),
-            TextButton(
-              onPressed: () async {
-                await ref.read(deleteVillaProvider(villaId).future);
-                ref.invalidate(villasProvider);
-                ref.invalidate(allRoomsProvider);
-                ref.invalidate(dashboardSummaryProvider);
-                if (!context.mounted) return;
-                Navigator.pop(context);
-              },
-              style: TextButton.styleFrom(
-                foregroundColor: AppColors.error,
-              ),
-              child: const Text(
-                'Delete Villa',
-              ),
-            ),
-          ],
-        );
-      },
+      title: 'Delete Villa?',
+      message: deleteVillaConfirmationMessage,
+      confirmLabel: 'Delete Villa',
     );
+    if (!confirmed) return;
+
+    try {
+      await ref.read(deleteVillaProvider(villaId).future);
+      ref.invalidate(villasProvider);
+      ref.invalidate(allRoomsProvider);
+      ref.invalidate(dashboardSummaryProvider);
+      await LoggerService.logInfo(
+        screenName: 'VillasScreen',
+        operation: 'DeleteVilla',
+        message: 'Villa deleted from active view.',
+        details: 'villaId: $villaId',
+      );
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Villa deleted.')),
+      );
+    } catch (error, stackTrace) {
+      await LoggerService.logError(
+        screenName: 'VillasScreen',
+        operation: 'DeleteVilla',
+        message: 'Villa delete failed.',
+        details: 'villaId: $villaId\n$error',
+        stackTrace: stackTrace.toString(),
+      );
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Unable to delete villa.')),
+      );
+    }
   }
 }
 
