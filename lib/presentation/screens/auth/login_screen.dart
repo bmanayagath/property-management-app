@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/constants/app_roles.dart';
+import '../../../core/constants/default_organization.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/sync_provider.dart';
 
@@ -268,7 +270,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           _passwordController.text,
         );
     if (didLogin) {
-      await ref.read(firebaseSyncServiceProvider).initialPullFromFirestore();
+      final currentUser = ref.read(authProvider).currentUser;
+      if (currentUser?.role != AppRoles.superAdmin) {
+        await ref.read(firebaseSyncServiceProvider).initialPullFromFirestore(
+              orgId: currentUser?.orgId ?? DefaultOrganization.id,
+            );
+      }
       ref.read(syncRefreshProvider.notifier).state++;
     }
 

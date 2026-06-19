@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../domain/models/organization_model.dart';
-import '../../providers/active_org_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/organization_provider.dart';
 import 'add_edit_organization_screen.dart';
@@ -30,7 +29,6 @@ class _SuperAdminDashboardScreenState
   @override
   Widget build(BuildContext context) {
     final organizationsAsync = ref.watch(organizationsProvider);
-    final selectedOrgId = ref.watch(selectedOrgProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -101,17 +99,8 @@ class _SuperAdminDashboardScreenState
                       final organization = filtered[index];
                       return _OrganizationCard(
                         organization: organization,
-                        selected: organization.id == selectedOrgId,
-                        onSelect: organization.isActive
-                            ? () {
-                                ref.read(selectedOrgProvider.notifier).state =
-                                    organization.id;
-                              }
-                            : null,
                         onEdit: () => _openEditor(context, organization),
-                        onDisable: organization.isActive
-                            ? () => _disableOrganization(organization)
-                            : null,
+                        onToggleStatus: () => _toggleOrganization(organization),
                         onUsers: () => Navigator.of(context).push(
                           MaterialPageRoute(
                             builder: (_) => OrganizationUsersScreen(
@@ -160,11 +149,12 @@ class _SuperAdminDashboardScreenState
     );
   }
 
-  Future<void> _disableOrganization(OrganizationModel organization) async {
+  Future<void> _toggleOrganization(OrganizationModel organization) async {
     final currentUser = ref.read(authProvider).currentUser;
     if (currentUser == null) return;
-    await ref.read(organizationRepositoryProvider).disableOrganization(
+    await ref.read(organizationRepositoryProvider).setOrganizationActive(
           orgId: organization.id,
+          isActive: !organization.isActive,
           updatedBy: currentUser.id,
         );
   }
@@ -172,18 +162,14 @@ class _SuperAdminDashboardScreenState
 
 class _OrganizationCard extends ConsumerWidget {
   final OrganizationModel organization;
-  final bool selected;
-  final VoidCallback? onSelect;
   final VoidCallback onEdit;
-  final VoidCallback? onDisable;
+  final VoidCallback onToggleStatus;
   final VoidCallback onUsers;
 
   const _OrganizationCard({
     required this.organization,
-    required this.selected,
-    required this.onSelect,
     required this.onEdit,
-    required this.onDisable,
+    required this.onToggleStatus,
     required this.onUsers,
   });
 
@@ -240,15 +226,8 @@ class _OrganizationCard extends ConsumerWidget {
             const SizedBox(height: 8),
             Row(
               children: [
-                FilledButton.icon(
-                  onPressed: onSelect,
-                  icon: Icon(
-                    selected ? Icons.check_circle_rounded : Icons.login_rounded,
-                  ),
-                  label: Text(selected ? 'Selected' : 'Select'),
-                ),
                 IconButton(
-                  tooltip: 'Users',
+                  tooltip: 'Manage Users',
                   onPressed: onUsers,
                   icon: const Icon(Icons.group_rounded),
                 ),
@@ -258,9 +237,13 @@ class _OrganizationCard extends ConsumerWidget {
                   icon: const Icon(Icons.edit_rounded),
                 ),
                 IconButton(
-                  tooltip: 'Disable',
-                  onPressed: onDisable,
-                  icon: const Icon(Icons.block_rounded),
+                  tooltip: organization.isActive ? 'Disable' : 'Enable',
+                  onPressed: onToggleStatus,
+                  icon: Icon(
+                    organization.isActive
+                        ? Icons.block_rounded
+                        : Icons.check_circle_rounded,
+                  ),
                 ),
               ],
             ),
