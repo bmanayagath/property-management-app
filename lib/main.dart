@@ -14,6 +14,7 @@ import 'data/services/logger_service.dart';
 import 'presentation/providers/auth_provider.dart';
 import 'presentation/providers/database_provider.dart';
 import 'presentation/screens/dashboard_screen.dart';
+import 'presentation/screens/auth/choose_organization_screen.dart';
 import 'presentation/screens/auth/login_screen.dart';
 import 'presentation/screens/expenses_screen.dart';
 import 'presentation/screens/income/income_screen.dart';
@@ -174,6 +175,10 @@ class AuthGate extends ConsumerWidget {
           child: CircularProgressIndicator(),
         ),
       );
+    }
+
+    if (authState.needsOrganizationSelection) {
+      return const ChooseOrganizationScreen();
     }
 
     if (!authState.isLoggedIn) {

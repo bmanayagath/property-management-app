@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/constants/app_roles.dart';
 import '../../../data/services/logger_service.dart';
 import '../../../domain/models/app_user.dart';
+import '../../../domain/models/organization_membership.dart';
 import '../../../domain/models/organization_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../widgets/destructive_action_dialog.dart';
@@ -18,11 +19,9 @@ class OrganizationUsersScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final authState = ref.watch(authProvider);
-    final users = authState.users
-        .where((user) => user.orgId == organization.id)
-        .toList()
-      ..sort((a, b) => a.username.compareTo(b.username));
+    final membersAsync = ref.watch(organizationMembersProvider(
+      organization.id,
+    ));
 
     return Scaffold(
       appBar: AppBar(title: Text('${organization.name} Users')),
@@ -32,38 +31,46 @@ class OrganizationUsersScreen extends ConsumerWidget {
         label: const Text('Admin'),
       ),
       body: SafeArea(
-        child: RefreshIndicator(
-          onRefresh: () => ref.read(authProvider.notifier).loadUsers(),
-          child: ListView.separated(
-            padding: const EdgeInsets.all(16),
-            itemBuilder: (context, index) {
-              final user = users[index];
-              return ListTile(
-                leading: const CircleAvatar(
-                  child: Icon(Icons.person_rounded),
-                ),
-                title: Text(
-                  user.displayName.trim().isEmpty
-                      ? user.username
-                      : user.displayName,
-                ),
-                subtitle: Text('${user.username} • ${user.role}'),
-                trailing: user.isActive
-                    ? IconButton(
-                        tooltip: 'Disable',
-                        icon: const Icon(Icons.block_rounded),
-                        onPressed: () => _confirmDisableUser(
-                          context,
-                          ref,
-                          user,
-                        ),
-                      )
-                    : const Icon(Icons.block_rounded),
-              );
+        child: membersAsync.when(
+          data: (members) => RefreshIndicator(
+            onRefresh: () async {
+              ref.invalidate(organizationMembersProvider(organization.id));
+              await ref.read(authProvider.notifier).loadUsers();
             },
-            separatorBuilder: (_, __) => const Divider(height: 1),
-            itemCount: users.length,
+            child: ListView.separated(
+              padding: const EdgeInsets.all(16),
+              itemBuilder: (context, index) {
+                final member = members[index];
+                return ListTile(
+                  leading: const CircleAvatar(
+                    child: Icon(Icons.person_rounded),
+                  ),
+                  title: Text(
+                    member.displayName.trim().isEmpty
+                        ? member.email
+                        : member.displayName,
+                  ),
+                  subtitle: Text(
+                    '${member.email} | ${member.role} | ${member.status}',
+                  ),
+                  trailing: _MemberActions(
+                    member: member,
+                    onApprove: member.status == MembershipStatus.pending &&
+                            !member.uid.startsWith('pending_')
+                        ? () => _approveMembership(context, ref, member)
+                        : null,
+                    onDisable: member.status == MembershipStatus.active
+                        ? () => _confirmDisableMember(context, ref, member)
+                        : null,
+                  ),
+                );
+              },
+              separatorBuilder: (_, __) => const Divider(height: 1),
+              itemCount: members.length,
+            ),
           ),
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (error, _) => Center(child: Text(error.toString())),
         ),
       ),
     );
@@ -133,7 +140,14 @@ class OrganizationUsersScreen extends ConsumerWidget {
                       user,
                       password: passwordController.text,
                     );
+                final message = ref.read(authProvider).infoMessage;
+                if (context.mounted && message != null) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text(message)),
+                  );
+                }
                 if (created && context.mounted) Navigator.of(context).pop();
+                ref.invalidate(organizationMembersProvider(organization.id));
               },
               child: const Text('Create'),
             ),
@@ -147,10 +161,36 @@ class OrganizationUsersScreen extends ConsumerWidget {
     passwordController.dispose();
   }
 
-  Future<void> _confirmDisableUser(
+  Future<void> _approveMembership(
     BuildContext context,
     WidgetRef ref,
-    AppUser user,
+    OrganizationMembership member,
+  ) async {
+    try {
+      await ref.read(authProvider.notifier).activateMembership(member);
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Membership activated.')),
+      );
+    } catch (error, stackTrace) {
+      await LoggerService.logError(
+        screenName: 'OrganizationUsersScreen',
+        operation: 'ActivateMembership',
+        message: 'Membership activation failed.',
+        details: 'uid: ${member.uid}\n$error',
+        stackTrace: stackTrace.toString(),
+      );
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Unable to activate membership.')),
+      );
+    }
+  }
+
+  Future<void> _confirmDisableMember(
+    BuildContext context,
+    WidgetRef ref,
+    OrganizationMembership member,
   ) async {
     final confirmed = await showDestructiveActionDialog(
       context: context,
@@ -161,13 +201,13 @@ class OrganizationUsersScreen extends ConsumerWidget {
     if (!confirmed) return;
 
     try {
-      await ref.read(authProvider.notifier).deleteUser(user.id);
+      await ref.read(authProvider.notifier).disableMembership(member);
       await LoggerService.logInfo(
         screenName: 'OrganizationUsersScreen',
-        operation: 'DisableUser',
-        message: 'Organization user disabled.',
+        operation: 'DisableMembership',
+        message: 'Organization membership disabled.',
         details:
-            'userId: ${user.id}\nemail: ${user.username}\norgId: ${organization.id}',
+            'uid: ${member.uid}\nemail: ${member.email}\norgId: ${organization.id}',
       );
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -176,9 +216,9 @@ class OrganizationUsersScreen extends ConsumerWidget {
     } catch (error, stackTrace) {
       await LoggerService.logError(
         screenName: 'OrganizationUsersScreen',
-        operation: 'DisableUser',
-        message: 'Organization user disable failed.',
-        details: 'userId: ${user.id}\n$error',
+        operation: 'DisableMembership',
+        message: 'Organization membership disable failed.',
+        details: 'uid: ${member.uid}\n$error',
         stackTrace: stackTrace.toString(),
       );
       if (!context.mounted) return;
@@ -186,5 +226,40 @@ class OrganizationUsersScreen extends ConsumerWidget {
         const SnackBar(content: Text('Unable to disable user.')),
       );
     }
+  }
+}
+
+class _MemberActions extends StatelessWidget {
+  final OrganizationMembership member;
+  final VoidCallback? onApprove;
+  final VoidCallback? onDisable;
+
+  const _MemberActions({
+    required this.member,
+    required this.onApprove,
+    required this.onDisable,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(
+      spacing: 4,
+      children: [
+        if (onApprove != null)
+          IconButton(
+            tooltip: 'Approve',
+            onPressed: onApprove,
+            icon: const Icon(Icons.check_circle_rounded),
+          ),
+        if (onDisable != null)
+          IconButton(
+            tooltip: 'Disable',
+            onPressed: onDisable,
+            icon: const Icon(Icons.block_rounded),
+          ),
+        if (member.status == MembershipStatus.disabled)
+          const Icon(Icons.block_rounded),
+      ],
+    );
   }
 }
