@@ -7,6 +7,7 @@ import 'package:uuid/uuid.dart';
 import '../../core/constants/app_roles.dart';
 import '../../core/constants/default_organization.dart';
 import '../../domain/models/app_user.dart';
+import '../../domain/models/organization_membership.dart';
 import '../repositories/organization_repository.dart';
 import 'firebase_sync_service.dart';
 import 'logger_service.dart';
@@ -36,6 +37,28 @@ class AuthServiceException implements Exception {
   String toString() => message;
 }
 
+class AuthSession {
+  final AppUser user;
+  final List<OrganizationMembership> activeMemberships;
+
+  const AuthSession({
+    required this.user,
+    required this.activeMemberships,
+  });
+}
+
+class CreateUserResult {
+  final AppUser? user;
+  final bool invitationCreated;
+  final String? message;
+
+  const CreateUserResult({
+    this.user,
+    this.invitationCreated = false,
+    this.message,
+  });
+}
+
 class AuthService {
   AuthService({
     firebase_auth.FirebaseAuth? firebaseAuth,
@@ -58,13 +81,13 @@ class AuthService {
     return _auth.authStateChanges();
   }
 
-  Future<AppUser?> getCurrentUser() async {
+  Future<AuthSession?> getCurrentSession() async {
     final firebaseUser = _auth.currentUser;
     if (firebaseUser == null) return null;
-    return _loadProfile(firebaseUser);
+    return _loadSession(firebaseUser);
   }
 
-  Future<AppUser> login({
+  Future<AuthSession> login({
     required String email,
     required String password,
   }) async {
@@ -99,7 +122,7 @@ class AuthService {
           ),
         },
       );
-      return _loadProfile(firebaseUser);
+      return _loadSession(firebaseUser);
     } on firebase_auth.FirebaseAuthException catch (error, stackTrace) {
       await LoggerService.logAuth(
         screenName: 'AuthService',
@@ -132,7 +155,7 @@ class AuthService {
     debugPrint('[AuthService] Firebase signOut completed.');
   }
 
-  Future<AppUser> createUser({
+  Future<CreateUserResult> createUser({
     required String email,
     required String password,
     required String role,
@@ -153,21 +176,48 @@ class AuthService {
         throw const AuthServiceException('Unable to create user.');
       }
 
+      final effectiveOrgId =
+          role == AppRoles.superAdmin ? null : orgId ?? DefaultOrganization.id;
       final appUser = AppUser(
         id: createdFirebaseUser.uid,
         username: email.trim().toLowerCase(),
         displayName: displayName.trim(),
         role: role,
-        orgId: role == AppRoles.superAdmin
-            ? null
-            : orgId ?? DefaultOrganization.id,
+        orgId: effectiveOrgId,
         isActive: true,
         createdAt: DateTime.now(),
         createdBy: _auth.currentUser?.uid,
       );
       await saveUserProfile(appUser);
-      return appUser;
+      if (effectiveOrgId != null) {
+        await _setMembership(
+          orgId: effectiveOrgId,
+          uid: appUser.id,
+          email: appUser.username,
+          displayName: appUser.displayName,
+          role: appUser.role,
+          status: MembershipStatus.active,
+          invitedBy: _auth.currentUser?.uid,
+          approvedBy: _auth.currentUser?.uid,
+        );
+      }
+      return CreateUserResult(user: appUser);
     } on firebase_auth.FirebaseAuthException catch (error, stackTrace) {
+      if (error.code == 'email-already-in-use') {
+        final invitation = await _createPendingMembershipForExistingEmail(
+          email: email.trim().toLowerCase(),
+          displayName: displayName.trim(),
+          role: role,
+          orgId: orgId ?? DefaultOrganization.id,
+        );
+        if (invitation) {
+          return const CreateUserResult(
+            invitationCreated: true,
+            message:
+                'This email already exists. Invitation created and requires approval.',
+          );
+        }
+      }
       await LoggerService.logAuth(
         screenName: 'AuthService',
         operation: 'CreateUser',
@@ -220,13 +270,19 @@ class AuthService {
   }
 
   Future<List<AppUser>> fetchUsersForOrg(String orgId) async {
-    final snapshot = await _firestore
-        .collection('users')
-        .where('orgId', isEqualTo: orgId)
-        .get();
-    final users = snapshot.docs
-        .map((doc) => _appUserFromCloud(doc.id, doc.data()))
-        .where((user) => user.isActive)
+    final members = await fetchMembersForOrg(orgId);
+    final users = members
+        .map((member) => AppUser(
+              id: member.uid,
+              username: member.email,
+              displayName: member.displayName,
+              role: member.role,
+              orgId: member.orgId,
+              isActive: member.status == MembershipStatus.active,
+              createdAt: member.createdAt,
+              updatedAt: member.activatedAt,
+              createdBy: member.invitedBy,
+            ))
         .toList()
       ..sort((a, b) => a.username.compareTo(b.username));
     return users;
@@ -240,17 +296,20 @@ class AuthService {
   }
 
   Future<void> disableUser(AppUser user) async {
-    await _firestore.collection('users').doc(user.id).set(
-      {
-        'isActive': false,
-        'isDeleted': true,
-        'updatedAt': FieldValue.serverTimestamp(),
-      },
-      SetOptions(merge: true),
+    final orgId = user.orgId;
+    if (orgId == null || orgId.trim().isEmpty) return;
+    await _setMembership(
+      orgId: orgId,
+      uid: user.id,
+      email: user.username,
+      displayName: user.displayName,
+      role: user.role,
+      status: MembershipStatus.disabled,
+      invitedBy: user.createdBy,
     );
   }
 
-  Future<AppUser> _loadProfile(firebase_auth.User firebaseUser) async {
+  Future<AuthSession> _loadSession(firebase_auth.User firebaseUser) async {
     DocumentSnapshot<Map<String, dynamic>> doc;
     try {
       doc = await _firestore.collection('users').doc(firebaseUser.uid).get();
@@ -303,28 +362,71 @@ class AuthService {
       }
       if (user.role == AppRoles.superAdmin) {
         await _mapLegacyDataToAdornVillas(user.id);
+        await _migrateLegacyUsersToMemberships();
+        return AuthSession(user: user, activeMemberships: const []);
       }
-      if (user.role != AppRoles.superAdmin) {
-        final orgId = user.orgId ?? DefaultOrganization.id;
+
+      await _ensureLegacyActiveMembership(user);
+      final memberships = await fetchActiveMemberships(user.id);
+      final enabledMemberships = <OrganizationMembership>[];
+      for (final membership in memberships) {
         final organization =
-            await _organizationRepository.getOrganization(orgId);
-        if (organization != null && !organization.isActive) {
-          await _auth.signOut();
-          throw const AuthServiceException(
-            'Your organization is inactive. Please contact support.',
-          );
+            await _organizationRepository.getOrganization(membership.orgId);
+        if (organization == null || organization.isActive) {
+          enabledMemberships.add(membership);
         }
       }
-      return user;
+      if (enabledMemberships.isEmpty) {
+        await _auth.signOut();
+        throw const AuthServiceException('No active organization access.');
+      }
+
+      return AuthSession(
+        user: _userForMembership(user, enabledMemberships.first),
+        activeMemberships: enabledMemberships,
+      );
     }
 
+    final membershipSession =
+        await _loadSessionFromMembershipOnly(firebaseUser);
+    if (membershipSession != null) return membershipSession;
+
     if (await _canCreateFirstAdmin()) {
-      return _createFirstAdminProfile(firebaseUser);
+      final user = await _createFirstAdminProfile(firebaseUser);
+      await _ensureLegacyActiveMembership(user);
+      final memberships = await fetchActiveMemberships(user.id);
+      return AuthSession(
+        user: _userForMembership(user, memberships.first),
+        activeMemberships: memberships,
+      );
     }
 
     await _auth.signOut();
     throw const AuthServiceException(
       'Your login is valid, but no VillaBooks user profile was found.',
+    );
+  }
+
+  Future<AuthSession?> _loadSessionFromMembershipOnly(
+    firebase_auth.User firebaseUser,
+  ) async {
+    final memberships = await fetchActiveMemberships(firebaseUser.uid);
+    if (memberships.isEmpty) return null;
+    final membership = memberships.first;
+    final user = AppUser(
+      id: firebaseUser.uid,
+      username: firebaseUser.email?.trim().toLowerCase() ?? membership.email,
+      displayName: firebaseUser.displayName ?? membership.displayName,
+      role: membership.role,
+      orgId: membership.orgId,
+      isActive: true,
+      createdAt: DateTime.now(),
+      createdBy: membership.invitedBy,
+    );
+    await saveUserProfile(user);
+    return AuthSession(
+      user: _userForMembership(user, membership),
+      activeMemberships: memberships,
     );
   }
 
@@ -359,12 +461,222 @@ class AuthService {
       'createdBy': user.id,
     });
     batch.set(_firestore.collection('users').doc(user.id), _profileData(user));
+    batch.set(
+      _membershipDoc(DefaultOrganization.id, user.id),
+      OrganizationMembership(
+        orgId: DefaultOrganization.id,
+        uid: user.id,
+        email: user.username,
+        displayName: user.displayName,
+        role: user.role,
+        status: MembershipStatus.active,
+        invitedBy: user.id,
+        approvedBy: user.id,
+        createdAt: DateTime.now(),
+        activatedAt: DateTime.now(),
+      ).toJson(),
+    );
     batch.set(_firestore.collection('appConfig').doc('auth'), {
       'firstAdminUid': user.id,
       'createdAt': FieldValue.serverTimestamp(),
     });
     await batch.commit();
     return user;
+  }
+
+  Future<List<OrganizationMembership>> fetchActiveMemberships(
+    String uid,
+  ) async {
+    final snapshot = await _firestore
+        .collectionGroup('members')
+        .where('uid', isEqualTo: uid)
+        .where('status', isEqualTo: MembershipStatus.active)
+        .get();
+
+    return snapshot.docs
+        .map((doc) {
+          final orgId = doc.reference.parent.parent?.id ?? '';
+          return OrganizationMembership.fromJson(
+            orgId: orgId,
+            json: doc.data(),
+          );
+        })
+        .where((membership) => membership.orgId.isNotEmpty)
+        .toList()
+      ..sort((a, b) => a.email.compareTo(b.email));
+  }
+
+  Future<List<OrganizationMembership>> fetchMembersForOrg(String orgId) async {
+    final snapshot = await _firestore
+        .collection('organizations')
+        .doc(orgId)
+        .collection('members')
+        .get();
+    return snapshot.docs
+        .map((doc) => OrganizationMembership.fromJson(
+              orgId: orgId,
+              json: doc.data(),
+            ))
+        .toList()
+      ..sort((a, b) => a.email.compareTo(b.email));
+  }
+
+  Future<void> activateMembership(OrganizationMembership membership) {
+    return _setMembership(
+      orgId: membership.orgId,
+      uid: membership.uid,
+      email: membership.email,
+      displayName: membership.displayName,
+      role: membership.role,
+      status: MembershipStatus.active,
+      invitedBy: membership.invitedBy,
+      approvedBy: _auth.currentUser?.uid,
+    );
+  }
+
+  Future<void> disableMembership(OrganizationMembership membership) {
+    return _setMembership(
+      orgId: membership.orgId,
+      uid: membership.uid,
+      email: membership.email,
+      displayName: membership.displayName,
+      role: membership.role,
+      status: MembershipStatus.disabled,
+      invitedBy: membership.invitedBy,
+      approvedBy: membership.approvedBy,
+    );
+  }
+
+  Future<void> _ensureLegacyActiveMembership(AppUser user) async {
+    final orgId = user.orgId;
+    if (orgId == null || orgId.trim().isEmpty) return;
+    final doc = await _membershipDoc(orgId, user.id).get();
+    if (doc.exists) return;
+    await _setMembership(
+      orgId: orgId,
+      uid: user.id,
+      email: user.username,
+      displayName: user.displayName,
+      role: user.role,
+      status: MembershipStatus.active,
+      invitedBy: user.createdBy,
+      approvedBy: user.createdBy,
+    );
+  }
+
+  Future<void> _migrateLegacyUsersToMemberships() async {
+    final snapshot = await _firestore.collection('users').get();
+    for (final doc in snapshot.docs) {
+      final user = _appUserFromCloud(doc.id, doc.data());
+      if (user.role == AppRoles.superAdmin) continue;
+      if (!user.isActive) continue;
+      final orgId = user.orgId;
+      if (orgId == null || orgId.trim().isEmpty) continue;
+      final memberDoc = await _membershipDoc(orgId, user.id).get();
+      if (memberDoc.exists) continue;
+      await _setMembership(
+        orgId: orgId,
+        uid: user.id,
+        email: user.username,
+        displayName: user.displayName,
+        role: user.role,
+        status: MembershipStatus.active,
+        invitedBy: user.createdBy,
+        approvedBy: user.createdBy,
+      );
+    }
+  }
+
+  Future<bool> _createPendingMembershipForExistingEmail({
+    required String email,
+    required String displayName,
+    required String role,
+    required String orgId,
+  }) async {
+    final existing = await _findUserByEmail(email);
+    final uid = existing?.id ?? 'pending_${_safeDocumentId(email)}';
+    await _setMembership(
+      orgId: orgId,
+      uid: uid,
+      email: email,
+      displayName: displayName,
+      role: role,
+      status: MembershipStatus.pending,
+      invitedBy: _auth.currentUser?.uid,
+    );
+    return true;
+  }
+
+  Future<AppUser?> _findUserByEmail(String email) async {
+    final normalized = email.trim().toLowerCase();
+    final snapshot = await _firestore
+        .collection('users')
+        .where('email', isEqualTo: normalized)
+        .limit(1)
+        .get();
+    if (snapshot.docs.isEmpty) return null;
+    final doc = snapshot.docs.first;
+    return _appUserFromCloud(doc.id, doc.data());
+  }
+
+  Future<void> _setMembership({
+    required String orgId,
+    required String uid,
+    required String email,
+    required String displayName,
+    required String role,
+    required String status,
+    String? invitedBy,
+    String? approvedBy,
+  }) async {
+    final now = DateTime.now();
+    final doc = _membershipDoc(orgId, uid);
+    final existing = await doc.get();
+    final createdAt = _readCloudDate(existing.data()?['createdAt']) ?? now;
+    await doc.set(
+      OrganizationMembership(
+        orgId: orgId,
+        uid: uid,
+        email: email,
+        displayName: displayName,
+        role: role,
+        status: status,
+        invitedBy: invitedBy,
+        approvedBy: approvedBy,
+        createdAt: createdAt,
+        activatedAt: status == MembershipStatus.active ? now : null,
+      ).toJson(),
+      SetOptions(merge: true),
+    );
+  }
+
+  DocumentReference<Map<String, dynamic>> _membershipDoc(
+    String orgId,
+    String uid,
+  ) {
+    return _firestore
+        .collection('organizations')
+        .doc(orgId)
+        .collection('members')
+        .doc(uid);
+  }
+
+  AppUser _userForMembership(AppUser user, OrganizationMembership membership) {
+    return user.copyWith(
+      orgId: membership.orgId,
+      role: membership.role,
+      displayName: membership.displayName.trim().isEmpty
+          ? user.displayName
+          : membership.displayName,
+    );
+  }
+
+  String _safeDocumentId(String value) {
+    return value
+        .trim()
+        .toLowerCase()
+        .replaceAll(RegExp(r'[^a-z0-9]+'), '_')
+        .replaceAll(RegExp(r'^_+|_+$'), '');
   }
 
   Map<String, Object?> _profileData(AppUser user) {

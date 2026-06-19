@@ -236,6 +236,12 @@ class _AddEditUserScreenState extends ConsumerState<AddEditUserScreen> {
 
     if (!mounted) return;
     if (didSave) {
+      final message = ref.read(authProvider).infoMessage;
+      if (message != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(message)),
+        );
+      }
       Navigator.pop(context);
     } else {
       final message = ref.read(authProvider).errorMessage ??

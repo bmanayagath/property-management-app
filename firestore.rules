@@ -41,12 +41,36 @@ service cloud.firestore {
       return userProfile(request.auth.uid).data.orgId;
     }
 
+    function memberPath(orgId, uid) {
+      return /databases/$(database)/documents/organizations/$(orgId)/members/$(uid);
+    }
+
+    function hasActiveMembership(orgId) {
+      return signedIn()
+        && exists(memberPath(orgId, request.auth.uid))
+        && get(memberPath(orgId, request.auth.uid)).data.status == 'Active';
+    }
+
+    function memberRole(orgId) {
+      return hasActiveMembership(orgId)
+        ? get(memberPath(orgId, request.auth.uid)).data.role
+        : 'Reader';
+    }
+
+    function isOrgAdmin(orgId) {
+      return memberRole(orgId) == 'Admin';
+    }
+
+    function isOrgContributor(orgId) {
+      return memberRole(orgId) == 'Contributor';
+    }
+
     function sameOrgOnExisting() {
-      return resource.data.orgId == userOrgId();
+      return hasActiveMembership(resource.data.orgId);
     }
 
     function sameOrgOnRequest() {
-      return request.resource.data.orgId == userOrgId();
+      return hasActiveMembership(request.resource.data.orgId);
     }
 
     function sameOrg() {
@@ -84,7 +108,8 @@ service cloud.firestore {
           firstAdminNotCreated() ||
           request.auth.uid == userId ||
           isSuperAdmin() ||
-          (isAdmin() && resource.data.orgId == userOrgId())
+          hasActiveMembership(resource.data.orgId) ||
+          (hasActiveMembership(resource.data.orgId) && isOrgAdmin(resource.data.orgId))
         );
       allow create: if signedIn() && (
         (
@@ -99,11 +124,11 @@ service cloud.firestore {
           request.resource.data.role == 'Reader'
         ) ||
         isSuperAdmin() ||
-        (isAdmin() && sameOrgOnRequest())
+        (sameOrgOnRequest() && isOrgAdmin(request.resource.data.orgId))
       );
       allow update: if signedIn() && (
         isSuperAdmin() ||
-        (isAdmin() && sameOrg()) ||
+        (sameOrg() && isOrgAdmin(resource.data.orgId)) ||
         reactivatesOwnProfile(userId) ||
         (
           request.auth.uid == userId &&
@@ -125,26 +150,51 @@ service cloud.firestore {
 
     match /organizations/{orgId} {
       allow read: if signedIn()
-        && (isSuperAdmin() || orgId == userOrgId());
+        && (isSuperAdmin() || hasActiveMembership(orgId));
       allow create, update: if signedIn() && isSuperAdmin();
       allow delete: if noHardDelete();
+
+      match /members/{memberId} {
+        allow read: if signedIn()
+          && (
+            isSuperAdmin() ||
+            request.auth.uid == memberId ||
+            (hasActiveMembership(orgId) && isOrgAdmin(orgId))
+          );
+        allow create: if signedIn()
+          && (
+            isSuperAdmin() ||
+            (hasActiveMembership(orgId) &&
+              isOrgAdmin(orgId) &&
+              request.resource.data.uid == memberId &&
+              request.resource.data.status in ['Pending', 'Active'])
+          );
+        allow update: if signedIn()
+          && (
+            isSuperAdmin() ||
+            (hasActiveMembership(orgId) &&
+              isOrgAdmin(orgId) &&
+              request.resource.data.uid == resource.data.uid)
+          );
+        allow delete: if noHardDelete();
+      }
     }
 
     match /villas/{villaId} {
       allow read: if signedIn() && (isSuperAdmin() || sameOrgOnExisting());
       allow create: if signedIn()
-        && (isSuperAdmin() || (isAdmin() && sameOrgOnRequest()));
+        && (isSuperAdmin() || (sameOrgOnRequest() && isOrgAdmin(request.resource.data.orgId)));
       allow update: if signedIn()
-        && (isSuperAdmin() || (isAdmin() && sameOrg()));
+        && (isSuperAdmin() || (sameOrg() && isOrgAdmin(resource.data.orgId)));
       allow delete: if noHardDelete();
     }
 
     match /rooms/{roomId} {
       allow read: if signedIn() && (isSuperAdmin() || sameOrgOnExisting());
       allow create: if signedIn()
-        && (isSuperAdmin() || (isAdmin() && sameOrgOnRequest()));
+        && (isSuperAdmin() || (sameOrgOnRequest() && isOrgAdmin(request.resource.data.orgId)));
       allow update: if signedIn()
-        && (isSuperAdmin() || (isAdmin() && sameOrg()));
+        && (isSuperAdmin() || (sameOrg() && isOrgAdmin(resource.data.orgId)));
       allow delete: if noHardDelete();
     }
 
@@ -153,12 +203,12 @@ service cloud.firestore {
       allow create: if signedIn()
         && (
           isSuperAdmin() ||
-          ((isAdmin() || isContributor()) && sameOrgOnRequest() && createsActiveRecord())
+          ((isOrgAdmin(request.resource.data.orgId) || isOrgContributor(request.resource.data.orgId)) && sameOrgOnRequest() && createsActiveRecord())
         );
       allow update: if signedIn()
         && (
           isSuperAdmin() ||
-          ((isAdmin() || isContributor()) && sameOrg() && updatesActiveRecord())
+          ((isOrgAdmin(resource.data.orgId) || isOrgContributor(resource.data.orgId)) && sameOrg() && updatesActiveRecord())
         );
       allow delete: if noHardDelete();
     }
@@ -168,12 +218,12 @@ service cloud.firestore {
       allow create: if signedIn()
         && (
           isSuperAdmin() ||
-          ((isAdmin() || isContributor()) && sameOrgOnRequest() && createsActiveRecord())
+          ((isOrgAdmin(request.resource.data.orgId) || isOrgContributor(request.resource.data.orgId)) && sameOrgOnRequest() && createsActiveRecord())
         );
       allow update: if signedIn()
         && (
           isSuperAdmin() ||
-          ((isAdmin() || isContributor()) && sameOrg() && updatesActiveRecord())
+          ((isOrgAdmin(resource.data.orgId) || isOrgContributor(resource.data.orgId)) && sameOrg() && updatesActiveRecord())
         );
       allow delete: if noHardDelete();
     }
@@ -183,12 +233,12 @@ service cloud.firestore {
       allow create: if signedIn()
         && (
           isSuperAdmin() ||
-          ((isAdmin() || isContributor()) && sameOrgOnRequest() && createsActiveRecord())
+          ((isOrgAdmin(request.resource.data.orgId) || isOrgContributor(request.resource.data.orgId)) && sameOrgOnRequest() && createsActiveRecord())
         );
       allow update: if signedIn()
         && (
           isSuperAdmin() ||
-          ((isAdmin() || isContributor()) && sameOrg() && updatesActiveRecord())
+          ((isOrgAdmin(resource.data.orgId) || isOrgContributor(resource.data.orgId)) && sameOrg() && updatesActiveRecord())
         );
       allow delete: if noHardDelete();
     }
@@ -198,7 +248,7 @@ service cloud.firestore {
       allow create: if signedIn()
         && (
           isSuperAdmin() ||
-          ((isAdmin() || isContributor()) && sameOrgOnRequest() && createsActiveRecord())
+          ((isOrgAdmin(request.resource.data.orgId) || isOrgContributor(request.resource.data.orgId)) && sameOrgOnRequest() && createsActiveRecord())
         )
         && !request.resource.data.keys().hasAny(['localPath'])
         && request.resource.data.storagePath is string
@@ -209,7 +259,7 @@ service cloud.firestore {
       allow update: if signedIn()
         && (
           isSuperAdmin() ||
-          ((isAdmin() || isContributor()) && sameOrg() && updatesActiveRecord())
+          ((isOrgAdmin(resource.data.orgId) || isOrgContributor(resource.data.orgId)) && sameOrg() && updatesActiveRecord())
         )
         && !request.resource.data.keys().hasAny(['localPath']);
       allow delete: if noHardDelete();

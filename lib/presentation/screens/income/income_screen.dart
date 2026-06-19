@@ -10,6 +10,7 @@ import '../../providers/dashboard_provider.dart';
 import '../../providers/income_provider.dart';
 import '../../widgets/income_card.dart';
 import '../../widgets/currency_amount_text.dart';
+import '../../widgets/destructive_action_dialog.dart';
 import '../../widgets/premium_widgets.dart';
 import 'add_edit_income_screen.dart';
 import 'income_detail_screen.dart';
@@ -206,33 +207,16 @@ class _IncomeScreenState extends ConsumerState<IncomeScreen> {
     );
   }
 
-  void _confirmDelete(Income income) {
-    showDialog(
+  Future<void> _confirmDelete(Income income) async {
+    final confirmed = await showDestructiveActionDialog(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Delete Income?'),
-        content: const Text('This action cannot be undone.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () async {
-              await ref
-                  .read(incomeControllerProvider.notifier)
-                  .deleteIncome(income.id);
-              if (!mounted) return;
-              Navigator.pop(dialogContext);
-            },
-            child: const Text(
-              'Delete',
-              style: TextStyle(color: Color(0xFFF04438)),
-            ),
-          ),
-        ],
-      ),
+      title: 'Delete Income?',
+      message: 'This income entry will be removed from active records.',
+      confirmLabel: 'Delete',
     );
+    if (!confirmed) return;
+
+    await ref.read(incomeControllerProvider.notifier).deleteIncome(income.id);
   }
 }
 

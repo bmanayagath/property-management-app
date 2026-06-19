@@ -9,6 +9,7 @@ import '../../core/constants/app_roles.dart';
 import '../../core/startup/startup_status.dart';
 import '../../data/services/auth_service.dart';
 import '../../domain/models/app_user.dart';
+import '../../domain/models/organization_membership.dart';
 import 'dashboard_provider.dart';
 import 'expense_provider.dart';
 import 'income_provider.dart';
@@ -36,40 +37,67 @@ final authProvider = StateNotifierProvider<AuthNotifier, AuthState>((ref) {
   );
 });
 
+final organizationMembersProvider =
+    FutureProvider.family<List<OrganizationMembership>, String>((ref, orgId) {
+  final service = ref.watch(authServiceProvider);
+  if (service == null) return Future.value(const []);
+  return service.fetchMembersForOrg(orgId);
+});
+
 class AuthState {
   final bool isLoading;
   final AppUser? currentUser;
+  final AppUser? pendingUser;
+  final List<OrganizationMembership> activeMemberships;
   final List<AppUser> users;
   final String? errorMessage;
+  final String? infoMessage;
 
   const AuthState({
     required this.isLoading,
     required this.users,
+    this.activeMemberships = const [],
     this.currentUser,
+    this.pendingUser,
     this.errorMessage,
+    this.infoMessage,
   });
 
   const AuthState.loading({
     List<AppUser> users = const [],
     AppUser? currentUser,
+    AppUser? pendingUser,
+    List<OrganizationMembership> activeMemberships = const [],
   }) : this(
           isLoading: true,
           users: users,
           currentUser: currentUser,
+          pendingUser: pendingUser,
+          activeMemberships: activeMemberships,
         );
 
   const AuthState.ready({
     required List<AppUser> users,
     AppUser? currentUser,
+    AppUser? pendingUser,
+    List<OrganizationMembership> activeMemberships = const [],
     String? errorMessage,
+    String? infoMessage,
   }) : this(
           isLoading: false,
           users: users,
           currentUser: currentUser,
+          pendingUser: pendingUser,
+          activeMemberships: activeMemberships,
           errorMessage: errorMessage,
+          infoMessage: infoMessage,
         );
 
   bool get isLoggedIn => currentUser != null;
+  bool get needsOrganizationSelection =>
+      currentUser == null &&
+      pendingUser != null &&
+      activeMemberships.length > 1;
 
   bool hasPermission(String permission) {
     final user = currentUser;
@@ -123,12 +151,25 @@ class AuthNotifier extends StateNotifier<AuthState> {
     );
 
     try {
-      final user = await service.login(
+      final session = await service.login(
         email: normalizedEmail,
         password: password,
       );
+      if (session.activeMemberships.length > 1) {
+        state = AuthState.ready(
+          users: const [],
+          pendingUser: session.user,
+          activeMemberships: session.activeMemberships,
+        );
+        return true;
+      }
+      final user = session.user;
       final users = await _loadUsersForCurrentRole(service, user);
-      state = AuthState.ready(users: users, currentUser: user);
+      state = AuthState.ready(
+        users: users,
+        currentUser: user,
+        activeMemberships: session.activeMemberships,
+      );
       return true;
     } on AuthServiceException catch (error) {
       state = AuthState.ready(
@@ -217,7 +258,11 @@ class AuthNotifier extends StateNotifier<AuthState> {
     if (service == null || currentUser == null) return const [];
 
     final users = await _loadUsersForCurrentRole(service, currentUser);
-    state = AuthState.ready(users: users, currentUser: currentUser);
+    state = AuthState.ready(
+      users: users,
+      currentUser: currentUser,
+      activeMemberships: state.activeMemberships,
+    );
     return users;
   }
 
@@ -233,16 +278,24 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
 
     try {
-      final savedUser = await service.createUser(
+      final result = await service.createUser(
         email: user.username,
         password: password,
         role: user.role,
         displayName: user.displayName,
         orgId: user.orgId ?? state.currentUser?.orgId,
       );
-      final users = [...state.users, savedUser]
-        ..sort((a, b) => a.username.compareTo(b.username));
-      state = AuthState.ready(users: users, currentUser: state.currentUser);
+      final savedUser = result.user;
+      final users = savedUser == null
+          ? state.users
+          : ([...state.users, savedUser]
+            ..sort((a, b) => a.username.compareTo(b.username)));
+      state = AuthState.ready(
+        users: users,
+        currentUser: state.currentUser,
+        activeMemberships: state.activeMemberships,
+        infoMessage: result.message,
+      );
       return true;
     } on AuthServiceException catch (error) {
       state = AuthState.ready(
@@ -289,7 +342,11 @@ class AuthNotifier extends StateNotifier<AuthState> {
     final currentUser = state.currentUser?.id == updatedUser.id
         ? updatedUser
         : state.currentUser;
-    state = AuthState.ready(users: users, currentUser: currentUser);
+    state = AuthState.ready(
+      users: users,
+      currentUser: currentUser,
+      activeMemberships: state.activeMemberships,
+    );
   }
 
   Future<void> deleteUser(String id) async {
@@ -308,7 +365,29 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
     await service.disableUser(target);
     final users = state.users.where((user) => user.id != id).toList();
-    state = AuthState.ready(users: users, currentUser: state.currentUser);
+    state = AuthState.ready(
+      users: users,
+      currentUser: state.currentUser,
+      activeMemberships: state.activeMemberships,
+    );
+  }
+
+  Future<void> activateMembership(OrganizationMembership membership) async {
+    final service = _service;
+    if (service == null || state.currentUser?.role != AppRoles.superAdmin) {
+      return;
+    }
+    await service.activateMembership(membership);
+    _ref.invalidate(organizationMembersProvider(membership.orgId));
+    await loadUsers();
+  }
+
+  Future<void> disableMembership(OrganizationMembership membership) async {
+    final service = _service;
+    if (service == null || !canManageUsers()) return;
+    await service.disableMembership(membership);
+    _ref.invalidate(organizationMembersProvider(membership.orgId));
+    await loadUsers();
   }
 
   Future<void> resetPassword(String email) async {
@@ -356,13 +435,26 @@ class AuthNotifier extends StateNotifier<AuthState> {
     if (service == null) return;
 
     try {
-      final currentUser = await service.getCurrentUser();
-      if (currentUser == null) {
+      final session = await service.getCurrentSession();
+      if (session == null) {
         state = const AuthState.ready(users: []);
         return;
       }
+      if (session.activeMemberships.length > 1) {
+        state = AuthState.ready(
+          users: const [],
+          pendingUser: session.user,
+          activeMemberships: session.activeMemberships,
+        );
+        return;
+      }
+      final currentUser = session.user;
       final users = await _loadUsersForCurrentRole(service, currentUser);
-      state = AuthState.ready(users: users, currentUser: currentUser);
+      state = AuthState.ready(
+        users: users,
+        currentUser: currentUser,
+        activeMemberships: session.activeMemberships,
+      );
     } on AuthServiceException catch (error) {
       state = AuthState.ready(
         users: const [],
@@ -387,6 +479,32 @@ class AuthNotifier extends StateNotifier<AuthState> {
       return service.fetchUsersForOrg(currentUser.orgId ?? 'default_org');
     }
     return [currentUser];
+  }
+
+  Future<void> chooseOrganization(String orgId) async {
+    final service = _service;
+    final pendingUser = state.pendingUser;
+    if (service == null || pendingUser == null) return;
+    final membership = state.activeMemberships.firstWhere(
+      (item) => item.orgId == orgId,
+      orElse: () => state.activeMemberships.first,
+    );
+    final currentUser = pendingUser.copyWith(
+      orgId: membership.orgId,
+      role: membership.role,
+      displayName: membership.displayName.trim().isEmpty
+          ? pendingUser.displayName
+          : membership.displayName,
+    );
+    final users = await _loadUsersForCurrentRole(service, currentUser);
+    state = AuthState.ready(
+      users: users,
+      currentUser: currentUser,
+      activeMemberships: state.activeMemberships,
+    );
+    await _ref
+        .read(firebaseSyncServiceProvider)
+        .initialPullFromFirestore(orgId: currentUser.orgId);
   }
 
   @override
