@@ -177,6 +177,15 @@ class AuthNotifier extends StateNotifier<AuthState> {
         errorMessage: error.displayMessage,
       );
       return false;
+    } on FirebaseException catch (error, stackTrace) {
+      debugPrint('[Auth] Login Firestore load failed: ${error.code}');
+      debugPrint('message: ${error.message}');
+      debugPrintStack(stackTrace: stackTrace);
+      state = AuthState.ready(
+        users: state.users,
+        errorMessage: _authStateFirestoreMessage(error),
+      );
+      return false;
     } catch (error, stackTrace) {
       debugPrint('[Auth] Login failed: $error');
       debugPrintStack(stackTrace: stackTrace);
@@ -424,7 +433,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
         state = AuthState.ready(
           users: state.users,
           currentUser: state.currentUser,
-          errorMessage: 'Authentication state could not be loaded.',
+          errorMessage:
+              'Unable to load authentication state. Please try again.',
         );
       },
     );
@@ -460,12 +470,20 @@ class AuthNotifier extends StateNotifier<AuthState> {
         users: const [],
         errorMessage: error.message,
       );
+    } on FirebaseException catch (error, stackTrace) {
+      debugPrint('[Auth] Failed to load Firebase session: ${error.code}');
+      debugPrint('message: ${error.message}');
+      debugPrintStack(stackTrace: stackTrace);
+      state = AuthState.ready(
+        users: const [],
+        errorMessage: _authStateFirestoreMessage(error),
+      );
     } catch (error, stackTrace) {
       debugPrint('[Auth] Failed to load Firebase session: $error');
       debugPrintStack(stackTrace: stackTrace);
       state = AuthState.ready(
         users: const [],
-        errorMessage: 'Authentication state could not be loaded.',
+        errorMessage: 'Unable to load authentication state. Please try again.',
       );
     }
   }
@@ -519,5 +537,18 @@ extension _FirstOrNull<T> on Iterable<T> {
     final iterator = this.iterator;
     if (iterator.moveNext()) return iterator.current;
     return null;
+  }
+}
+
+String _authStateFirestoreMessage(FirebaseException error) {
+  switch (error.code) {
+    case 'permission-denied':
+      return 'You do not have active organization access.';
+    case 'unavailable':
+      return 'Unable to load authentication state. Please try again.';
+    case 'not-found':
+      return 'User profile not found. Contact admin.';
+    default:
+      return 'Unable to load authentication state. Please try again.';
   }
 }
