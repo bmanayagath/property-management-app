@@ -51,19 +51,19 @@ class DashboardScreen extends ConsumerWidget {
           ref.invalidate(dashboardSummaryProvider);
         },
         child: ListView(
-          padding: PremiumTokens.pagePadding,
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 130),
           children: [
             _DashboardHeader(
               totalVillas: summary.villas.length,
               occupiedRooms: dashboard.occupiedRooms,
               vacantRooms: dashboard.vacantRooms,
             ),
-            const SizedBox(height: 18),
+            const SizedBox(height: 20),
             _MonthFilter(
               selectedMonth: selectedMonth,
               onTap: () => _showMonthFilter(context, ref, selectedMonth),
             ),
-            const SizedBox(height: 14),
+            const SizedBox(height: 16),
             _MetricGrid(
               totalRooms: dashboard.totalRooms,
               occupiedRooms: dashboard.occupiedRooms,
@@ -72,7 +72,7 @@ class DashboardScreen extends ConsumerWidget {
               pendingRent: dashboard.pendingRent,
               vacancyLoss: dashboard.vacancyLoss,
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 20),
             _QuickActions(
               onAddIncome: canManageIncome
                   ? () => Navigator.of(context).push(
@@ -96,14 +96,14 @@ class DashboardScreen extends ConsumerWidget {
                       )
                   : null,
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 20),
             _RentCollectionCard(
               expectedRent: dashboard.expectedRent,
               collected: dashboard.rentReceived,
               pending: dashboard.pendingRent,
               progress: dashboard.rentCollectionProgress,
             ),
-            const SizedBox(height: 22),
+            const SizedBox(height: 24),
             _VillaSummary(
               villas: summary.villas,
               rooms: summary.rooms,
@@ -747,7 +747,7 @@ class _MetricGrid extends StatelessWidget {
                 border: const Color(0xFFC8EFD0),
               ),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: 16),
             Expanded(
               child: _MetricCard(
                 title: 'Profit',
@@ -765,7 +765,7 @@ class _MetricGrid extends StatelessWidget {
             ),
           ],
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 16),
         Row(
           children: [
             Expanded(
@@ -777,7 +777,7 @@ class _MetricGrid extends StatelessWidget {
                 border: const Color(0xFFF8E4BC),
               ),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: 16),
             Expanded(
               child: _MetricCard(
                 title: 'Vacancy Loss',
@@ -789,7 +789,7 @@ class _MetricGrid extends StatelessWidget {
             ),
           ],
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 16),
         Row(
           children: [
             Expanded(
@@ -801,7 +801,7 @@ class _MetricGrid extends StatelessWidget {
                 border: const Color(0xFFC8EFD0),
               ),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: 16),
             Expanded(
               child: _MetricCard(
                 title: 'Total Rooms',

@@ -467,6 +467,15 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
           summaryLines: exportData.summaryLines,
           headers: exportData.headers,
           rows: exportData.rows,
+          period: _selectedReportType == ReportType.yearlySummary
+              ? _selectedYear.toString()
+              : _monthFormat.format(_selectedMonth),
+          villaProfitItems: _selectedReportType == ReportType.villaWiseProfit
+              ? data.villaProfitItems
+              : null,
+          roomProfitItems: _selectedReportType == ReportType.roomWiseProfit
+              ? data.roomProfitItems
+              : null,
         );
       }
     } catch (error) {
@@ -970,7 +979,7 @@ class _DashboardReportView extends StatelessWidget {
           const SizedBox(height: 12),
           _SummaryGrid(summary: data.monthlySummary, money: money),
           const SizedBox(height: 16),
-          _FinancialPerformanceCard(summary: data.monthlySummary, money: money),
+          _FinancialPerformanceCard(summary: data.monthlySummary),
           const SizedBox(height: 16),
           _OccupancyCard(
             occupiedRooms: occupiedRooms,
@@ -1201,21 +1210,15 @@ class _SummaryMetricCard extends StatelessWidget {
 
 class _FinancialPerformanceCard extends StatelessWidget {
   final MonthlySummaryReportData summary;
-  final String Function(double value) money;
 
   const _FinancialPerformanceCard({
     required this.summary,
-    required this.money,
   });
 
   @override
   Widget build(BuildContext context) {
-    final maxValue = [
-      summary.expectedRent,
-      summary.totalIncome,
-      summary.pendingRent,
-      summary.vacancyLoss,
-    ].fold<double>(0, (max, value) => value > max ? value : max);
+    final collectionProgress =
+        (summary.rentCollectionPercentage / 100).clamp(0.0, 1.0);
 
     return _ReportSurface(
       child: Column(
@@ -1226,27 +1229,52 @@ class _FinancialPerformanceCard extends StatelessWidget {
           _PerformanceRow(
             label: 'Expected Rent',
             value: summary.expectedRent,
-            maxValue: maxValue,
-            money: money,
+            valueColor: const Color(0xFF0F2A4A),
           ),
           _PerformanceRow(
             label: 'Collected Rent',
             value: summary.totalIncome,
-            maxValue: maxValue,
-            money: money,
+            valueColor: const Color(0xFF059669),
           ),
           _PerformanceRow(
             label: 'Pending Rent',
             value: summary.pendingRent,
-            maxValue: maxValue,
-            money: money,
+            valueColor: const Color(0xFFF59E0B),
           ),
           _PerformanceRow(
             label: 'Vacancy Loss',
             value: summary.vacancyLoss,
-            maxValue: maxValue,
-            money: money,
+            valueColor: const Color(0xFFE5484D),
             isLast: true,
+          ),
+          const SizedBox(height: 16),
+          const Divider(height: 1, color: Color(0xFFE5E7EB)),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              const Expanded(
+                child: Text(
+                  'Rent Collection',
+                  style: TextStyle(
+                    color: Color(0xFF374151),
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+              Text(
+                '${summary.rentCollectionPercentage.toStringAsFixed(0)}% collected',
+                style: const TextStyle(
+                  color: Color(0xFF059669),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          _AnimatedProgress(
+            value: collectionProgress,
+            color: const Color(0xFF059669),
           ),
         ],
       ),
@@ -1257,46 +1285,38 @@ class _FinancialPerformanceCard extends StatelessWidget {
 class _PerformanceRow extends StatelessWidget {
   final String label;
   final double value;
-  final double maxValue;
-  final String Function(double value) money;
+  final Color valueColor;
   final bool isLast;
 
   const _PerformanceRow({
     required this.label,
     required this.value,
-    required this.maxValue,
-    required this.money,
+    required this.valueColor,
     this.isLast = false,
   });
 
   @override
   Widget build(BuildContext context) {
-    final progress = maxValue <= 0 ? 0.0 : value / maxValue;
     return Padding(
-      padding: EdgeInsets.only(bottom: isLast ? 0 : 14),
-      child: Column(
+      padding: EdgeInsets.only(bottom: isLast ? 0 : 12),
+      child: Row(
         children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  label,
-                  style: const TextStyle(
-                    color: Color(0xFF6B7280),
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
+          Expanded(
+            child: Text(
+              label,
+              style: const TextStyle(
+                color: Color(0xFF6B7280),
+                fontWeight: FontWeight.w800,
               ),
-              CurrencyAmountText(
-                amount: value,
-                amountFontSize: 14,
-                currencyFontSize: 9,
-                textAlign: TextAlign.right,
-              ),
-            ],
+            ),
           ),
-          const SizedBox(height: 8),
-          _AnimatedProgress(value: progress, color: const Color(0xFF94A3B8)),
+          CurrencyAmountText(
+            amount: value,
+            amountColor: valueColor,
+            amountFontSize: 15,
+            currencyFontSize: 9,
+            textAlign: TextAlign.right,
+          ),
         ],
       ),
     );
