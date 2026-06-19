@@ -8,6 +8,7 @@ import '../../core/constants/app_roles.dart';
 import '../../core/constants/default_organization.dart';
 import '../../domain/models/app_user.dart';
 import '../../domain/models/organization_membership.dart';
+import '../../domain/models/organization_model.dart';
 import '../repositories/organization_repository.dart';
 import 'firebase_sync_service.dart';
 import 'logger_service.dart';
@@ -310,109 +311,103 @@ class AuthService {
   }
 
   Future<AuthSession> _loadSession(firebase_auth.User firebaseUser) async {
-    DocumentSnapshot<Map<String, dynamic>> doc;
-    try {
-      doc = await _firestore.collection('users').doc(firebaseUser.uid).get();
-    } on FirebaseException catch (error, stackTrace) {
-      await LoggerService.logAuth(
-        screenName: 'AuthService',
-        operation: 'LoadUserProfile',
-        message: 'Unable to read Firestore user profile',
-        details: _formatDebugDetails({
-          'firebaseProjectId': Firebase.app().options.projectId,
-          'currentFirebaseUserAfterLogin': _firebaseUserDebug(
-            _auth.currentUser,
-          ),
-          'usersDocumentPath': 'users/${firebaseUser.uid}',
-          'usersDocumentExists': 'unknown',
-          'firestoreExceptionCode': error.code,
-          'firestoreExceptionMessage': error.message ?? '',
-        }),
-        stackTrace: stackTrace.toString(),
-        level: 'ERROR',
-      );
-      if (error.code == 'permission-denied') {
-        await _auth.signOut();
-        throw const AuthServiceException(
-          'User profile cannot be accessed. Contact admin.',
-        );
-      }
-      rethrow;
-    }
-
+    final userPath = 'users/${firebaseUser.uid}';
     await _logLoginDebug(
-      message: 'Firestore user profile read',
+      message: 'Loading authentication state',
       details: {
-        'firebaseProjectId': Firebase.app().options.projectId,
-        'currentFirebaseUserAfterLogin': _firebaseUserDebug(_auth.currentUser),
-        'usersDocumentPath': 'users/${firebaseUser.uid}',
-        'usersDocumentExists': doc.exists,
-        'isActive': doc.data()?['isActive'] ?? '',
-        'role': doc.data()?['role'] ?? '',
+        'authUid': firebaseUser.uid,
+        'email': firebaseUser.email ?? '',
+        'userDocumentPath': userPath,
       },
     );
 
-    if (doc.exists && doc.data() != null) {
-      final user = _appUserFromCloud(doc.id, doc.data()!);
-      if (!user.isActive) {
-        await _auth.signOut();
-        throw const AuthServiceException(
-          'This account is disabled. Contact admin.',
+    final doc = await _readUserProfile(firebaseUser);
+    if (!doc.exists || doc.data() == null) {
+      final membershipSession =
+          await _loadSessionFromMembershipOnly(firebaseUser);
+      if (membershipSession != null) return membershipSession;
+
+      if (await _canCreateFirstAdmin()) {
+        final user = await _createFirstAdminProfile(firebaseUser);
+        await _ensureLegacyActiveMembership(user);
+        final memberships = await _loadActiveMembershipsForUser(user);
+        return AuthSession(
+          user: _userForMembership(user, memberships.first),
+          activeMemberships: memberships,
         );
       }
-      if (user.role == AppRoles.superAdmin) {
-        await _mapLegacyDataToAdornVillas(user.id);
-        await _migrateLegacyUsersToMemberships();
-        return AuthSession(user: user, activeMemberships: const []);
-      }
 
-      await _ensureLegacyActiveMembership(user);
-      final memberships = await fetchActiveMemberships(user.id);
-      final enabledMemberships = <OrganizationMembership>[];
-      for (final membership in memberships) {
-        final organization =
-            await _organizationRepository.getOrganization(membership.orgId);
-        if (organization == null || organization.isActive) {
-          enabledMemberships.add(membership);
-        }
-      }
-      if (enabledMemberships.isEmpty) {
-        await _auth.signOut();
-        throw const AuthServiceException('No active organization access.');
-      }
-
-      return AuthSession(
-        user: _userForMembership(user, enabledMemberships.first),
-        activeMemberships: enabledMemberships,
+      await _auth.signOut();
+      throw const AuthServiceException(
+        'User profile not found. Contact admin.',
       );
     }
 
-    final membershipSession =
-        await _loadSessionFromMembershipOnly(firebaseUser);
-    if (membershipSession != null) return membershipSession;
+    final data = doc.data()!;
+    final user = _appUserFromCloud(doc.id, data);
+    final rawRole = (data['role'] as String?)?.trim() ?? '';
+    await _logLoginDebug(
+      message: 'Firestore user profile loaded',
+      details: {
+        'authUid': firebaseUser.uid,
+        'email': firebaseUser.email ?? user.username,
+        'userDocumentPath': userPath,
+        'role': rawRole,
+        'orgId': user.orgId ?? '',
+        'isActive': user.isActive,
+      },
+    );
 
-    if (await _canCreateFirstAdmin()) {
-      final user = await _createFirstAdminProfile(firebaseUser);
-      await _ensureLegacyActiveMembership(user);
-      final memberships = await fetchActiveMemberships(user.id);
+    if (!user.isActive) {
+      await _auth.signOut();
+      throw const AuthServiceException('User account is disabled.');
+    }
+    if (rawRole.isEmpty) {
+      await _auth.signOut();
+      throw const AuthServiceException('Organization access not assigned.');
+    }
+    if (user.role == AppRoles.superAdmin) {
+      await _mapLegacyDataToAdornVillas(user.id);
+      await _migrateLegacyUsersToMemberships();
       return AuthSession(
-        user: _userForMembership(user, memberships.first),
-        activeMemberships: memberships,
+        user: user.copyWith(clearOrgId: true),
+        activeMemberships: const [],
       );
     }
 
-    await _auth.signOut();
-    throw const AuthServiceException(
-      'Your login is valid, but no VillaBooks user profile was found.',
+    await _ensureLegacyActiveMembership(user);
+    final memberships = await _loadActiveMembershipsForUser(user);
+    final enabledMemberships = await _filterMembershipsWithActiveOrganizations(
+      firebaseUser: firebaseUser,
+      memberships: memberships,
+    );
+    if (enabledMemberships.isEmpty) {
+      await _auth.signOut();
+      throw const AuthServiceException(
+        'You do not have active organization access.',
+      );
+    }
+
+    return AuthSession(
+      user: _userForMembership(user, enabledMemberships.first),
+      activeMemberships: enabledMemberships,
     );
   }
 
   Future<AuthSession?> _loadSessionFromMembershipOnly(
     firebase_auth.User firebaseUser,
   ) async {
-    final memberships = await fetchActiveMemberships(firebaseUser.uid);
+    final memberships = await _fetchActiveMembershipsWithLogging(
+      uid: firebaseUser.uid,
+      email: firebaseUser.email ?? '',
+    );
     if (memberships.isEmpty) return null;
-    final membership = memberships.first;
+    final enabledMemberships = await _filterMembershipsWithActiveOrganizations(
+      firebaseUser: firebaseUser,
+      memberships: memberships,
+    );
+    if (enabledMemberships.isEmpty) return null;
+    final membership = enabledMemberships.first;
     final user = AppUser(
       id: firebaseUser.uid,
       username: firebaseUser.email?.trim().toLowerCase() ?? membership.email,
@@ -426,8 +421,282 @@ class AuthService {
     await saveUserProfile(user);
     return AuthSession(
       user: _userForMembership(user, membership),
-      activeMemberships: memberships,
+      activeMemberships: enabledMemberships,
     );
+  }
+
+  Future<DocumentSnapshot<Map<String, dynamic>>> _readUserProfile(
+    firebase_auth.User firebaseUser,
+  ) async {
+    final path = 'users/${firebaseUser.uid}';
+    try {
+      return await _firestore.collection('users').doc(firebaseUser.uid).get();
+    } on FirebaseException catch (error, stackTrace) {
+      await _logFirestoreAuthError(
+        operation: 'LoadUserProfile',
+        message: 'Unable to read Firestore user profile',
+        firebaseUser: firebaseUser,
+        details: {
+          'userDocumentPath': path,
+          'firestoreExceptionCode': error.code,
+          'firestoreExceptionMessage': error.message ?? '',
+        },
+        stackTrace: stackTrace,
+      );
+      await _auth.signOut();
+      throw AuthServiceException(_firestoreAuthMessage(
+        error,
+        permissionDenied: 'User profile not found. Contact admin.',
+      ));
+    }
+  }
+
+  Future<List<OrganizationMembership>> _loadActiveMembershipsForUser(
+    AppUser user,
+  ) async {
+    final orgId = user.orgId?.trim() ?? '';
+    OrganizationMembership? directMembership;
+
+    if (orgId.isNotEmpty) {
+      directMembership = await _readMembershipByPath(
+        orgId: orgId,
+        uid: user.id,
+        email: user.username,
+      );
+      if (directMembership != null && !directMembership.isActive) {
+        await _auth.signOut();
+        throw const AuthServiceException(
+          'You do not have active organization access.',
+        );
+      }
+    }
+
+    try {
+      final memberships = await _fetchActiveMembershipsWithLogging(
+        uid: user.id,
+        email: user.username,
+      );
+      final byOrgId = <String, OrganizationMembership>{
+        for (final membership in memberships) membership.orgId: membership,
+        if (directMembership != null && directMembership.isActive)
+          directMembership.orgId: directMembership,
+      };
+      if (byOrgId.isNotEmpty) return byOrgId.values.toList();
+    } on AuthServiceException {
+      if (directMembership != null && directMembership.isActive) {
+        return [directMembership];
+      }
+      rethrow;
+    }
+
+    await _auth.signOut();
+    if (orgId.isEmpty) {
+      throw const AuthServiceException('Organization access not assigned.');
+    }
+    throw const AuthServiceException(
+      'You do not have active organization access.',
+    );
+  }
+
+  Future<OrganizationMembership?> _readMembershipByPath({
+    required String orgId,
+    required String uid,
+    required String email,
+  }) async {
+    final path = 'organizations/$orgId/members/$uid';
+    await _logLoginDebug(
+      message: 'Reading organization membership',
+      details: {
+        'authUid': uid,
+        'email': email,
+        'membershipLookupPath': path,
+      },
+    );
+
+    try {
+      final doc = await _membershipDoc(orgId, uid).get();
+      await _logLoginDebug(
+        message: 'Organization membership read',
+        details: {
+          'authUid': uid,
+          'email': email,
+          'membershipLookupPath': path,
+          'membershipExists': doc.exists,
+          'membershipStatus': doc.data()?['status'] ?? '',
+          'role': doc.data()?['role'] ?? '',
+          'orgId': orgId,
+        },
+      );
+      if (!doc.exists || doc.data() == null) return null;
+      return OrganizationMembership.fromJson(orgId: orgId, json: doc.data()!);
+    } on FirebaseException catch (error, stackTrace) {
+      await _logFirestoreAuthError(
+        operation: 'LoadMembership',
+        message: 'Unable to read organization membership',
+        firebaseUser: _auth.currentUser,
+        details: {
+          'authUid': uid,
+          'email': email,
+          'membershipLookupPath': path,
+          'role': '',
+          'orgId': orgId,
+          'firestoreExceptionCode': error.code,
+          'firestoreExceptionMessage': error.message ?? '',
+        },
+        stackTrace: stackTrace,
+      );
+      await _auth.signOut();
+      throw AuthServiceException(_firestoreAuthMessage(
+        error,
+        permissionDenied: 'You do not have active organization access.',
+      ));
+    }
+  }
+
+  Future<List<OrganizationMembership>> _fetchActiveMembershipsWithLogging({
+    required String uid,
+    required String email,
+  }) async {
+    await _logLoginDebug(
+      message: 'Querying active organization memberships',
+      details: {
+        'authUid': uid,
+        'email': email,
+        'membershipLookupPath':
+            'collectionGroup(members) where uid == $uid and status == Active',
+      },
+    );
+    try {
+      final memberships = await fetchActiveMemberships(uid);
+      await _logLoginDebug(
+        message: 'Active organization memberships loaded',
+        details: {
+          'authUid': uid,
+          'email': email,
+          'membershipLookupPath':
+              'collectionGroup(members) where uid == $uid and status == Active',
+          'activeMembershipCount': memberships.length,
+          'orgIds': memberships.map((item) => item.orgId).join(', '),
+        },
+      );
+      return memberships;
+    } on FirebaseException catch (error, stackTrace) {
+      await _logFirestoreAuthError(
+        operation: 'LoadActiveMemberships',
+        message: 'Unable to query active organization memberships',
+        firebaseUser: _auth.currentUser,
+        details: {
+          'authUid': uid,
+          'email': email,
+          'membershipLookupPath':
+              'collectionGroup(members) where uid == $uid and status == Active',
+          'firestoreExceptionCode': error.code,
+          'firestoreExceptionMessage': error.message ?? '',
+        },
+        stackTrace: stackTrace,
+      );
+      throw AuthServiceException(_firestoreAuthMessage(
+        error,
+        permissionDenied: 'You do not have active organization access.',
+      ));
+    }
+  }
+
+  Future<List<OrganizationMembership>>
+      _filterMembershipsWithActiveOrganizations({
+    required firebase_auth.User firebaseUser,
+    required List<OrganizationMembership> memberships,
+  }) async {
+    final enabledMemberships = <OrganizationMembership>[];
+    var inactiveOrganizationFound = false;
+    var missingOrganizationFound = false;
+
+    for (final membership in memberships) {
+      final organization = await _readOrganizationForLogin(
+        firebaseUser: firebaseUser,
+        membership: membership,
+      );
+      if (organization == null) {
+        missingOrganizationFound = true;
+        continue;
+      }
+      if (!organization.isActive) {
+        inactiveOrganizationFound = true;
+        continue;
+      }
+      enabledMemberships.add(membership);
+    }
+
+    if (enabledMemberships.isNotEmpty) return enabledMemberships;
+    await _auth.signOut();
+    if (inactiveOrganizationFound) {
+      throw const AuthServiceException('Organization is inactive.');
+    }
+    if (missingOrganizationFound) {
+      throw const AuthServiceException('Organization access not assigned.');
+    }
+    throw const AuthServiceException(
+      'You do not have active organization access.',
+    );
+  }
+
+  Future<OrganizationModel?> _readOrganizationForLogin({
+    required firebase_auth.User firebaseUser,
+    required OrganizationMembership membership,
+  }) async {
+    final path = 'organizations/${membership.orgId}';
+    await _logLoginDebug(
+      message: 'Reading organization for membership',
+      details: {
+        'authUid': firebaseUser.uid,
+        'email': firebaseUser.email ?? membership.email,
+        'role': membership.role,
+        'orgId': membership.orgId,
+        'organizationLookupPath': path,
+        'membershipLookupPath':
+            'organizations/${membership.orgId}/members/${membership.uid}',
+      },
+    );
+    try {
+      final organization =
+          await _organizationRepository.getOrganization(membership.orgId);
+      await _logLoginDebug(
+        message: 'Organization lookup completed',
+        details: {
+          'authUid': firebaseUser.uid,
+          'email': firebaseUser.email ?? membership.email,
+          'role': membership.role,
+          'orgId': membership.orgId,
+          'organizationLookupPath': path,
+          'organizationExists': organization != null,
+          'organizationIsActive': organization?.isActive ?? '',
+        },
+      );
+      return organization;
+    } on FirebaseException catch (error, stackTrace) {
+      await _logFirestoreAuthError(
+        operation: 'LoadOrganization',
+        message: 'Unable to read organization for membership',
+        firebaseUser: firebaseUser,
+        details: {
+          'authUid': firebaseUser.uid,
+          'email': firebaseUser.email ?? membership.email,
+          'role': membership.role,
+          'orgId': membership.orgId,
+          'membershipLookupPath':
+              'organizations/${membership.orgId}/members/${membership.uid}',
+          'organizationLookupPath': path,
+          'firestoreExceptionCode': error.code,
+          'firestoreExceptionMessage': error.message ?? '',
+        },
+        stackTrace: stackTrace,
+      );
+      await _auth.signOut();
+      throw AuthServiceException(_firestoreAuthMessage(
+        error,
+        permissionDenied: 'Organization access not assigned.',
+      ));
+    }
   }
 
   Future<bool> _canCreateFirstAdmin() async {
@@ -817,6 +1086,43 @@ class AuthService {
   static String _firebaseUserDebug(firebase_auth.User? user) {
     if (user == null) return 'null';
     return 'uid=${user.uid}, email=${user.email ?? ''}';
+  }
+
+  Future<void> _logFirestoreAuthError({
+    required String operation,
+    required String message,
+    required firebase_auth.User? firebaseUser,
+    required Map<String, Object?> details,
+    required StackTrace stackTrace,
+  }) {
+    return LoggerService.logAuth(
+      screenName: 'AuthService',
+      operation: operation,
+      message: message,
+      details: _formatDebugDetails({
+        'firebaseProjectId': Firebase.app().options.projectId,
+        'currentFirebaseUser': _firebaseUserDebug(firebaseUser),
+        ...details,
+      }),
+      stackTrace: stackTrace.toString(),
+      level: 'ERROR',
+    );
+  }
+
+  static String _firestoreAuthMessage(
+    FirebaseException error, {
+    required String permissionDenied,
+  }) {
+    switch (error.code) {
+      case 'permission-denied':
+        return permissionDenied;
+      case 'unavailable':
+        return 'Unable to load authentication state. Please try again.';
+      case 'not-found':
+        return 'User profile not found. Contact admin.';
+      default:
+        return 'Unable to load authentication state. Please try again.';
+    }
   }
 
   static String _formatDebugDetails(Map<String, Object?> details) {
