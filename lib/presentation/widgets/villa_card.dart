@@ -174,6 +174,7 @@ class VillaCard extends StatelessWidget {
                     value: _totalRoomRent,
                   ),
                 ),
+                const SizedBox(width: 12),
                 Expanded(
                   child: _FinancialValue(
                     label: 'Expected Rent',
@@ -193,6 +194,7 @@ class VillaCard extends StatelessWidget {
                     color: AppColors.success,
                   ),
                 ),
+                const SizedBox(width: 12),
                 Expanded(
                   child: _FinancialValue(
                     label: 'Pending',
@@ -200,6 +202,7 @@ class VillaCard extends StatelessWidget {
                     color: AppColors.warning,
                   ),
                 ),
+                const SizedBox(width: 12),
                 Expanded(
                   child: _FinancialValue(
                     label: 'Vacancy Loss',
@@ -292,7 +295,7 @@ class _FinancialValue extends StatelessWidget {
             style: const TextStyle(
               color: Color(0xFF9CA3AF),
               fontSize: 9,
-              fontWeight: FontWeight.w700,
+              fontWeight: FontWeight.w600,
             ),
           ),
         ),
@@ -303,8 +306,8 @@ class _FinancialValue extends StatelessWidget {
           child: CurrencyAmountText(
             amount: value,
             amountColor: color,
-            amountFontSize: 12,
-            currencyFontSize: 8,
+            amountFontSize: 13,
+            currencyFontSize: 7,
           ),
         ),
       ],

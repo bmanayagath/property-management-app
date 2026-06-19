@@ -81,6 +81,21 @@ service cloud.firestore {
       return request.resource.data.isDeleted == true;
     }
 
+    function isOrganizationRole(roleValue) {
+      return roleValue in ['Admin', 'Contributor', 'Reader'];
+    }
+
+    function isSuperAdminProfile() {
+      return request.resource.data.role == 'SuperAdmin'
+        && (!request.resource.data.keys().hasAny(['orgId']) || request.resource.data.orgId == null);
+    }
+
+    function isOrganizationProfile() {
+      return isOrganizationRole(request.resource.data.role)
+        && request.resource.data.orgId is string
+        && request.resource.data.orgId.size() > 0;
+    }
+
     function noHardDelete() {
       return false;
     }
@@ -129,12 +144,32 @@ service cloud.firestore {
           !exists(/databases/$(database)/documents/users/$(userId)) &&
           request.resource.data.role == 'Reader'
         ) ||
-        isSuperAdmin() ||
-        (sameOrgOnRequest() && isOrgAdmin(request.resource.data.orgId))
+        (isSuperAdmin() &&
+          (
+            isSuperAdminProfile() ||
+            isOrganizationProfile()
+          )
+        ) ||
+        (
+          sameOrgOnRequest() &&
+          isOrgAdmin(request.resource.data.orgId) &&
+          isOrganizationRole(request.resource.data.role)
+        )
       );
       allow update: if signedIn() && (
-        isSuperAdmin() ||
-        (sameOrg() && isOrgAdmin(resource.data.orgId)) ||
+        (
+          isSuperAdmin() &&
+          (
+            isSuperAdminProfile() ||
+            isOrganizationProfile()
+          )
+        ) ||
+        (
+          sameOrg() &&
+          isOrgAdmin(resource.data.orgId) &&
+          resource.data.role != 'SuperAdmin' &&
+          isOrganizationRole(request.resource.data.role)
+        ) ||
         reactivatesOwnProfile(userId) ||
         (
           request.auth.uid == userId &&
@@ -173,14 +208,17 @@ service cloud.firestore {
             (hasActiveMembership(orgId) &&
               isOrgAdmin(orgId) &&
               request.resource.data.uid == memberId &&
-              request.resource.data.status in ['Pending', 'Active'])
+              request.resource.data.status in ['Pending', 'Active'] &&
+              isOrganizationRole(request.resource.data.role))
           );
         allow update: if signedIn()
           && (
             isSuperAdmin() ||
             (hasActiveMembership(orgId) &&
               isOrgAdmin(orgId) &&
-              request.resource.data.uid == resource.data.uid)
+              resource.data.role != 'SuperAdmin' &&
+              request.resource.data.uid == resource.data.uid &&
+              isOrganizationRole(request.resource.data.role))
           );
         allow delete: if noHardDelete();
       }

@@ -472,68 +472,38 @@ class VillaDetailScreen extends ConsumerWidget {
             const SizedBox(height: 12),
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
               decoration: BoxDecoration(
                 color: AppColors.surface,
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: AppColors.border, width: 1),
               ),
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  final isNarrow = constraints.maxWidth < 360;
-                  final metrics = [
-                    _DepositMetric(
-                      label: 'Total Collected',
-                      value: summary.totalCollected,
-                      color: AppColors.primary,
-                    ),
-                    _DepositMetric(
+              child: Row(
+                children: [
+                  Expanded(
+                    child: _DepositMetric(
                       label: 'Held',
                       value: summary.totalHeld,
                       color: AppColors.success,
                     ),
-                    _DepositMetric(
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: _DepositMetric(
                       label: 'Refunded',
                       value: summary.totalRefunded,
                       color: AppColors.warning,
                     ),
-                    _DepositMetric(
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: _DepositMetric(
                       label: 'Forfeited',
                       value: summary.totalForfeited,
                       color: AppColors.error,
                     ),
-                  ];
-                  if (isNarrow) {
-                    return Column(
-                      children: [
-                        for (var i = 0; i < metrics.length; i++) ...[
-                          metrics[i],
-                          if (i != metrics.length - 1)
-                            const SizedBox(height: 10),
-                        ],
-                      ],
-                    );
-                  }
-                  return Column(
-                    children: [
-                      Row(
-                        children: [
-                          Expanded(child: metrics[0]),
-                          const SizedBox(width: 10),
-                          Expanded(child: metrics[1]),
-                        ],
-                      ),
-                      const SizedBox(height: 10),
-                      Row(
-                        children: [
-                          Expanded(child: metrics[2]),
-                          const SizedBox(width: 10),
-                          Expanded(child: metrics[3]),
-                        ],
-                      ),
-                    ],
-                  );
-                },
+                  ),
+                ],
               ),
             ),
           ],
@@ -1132,39 +1102,30 @@ class _DepositMetric extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: const Color(0xFFFAFBFF),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: AppStyles.labelSmall.copyWith(
-              color: AppColors.textSecondary,
-              fontWeight: FontWeight.w800,
-            ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: AppStyles.labelSmall.copyWith(
+            color: AppColors.textSecondary,
+            fontWeight: FontWeight.w800,
           ),
-          const SizedBox(height: 6),
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            alignment: Alignment.centerLeft,
-            child: CurrencyAmountText(
-              amount: value,
-              amountColor: color,
-              amountFontSize: 20,
-              currencyFontSize: 11,
-            ),
+        ),
+        const SizedBox(height: 5),
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: Alignment.centerLeft,
+          child: CurrencyAmountText(
+            amount: value,
+            amountColor: color,
+            amountFontSize: 18,
+            currencyFontSize: 9,
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }

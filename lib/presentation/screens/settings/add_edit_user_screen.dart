@@ -51,7 +51,12 @@ class _AddEditUserScreenState extends ConsumerState<AddEditUserScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final users = ref.watch(authProvider).users;
+    final authState = ref.watch(authProvider);
+    final users = authState.users;
+    final roleOptions = _roleOptionsFor(authState.currentUser?.role);
+    if (!roleOptions.contains(_selectedRole)) {
+      _selectedRole = roleOptions.first;
+    }
 
     return PremiumScaffold(
       appBar: AppBar(
@@ -141,7 +146,7 @@ class _AddEditUserScreenState extends ConsumerState<AddEditUserScreen> {
                   DropdownButtonFormField<String>(
                     initialValue: _selectedRole,
                     decoration: _inputDecoration('Role'),
-                    items: AppRoles.values
+                    items: roleOptions
                         .map(
                           (role) => DropdownMenuItem(
                             value: role,
@@ -198,6 +203,16 @@ class _AddEditUserScreenState extends ConsumerState<AddEditUserScreen> {
     if (!_formKey.currentState!.validate()) return;
 
     final authState = ref.read(authProvider);
+    if (_selectedRole == AppRoles.superAdmin &&
+        authState.currentUser?.role != AppRoles.superAdmin) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Only SuperAdmin can create another SuperAdmin.'),
+        ),
+      );
+      return;
+    }
+
     final existing = widget.user;
     final isLastAdmin = existing?.role == AppRoles.admin &&
         _selectedRole != AppRoles.admin &&
@@ -226,7 +241,7 @@ class _AddEditUserScreenState extends ConsumerState<AddEditUserScreen> {
     final notifier = ref.read(authProvider.notifier);
     var didSave = true;
     if (_isEditing) {
-      await notifier.updateUser(user);
+      didSave = await notifier.updateUser(user);
     } else {
       didSave = await notifier.addUser(
         user,
@@ -250,5 +265,14 @@ class _AddEditUserScreenState extends ConsumerState<AddEditUserScreen> {
         SnackBar(content: Text(message)),
       );
     }
+  }
+
+  List<String> _roleOptionsFor(String? currentRole) {
+    if (currentRole == AppRoles.superAdmin) return AppRoles.values;
+    return const [
+      AppRoles.admin,
+      AppRoles.contributor,
+      AppRoles.reader,
+    ];
   }
 }

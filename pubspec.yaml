@@ -1,6 +1,6 @@
 name: villabooks
 description: A Flutter landlord finance app to track villas, tenants, rental income, and expenses.
-version: 1.0.5+55
+version: 1.0.6+55
 
 environment:
   sdk: '>=3.2.0 <4.0.0'

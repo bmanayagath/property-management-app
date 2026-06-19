@@ -287,6 +287,17 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
 
     try {
+      if (user.role == AppRoles.superAdmin &&
+          state.currentUser?.role != AppRoles.superAdmin) {
+        state = AuthState.ready(
+          users: state.users,
+          currentUser: state.currentUser,
+          activeMemberships: state.activeMemberships,
+          errorMessage: 'Only SuperAdmin can create another SuperAdmin.',
+        );
+        return false;
+      }
+
       final result = await service.createUser(
         email: user.username,
         password: password,
@@ -325,25 +336,57 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
 
-  Future<void> updateUser(AppUser user) async {
+  Future<bool> updateUser(AppUser user) async {
     final service = _service;
-    if (service == null || !canManageUsers()) return;
+    if (service == null || !canManageUsers()) return false;
+
+    if (user.role == AppRoles.superAdmin &&
+        state.currentUser?.role != AppRoles.superAdmin) {
+      state = AuthState.ready(
+        users: state.users,
+        currentUser: state.currentUser,
+        activeMemberships: state.activeMemberships,
+        errorMessage: 'Only SuperAdmin can create another SuperAdmin.',
+      );
+      return false;
+    }
 
     final existing =
         state.users.where((item) => item.id == user.id).firstOrNull;
-    if (existing == null) return;
+    if (existing == null) return false;
+
+    if (existing.role == AppRoles.superAdmin &&
+        state.currentUser?.role != AppRoles.superAdmin) {
+      state = AuthState.ready(
+        users: state.users,
+        currentUser: state.currentUser,
+        activeMemberships: state.activeMemberships,
+        errorMessage: 'Only SuperAdmin can create another SuperAdmin.',
+      );
+      return false;
+    }
 
     if (existing.role == AppRoles.admin && user.role != AppRoles.admin) {
       final adminCount =
           state.users.where((item) => item.role == AppRoles.admin).length;
-      if (adminCount <= 1) return;
+      if (adminCount <= 1) return false;
     }
 
     final updatedUser = user.copyWith(
       username: user.username.trim().toLowerCase(),
       updatedAt: DateTime.now(),
     );
-    await service.saveUserProfile(updatedUser);
+    try {
+      await service.saveUserProfile(updatedUser);
+    } on AuthServiceException catch (error) {
+      state = AuthState.ready(
+        users: state.users,
+        currentUser: state.currentUser,
+        activeMemberships: state.activeMemberships,
+        errorMessage: error.message,
+      );
+      return false;
+    }
     final users = [
       for (final existing in state.users)
         if (existing.id == user.id) updatedUser else existing,
@@ -356,6 +399,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
       currentUser: currentUser,
       activeMemberships: state.activeMemberships,
     );
+    return true;
   }
 
   Future<void> deleteUser(String id) async {
