@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../data/services/logger_service.dart';
 import '../../../domain/models/organization_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/organization_provider.dart';
+import '../../widgets/destructive_action_dialog.dart';
 import 'add_edit_organization_screen.dart';
 import 'organization_users_screen.dart';
 
@@ -152,11 +154,52 @@ class _SuperAdminDashboardScreenState
   Future<void> _toggleOrganization(OrganizationModel organization) async {
     final currentUser = ref.read(authProvider).currentUser;
     if (currentUser == null) return;
-    await ref.read(organizationRepositoryProvider).setOrganizationActive(
-          orgId: organization.id,
-          isActive: !organization.isActive,
-          updatedBy: currentUser.id,
-        );
+    final nextIsActive = !organization.isActive;
+    if (!nextIsActive) {
+      final confirmed = await showDestructiveActionDialog(
+        context: context,
+        title: 'Disable Organization?',
+        message:
+            '${organization.name} users will no longer be able to access this organization.\n\nAre you sure you want to continue?',
+        confirmLabel: 'Disable Organization',
+      );
+      if (!confirmed) return;
+    }
+
+    try {
+      await ref.read(organizationRepositoryProvider).setOrganizationActive(
+            orgId: organization.id,
+            isActive: nextIsActive,
+            updatedBy: currentUser.id,
+          );
+      await LoggerService.logInfo(
+        screenName: 'SuperAdminDashboardScreen',
+        operation: nextIsActive ? 'EnableOrganization' : 'DisableOrganization',
+        message:
+            nextIsActive ? 'Organization enabled.' : 'Organization disabled.',
+        details: 'orgId: ${organization.id}\nname: ${organization.name}',
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            nextIsActive ? 'Organization enabled.' : 'Organization disabled.',
+          ),
+        ),
+      );
+    } catch (error, stackTrace) {
+      await LoggerService.logError(
+        screenName: 'SuperAdminDashboardScreen',
+        operation: nextIsActive ? 'EnableOrganization' : 'DisableOrganization',
+        message: 'Organization status update failed.',
+        details: 'orgId: ${organization.id}\n$error',
+        stackTrace: stackTrace.toString(),
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Unable to update organization status.')),
+      );
+    }
   }
 }
 

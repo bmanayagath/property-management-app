@@ -3,8 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/constants/app_permissions.dart';
 import '../../../core/constants/app_roles.dart';
+import '../../../data/services/logger_service.dart';
 import '../../../domain/models/app_user.dart';
 import '../../providers/auth_provider.dart';
+import '../../widgets/destructive_action_dialog.dart';
 import '../../widgets/premium_widgets.dart';
 import '../common/access_denied_screen.dart';
 import 'add_edit_user_screen.dart';
@@ -97,29 +99,43 @@ class UsersScreen extends ConsumerWidget {
       return;
     }
 
-    showDialog(
+    _disableUser(context, ref, user);
+  }
+
+  Future<void> _disableUser(
+    BuildContext context,
+    WidgetRef ref,
+    AppUser user,
+  ) async {
+    final confirmed = await showDestructiveActionDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Delete User?'),
-        content: Text('Delete ${user.username}? This cannot be undone.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () async {
-              await ref.read(authProvider.notifier).deleteUser(user.id);
-              if (context.mounted) Navigator.pop(context);
-            },
-            child: const Text(
-              'Delete',
-              style: TextStyle(color: Color(0xFFF04438)),
-            ),
-          ),
-        ],
-      ),
+      title: 'Disable User?',
+      message: disableUserConfirmationMessage,
+      confirmLabel: 'Disable User',
     );
+    if (!confirmed) return;
+
+    try {
+      await ref.read(authProvider.notifier).deleteUser(user.id);
+      await LoggerService.logInfo(
+        screenName: 'UsersScreen',
+        operation: 'DisableUser',
+        message: 'User disabled.',
+        details: 'userId: ${user.id}\nemail: ${user.username}',
+      );
+      if (!context.mounted) return;
+      _showMessage(context, 'User disabled.');
+    } catch (error, stackTrace) {
+      await LoggerService.logError(
+        screenName: 'UsersScreen',
+        operation: 'DisableUser',
+        message: 'User disable failed.',
+        details: 'userId: ${user.id}\n$error',
+        stackTrace: stackTrace.toString(),
+      );
+      if (!context.mounted) return;
+      _showMessage(context, 'Unable to disable user.');
+    }
   }
 
   void _showMessage(BuildContext context, String message) {
@@ -218,7 +234,7 @@ class _UserTile extends StatelessWidget {
             color: const Color(0xFF5549DE),
           ),
           IconButton(
-            tooltip: 'Delete',
+            tooltip: 'Disable',
             onPressed: canDelete ? onDelete : null,
             icon: const Icon(Icons.delete_outline_rounded),
             color: const Color(0xFFF04438),

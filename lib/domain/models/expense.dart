@@ -111,7 +111,9 @@ class ExpenseCategories {
   static const repair = 'Repair';
   static const electricity = 'Electricity';
   static const water = 'Water';
+  static const internet = 'Internet';
   static const cleaning = 'Cleaning';
+  static const petrol = 'Petrol';
   static const commission = 'Commission';
   static const insurance = 'Insurance';
   static const governmentFee = 'Government Fee';
@@ -125,7 +127,9 @@ class ExpenseCategories {
     repair,
     electricity,
     water,
+    internet,
     cleaning,
+    petrol,
     commission,
     insurance,
     governmentFee,

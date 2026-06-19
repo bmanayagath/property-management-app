@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 
+import '../../../data/services/logger_service.dart';
 import '../../../domain/models/organization_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/organization_provider.dart';
+import '../../widgets/destructive_action_dialog.dart';
 
 class AddEditOrganizationScreen extends ConsumerStatefulWidget {
   final OrganizationModel? organization;
@@ -143,9 +145,20 @@ class _AddEditOrganizationScreenState
 
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
-    setState(() => _saving = true);
     final currentUser = ref.read(authProvider).currentUser;
     final existing = widget.organization;
+    if (existing != null && existing.isActive && !_isActive) {
+      final confirmed = await showDestructiveActionDialog(
+        context: context,
+        title: 'Disable Organization?',
+        message:
+            '${existing.name} users will no longer be able to access this organization.\n\nAre you sure you want to continue?',
+        confirmLabel: 'Disable Organization',
+      );
+      if (!confirmed) return;
+    }
+
+    setState(() => _saving = true);
     final now = DateTime.now();
     final organization = OrganizationModel(
       id: existing?.id ?? const Uuid().v4(),
@@ -164,7 +177,37 @@ class _AddEditOrganizationScreenState
       await ref
           .read(organizationRepositoryProvider)
           .saveOrganization(organization);
-      if (mounted) Navigator.of(context).pop();
+      await LoggerService.logInfo(
+        screenName: 'AddEditOrganizationScreen',
+        operation: existing == null ? 'AddOrganization' : 'EditOrganization',
+        message:
+            existing == null ? 'Organization added.' : 'Organization saved.',
+        details:
+            'orgId: ${organization.id}\nname: ${organization.name}\nisActive: ${organization.isActive}',
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            organization.isActive
+                ? 'Organization saved.'
+                : 'Organization disabled.',
+          ),
+        ),
+      );
+      Navigator.of(context).pop();
+    } catch (error, stackTrace) {
+      await LoggerService.logError(
+        screenName: 'AddEditOrganizationScreen',
+        operation: existing == null ? 'AddOrganization' : 'EditOrganization',
+        message: 'Organization save failed.',
+        details: 'orgId: ${organization.id}\n$error',
+        stackTrace: stackTrace.toString(),
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Unable to save organization.')),
+      );
     } finally {
       if (mounted) setState(() => _saving = false);
     }
