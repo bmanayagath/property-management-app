@@ -26,7 +26,7 @@ class ExpenseCard extends StatelessWidget {
       onTap: onTap,
       borderRadius: BorderRadius.circular(12),
       child: Container(
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.fromLTRB(12, 10, 8, 10),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(12),
@@ -56,7 +56,7 @@ class ExpenseCard extends StatelessWidget {
             const SizedBox(width: 12),
             Expanded(
               child: Column(
-                mainAxisSize: MainAxisSize.min,
+                mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
@@ -69,70 +69,67 @@ class ExpenseCard extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          expense.villaName.trim().isEmpty
-                              ? 'General Expense'
-                              : expense.villaName,
-                          style: const TextStyle(
-                            color: Color(0xFF646B7A),
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      Text(
-                        ' • ',
-                        style: const TextStyle(
-                          color: Color(0xFF646B7A),
-                          fontSize: 11,
-                        ),
-                      ),
-                      Text(
-                        _dateFormat.format(expense.expenseDate),
-                        style: const TextStyle(
-                          color: Color(0xFF646B7A),
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
+                  const SizedBox(height: 3),
+                  Text(
+                    _locationLabel(expense),
+                    style: const TextStyle(
+                      color: Color(0xFF646B7A),
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    _dateFormat.format(expense.expenseDate),
+                    style: const TextStyle(
+                      color: Color(0xFF646B7A),
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ],
               ),
             ),
-            const SizedBox(width: 12),
-            Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                CurrencyAmountText(
-                  amount: expense.amount,
-                  amountColor: const Color(0xFFF04438),
-                  amountFontSize: 14,
-                  currencyFontSize: 9,
-                ),
-              ],
-            ),
-            if (onDelete != null || onEdit != null) ...[
-              const SizedBox(width: 8),
-              _ExpenseActionMenu(
-                onView: onTap,
-                onEdit: onEdit,
-                onDelete: onDelete,
+            const SizedBox(width: 10),
+            SizedBox(
+              width: 116,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  Flexible(
+                    child: CurrencyAmountText(
+                      amount: expense.amount,
+                      amountColor: const Color(0xFFF04438),
+                      amountFontSize: 14,
+                      currencyFontSize: 9,
+                      textAlign: TextAlign.end,
+                    ),
+                  ),
+                  if (onDelete != null || onEdit != null)
+                    _ExpenseActionMenu(
+                      onView: onTap,
+                      onEdit: onEdit,
+                      onDelete: onDelete,
+                    ),
+                ],
               ),
-            ],
+            ),
           ],
         ),
       ),
     );
+  }
+
+  String _locationLabel(Expense expense) {
+    final roomName = expense.roomName?.trim() ?? '';
+    if (roomName.isNotEmpty) return roomName;
+    final villaName = expense.villaName.trim();
+    if (villaName.isNotEmpty) return villaName;
+    return 'General Expense';
   }
 }
 
@@ -152,6 +149,8 @@ class _ExpenseActionMenu extends StatelessWidget {
     return PopupMenuButton<String>(
       tooltip: 'More',
       icon: const Icon(Icons.more_horiz_rounded),
+      padding: EdgeInsets.zero,
+      constraints: const BoxConstraints(minWidth: 48, minHeight: 44),
       onSelected: (value) {
         switch (value) {
           case 'view':
