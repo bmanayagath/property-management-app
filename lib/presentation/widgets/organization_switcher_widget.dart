@@ -30,10 +30,7 @@ class OrganizationSwitcherWidget extends ConsumerWidget {
                 child: Text(organization.name),
               ),
           ],
-          onChanged: (value) {
-            if (value == null) return;
-            ref.read(selectedOrgProvider.notifier).state = value;
-          },
+          onChanged: null,
         );
       },
       loading: () => const LinearProgressIndicator(),

@@ -502,7 +502,7 @@ class FirebaseSyncService {
     });
   }
 
-  Future<void> initialPullFromFirestore() async {
+  Future<void> initialPullFromFirestore({String? orgId}) async {
     final localRepository = _localRepository;
     if (localRepository == null) {
       debugPrint(
@@ -527,13 +527,14 @@ class FirebaseSyncService {
 
     debugPrint('[FirebaseSync] initial pull started.');
 
+    final scopedOrgId = orgId?.trim();
     final snapshots = await Future.wait([
-      firestore.collection('villas').get(),
-      firestore.collection('rooms').get(),
-      firestore.collection('incomes').get(),
-      firestore.collection('expenses').get(),
-      firestore.collection('notifications').get(),
-      firestore.collection('users').get(),
+      _orgScopedCollection(firestore, 'villas', scopedOrgId).get(),
+      _orgScopedCollection(firestore, 'rooms', scopedOrgId).get(),
+      _orgScopedCollection(firestore, 'incomes', scopedOrgId).get(),
+      _orgScopedCollection(firestore, 'expenses', scopedOrgId).get(),
+      _orgScopedCollection(firestore, 'notifications', scopedOrgId).get(),
+      _orgScopedCollection(firestore, 'users', scopedOrgId).get(),
     ]);
 
     final villaDocs = snapshots[0].docs;
@@ -625,7 +626,18 @@ class FirebaseSyncService {
     );
   }
 
-  Future<void> pullCloudDataToLocal() => initialPullFromFirestore();
+  Future<void> pullCloudDataToLocal({String? orgId}) =>
+      initialPullFromFirestore(orgId: orgId);
+
+  Query<Map<String, dynamic>> _orgScopedCollection(
+    FirebaseFirestore firestore,
+    String collection,
+    String? orgId,
+  ) {
+    final query = firestore.collection(collection);
+    if (orgId == null || orgId.isEmpty) return query;
+    return query.where('orgId', isEqualTo: orgId);
+  }
 
   Future<void> _applyDeletedDocsToLocal(
     String collection,

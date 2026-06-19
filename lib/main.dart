@@ -11,7 +11,6 @@ import 'core/startup/startup_status.dart';
 import 'core/theme/app_theme.dart';
 import 'data/local/database.dart';
 import 'data/services/logger_service.dart';
-import 'presentation/providers/active_org_provider.dart';
 import 'presentation/providers/auth_provider.dart';
 import 'presentation/providers/database_provider.dart';
 import 'presentation/screens/dashboard_screen.dart';
@@ -23,7 +22,6 @@ import 'presentation/screens/settings/settings_screen.dart';
 import 'presentation/screens/super_admin/super_admin_dashboard_screen.dart';
 import 'presentation/screens/villas_screen.dart';
 import 'presentation/providers/navigation_provider.dart';
-import 'presentation/widgets/organization_switcher_widget.dart';
 import 'presentation/widgets/premium_widgets.dart';
 
 Future<void> main() async {
@@ -182,8 +180,7 @@ class AuthGate extends ConsumerWidget {
       return const LoginScreen();
     }
 
-    if (authState.currentUser?.role == AppRoles.superAdmin &&
-        !ref.watch(hasSelectedSuperAdminOrgProvider)) {
+    if (authState.currentUser?.role == AppRoles.superAdmin) {
       return const SuperAdminDashboardScreen();
     }
 
@@ -197,7 +194,6 @@ class MainScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final selectedIndex = ref.watch(selectedTabProvider);
-    final authState = ref.watch(authProvider);
     final navItems = [
       const _NavItem(
         Icons.grid_view_rounded,
@@ -223,7 +219,7 @@ class MainScreen extends ConsumerWidget {
         'Expenses',
         ExpensesScreen(),
       ),
-      if (authState.hasPermission(AppPermissions.viewReports))
+      if (ref.watch(authProvider).hasPermission(AppPermissions.viewReports))
         const _NavItem(
           Icons.bar_chart_rounded,
           Icons.bar_chart_outlined,
@@ -247,23 +243,9 @@ class MainScreen extends ConsumerWidget {
 
     return Scaffold(
       extendBody: true,
-      body: Column(
-        children: [
-          if (authState.currentUser?.role == AppRoles.superAdmin)
-            const SafeArea(
-              bottom: false,
-              child: Padding(
-                padding: EdgeInsets.fromLTRB(16, 8, 16, 0),
-                child: OrganizationSwitcherWidget(),
-              ),
-            ),
-          Expanded(
-            child: IndexedStack(
-              index: safeIndex,
-              children: navItems.map((item) => item.screen).toList(),
-            ),
-          ),
-        ],
+      body: IndexedStack(
+        index: safeIndex,
+        children: navItems.map((item) => item.screen).toList(),
       ),
       bottomNavigationBar: _VillaBooksBottomNav(
         selectedIndex: safeIndex,

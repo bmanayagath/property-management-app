@@ -52,6 +52,7 @@ class AuthService {
   final FirebaseFirestore _firestore;
   final FirebaseSyncService? _firebaseSyncService;
   final OrganizationRepository _organizationRepository;
+  bool _legacyDataMappingAttempted = false;
 
   Stream<firebase_auth.User?> authStateChanges() {
     return _auth.authStateChanges();
@@ -300,6 +301,9 @@ class AuthService {
           'This account is disabled. Contact admin.',
         );
       }
+      if (user.role == AppRoles.superAdmin) {
+        await _mapLegacyDataToAdornVillas(user.id);
+      }
       if (user.role != AppRoles.superAdmin) {
         final orgId = user.orgId ?? DefaultOrganization.id;
         final organization =
@@ -380,6 +384,39 @@ class AuthService {
       'createdBy': user.createdBy,
       'updatedAt': FieldValue.serverTimestamp(),
     };
+  }
+
+  Future<void> _mapLegacyDataToAdornVillas(String updatedBy) async {
+    if (_legacyDataMappingAttempted) return;
+    _legacyDataMappingAttempted = true;
+    try {
+      final result = await _organizationRepository.mapLegacyDataToAdornVillas(
+        updatedBy: updatedBy,
+      );
+      if (result.organizationMissing) {
+        await LoggerService.logWarning(
+          screenName: 'AuthService',
+          operation: 'MapLegacyDataToOrganization',
+          message: 'Adorn Villas organization was not found.',
+        );
+        return;
+      }
+      await LoggerService.logAuth(
+        screenName: 'AuthService',
+        operation: 'MapLegacyDataToOrganization',
+        message: 'Legacy data mapping completed.',
+        details:
+            'organizationId: ${result.organizationId}\nupdated: ${result.updatedCounts}',
+      );
+    } catch (error, stackTrace) {
+      await LoggerService.logError(
+        screenName: 'AuthService',
+        operation: 'MapLegacyDataToOrganization',
+        message: 'Legacy data mapping failed.',
+        details: error.toString(),
+        stackTrace: stackTrace.toString(),
+      );
+    }
   }
 
   AppUser _appUserFromCloud(String id, Map<String, dynamic> data) {

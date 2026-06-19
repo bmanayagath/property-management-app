@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
 
 import '../../core/constants/default_organization.dart';
+import '../../core/constants/app_roles.dart';
 import '../../domain/models/organization_model.dart';
 
 class OrganizationRepository {
@@ -18,6 +19,8 @@ class OrganizationRepository {
   CollectionReference<Map<String, dynamic>>? get _collection {
     return _safeFirestore?.collection('organizations');
   }
+
+  static const legacyOrganizationName = 'Adorn Villas';
 
   Stream<List<OrganizationModel>> watchOrganizations() {
     final collection = _collection;
@@ -71,9 +74,21 @@ class OrganizationRepository {
     required String orgId,
     required String updatedBy,
   }) async {
+    await setOrganizationActive(
+      orgId: orgId,
+      isActive: false,
+      updatedBy: updatedBy,
+    );
+  }
+
+  Future<void> setOrganizationActive({
+    required String orgId,
+    required bool isActive,
+    required String updatedBy,
+  }) async {
     await _requireCollection().doc(orgId).set(
       {
-        'isActive': false,
+        'isActive': isActive,
         'updatedAt': FieldValue.serverTimestamp(),
         'updatedBy': updatedBy,
       },
@@ -122,6 +137,122 @@ class OrganizationRepository {
     );
   }
 
+  Future<LegacyOrganizationMappingResult> mapLegacyDataToAdornVillas({
+    required String updatedBy,
+  }) async {
+    final firestore = _safeFirestore;
+    if (firestore == null) return const LegacyOrganizationMappingResult();
+
+    final organization = await _findOrganizationByName(legacyOrganizationName);
+    if (organization == null) {
+      return const LegacyOrganizationMappingResult(
+        organizationMissing: true,
+      );
+    }
+
+    final counts = <String, int>{};
+    for (final collectionName in const [
+      'villas',
+      'rooms',
+      'incomes',
+      'expenses',
+      'room_media',
+      'notifications',
+    ]) {
+      counts[collectionName] = await _patchMissingOrgId(
+        firestore.collection(collectionName),
+        organization.id,
+        updatedBy: updatedBy,
+      );
+    }
+
+    counts['users'] = await _patchUsersMissingOrgId(
+      firestore.collection('users'),
+      organization.id,
+      updatedBy: updatedBy,
+    );
+
+    return LegacyOrganizationMappingResult(
+      organizationId: organization.id,
+      updatedCounts: counts,
+    );
+  }
+
+  Future<OrganizationModel?> _findOrganizationByName(String name) async {
+    final normalizedName = name.trim().toLowerCase();
+    final organizations = await fetchOrganizations();
+    for (final organization in organizations) {
+      if (organization.name.trim().toLowerCase() == normalizedName) {
+        return organization;
+      }
+    }
+    return null;
+  }
+
+  Future<int> _patchMissingOrgId(
+    CollectionReference<Map<String, dynamic>> collection,
+    String orgId, {
+    required String updatedBy,
+  }) async {
+    final snapshot = await collection.get();
+    final updates = snapshot.docs.where((doc) {
+      final data = doc.data();
+      return _isMissingOrgId(data['orgId']);
+    }).toList();
+    await _commitOrgIdUpdates(updates, orgId, updatedBy: updatedBy);
+    return updates.length;
+  }
+
+  Future<int> _patchUsersMissingOrgId(
+    CollectionReference<Map<String, dynamic>> collection,
+    String orgId, {
+    required String updatedBy,
+  }) async {
+    final snapshot = await collection.get();
+    final updates = snapshot.docs.where((doc) {
+      final data = doc.data();
+      final role = data['role'] as String?;
+      return role != AppRoles.superAdmin && _isMissingOrgId(data['orgId']);
+    }).toList();
+    await _commitOrgIdUpdates(updates, orgId, updatedBy: updatedBy);
+    return updates.length;
+  }
+
+  Future<void> _commitOrgIdUpdates(
+    List<QueryDocumentSnapshot<Map<String, dynamic>>> docs,
+    String orgId, {
+    required String updatedBy,
+  }) async {
+    if (docs.isEmpty) return;
+    final firestore = _safeFirestore;
+    if (firestore == null) return;
+
+    const batchLimit = 450;
+    for (var index = 0; index < docs.length; index += batchLimit) {
+      final batch = firestore.batch();
+      final end =
+          index + batchLimit > docs.length ? docs.length : index + batchLimit;
+      for (final doc in docs.sublist(index, end)) {
+        batch.set(
+          doc.reference,
+          {
+            'orgId': orgId,
+            'updatedAt': FieldValue.serverTimestamp(),
+            'updatedBy': updatedBy,
+          },
+          SetOptions(merge: true),
+        );
+      }
+      await batch.commit();
+    }
+  }
+
+  bool _isMissingOrgId(Object? value) {
+    if (value == null) return true;
+    if (value is String) return value.trim().isEmpty;
+    return false;
+  }
+
   CollectionReference<Map<String, dynamic>> _requireCollection() {
     final collection = _collection;
     if (collection == null) throw StateError('Firestore is unavailable.');
@@ -139,4 +270,19 @@ class OrganizationUsageSummary {
     this.villasCount = 0,
     this.roomsCount = 0,
   });
+}
+
+class LegacyOrganizationMappingResult {
+  final String? organizationId;
+  final bool organizationMissing;
+  final Map<String, int> updatedCounts;
+
+  const LegacyOrganizationMappingResult({
+    this.organizationId,
+    this.organizationMissing = false,
+    this.updatedCounts = const {},
+  });
+
+  int get totalUpdated =>
+      updatedCounts.values.fold(0, (total, count) => total + count);
 }
