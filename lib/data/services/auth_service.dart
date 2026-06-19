@@ -163,6 +163,8 @@ class AuthService {
     String displayName = '',
     String? orgId,
   }) async {
+    await _validateRequesterCanWriteUserRole(role);
+
     firebase_auth.FirebaseAuth? secondaryAuth;
     firebase_auth.User? createdFirebaseUser;
 
@@ -290,6 +292,10 @@ class AuthService {
   }
 
   Future<void> saveUserProfile(AppUser user) async {
+    await _validateRequesterCanWriteUserRole(
+      user.role,
+      targetUid: user.id,
+    );
     await _firestore.collection('users').doc(user.id).set(
           _profileData(user),
           SetOptions(merge: true),
@@ -886,6 +892,51 @@ class AuthService {
     if (snapshot.docs.isEmpty) return null;
     final doc = snapshot.docs.first;
     return _appUserFromCloud(doc.id, doc.data());
+  }
+
+  Future<void> _validateRequesterCanWriteUserRole(
+    String targetRole, {
+    String? targetUid,
+  }) async {
+    final requester = _auth.currentUser;
+    if (requester == null) {
+      throw const AuthServiceException('Unable to verify current user role.');
+    }
+
+    final requesterDoc =
+        await _firestore.collection('users').doc(requester.uid).get();
+    final requesterRole = requesterDoc.data()?['role'] as String?;
+
+    if (targetUid == null) {
+      if (requesterRole != AppRoles.superAdmin &&
+          requesterRole != AppRoles.admin) {
+        throw const AuthServiceException('Only admins can create users.');
+      }
+      if (targetRole == AppRoles.superAdmin &&
+          requesterRole != AppRoles.superAdmin) {
+        throw const AuthServiceException(
+          'Only SuperAdmin can create another SuperAdmin.',
+        );
+      }
+      return;
+    }
+
+    if (targetRole != AppRoles.superAdmin && targetUid == requester.uid) {
+      return;
+    }
+
+    if (targetRole != AppRoles.superAdmin) {
+      final targetDoc =
+          await _firestore.collection('users').doc(targetUid).get();
+      final existingTargetRole = targetDoc.data()?['role'] as String?;
+      if (existingTargetRole != AppRoles.superAdmin) return;
+    }
+
+    if (requesterRole != AppRoles.superAdmin) {
+      throw const AuthServiceException(
+        'Only SuperAdmin can create another SuperAdmin.',
+      );
+    }
   }
 
   Future<void> _setMembership({

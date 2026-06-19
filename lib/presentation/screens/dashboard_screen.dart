@@ -1254,45 +1254,45 @@ class _VillaSummary extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 6),
-        _RaisedPanel(
-          padding: EdgeInsets.zero,
-          child: visibleVillas.isEmpty
-              ? const Padding(
-                  padding: EdgeInsets.all(24),
-                  child: Center(
-                    child: Text(
-                      'No villas added yet',
-                      style: TextStyle(
-                        color: Color(0xFF656B7B),
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ),
-                )
-              : Column(
-                  children: List.generate(visibleVillas.length, (index) {
-                    final villa = visibleVillas[index];
-                    final summary = _VillaRoomSummary.fromData(
-                      rooms.where((room) => room.villaId == villa.id),
-                      rentReceivedByRoom,
-                      expenses.where((expense) => expense.villaId == villa.id),
-                      selectedMonth,
-                    );
-
-                    return Column(
-                      children: [
-                        _VillaRow(
-                          villa: villa,
-                          summary: summary,
-                        ),
-                        if (index != visibleVillas.length - 1)
-                          const Divider(height: 1, color: Color(0xFFE5E7EF)),
-                      ],
-                    );
-                  }),
+        if (visibleVillas.isEmpty)
+          const _RaisedPanel(
+            padding: EdgeInsets.all(24),
+            child: Center(
+              child: Text(
+                'No villas added yet',
+                style: TextStyle(
+                  color: Color(0xFF656B7B),
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
                 ),
-        ),
+              ),
+            ),
+          )
+        else
+          Column(
+            children: List.generate(visibleVillas.length, (index) {
+              final villa = visibleVillas[index];
+              final summary = _VillaRoomSummary.fromData(
+                rooms.where((room) => room.villaId == villa.id),
+                rentReceivedByRoom,
+                expenses.where((expense) => expense.villaId == villa.id),
+                selectedMonth,
+              );
+
+              return Padding(
+                padding: EdgeInsets.only(
+                  bottom: index == visibleVillas.length - 1 ? 0 : 16,
+                ),
+                child: _RaisedPanel(
+                  padding: EdgeInsets.zero,
+                  child: _VillaRow(
+                    villa: villa,
+                    summary: summary,
+                  ),
+                ),
+              );
+            }),
+          ),
       ],
     );
   }
@@ -1431,25 +1431,22 @@ class _VillaRow extends StatelessWidget {
                       Row(
                         children: [
                           Expanded(
-                            flex: 4,
                             child: _VillaAmount(
                               label: 'Total Room Rent',
                               value: summary.totalRoomRent,
                               color: const Color(0xFF2563EB),
                             ),
                           ),
-                          _SmallDivider(),
+                          const SizedBox(width: 12),
                           Expanded(
-                            flex: 4,
                             child: _VillaAmount(
                               label: 'Expected Rent',
                               value: summary.expectedRent,
                               color: const Color(0xFF0F2747),
                             ),
                           ),
-                          _SmallDivider(),
+                          const SizedBox(width: 12),
                           Expanded(
-                            flex: 4,
                             child: _VillaAmount(
                               label: 'Collected',
                               value: summary.rentReceived,
@@ -1464,7 +1461,6 @@ class _VillaRow extends StatelessWidget {
                       Row(
                         children: [
                           Expanded(
-                            flex: 4,
                             child: _VillaAmount(
                               label: 'Pending',
                               value: summary.pendingRent,
@@ -1473,9 +1469,8 @@ class _VillaRow extends StatelessWidget {
                                   : const Color(0xFF596070),
                             ),
                           ),
-                          _SmallDivider(),
+                          const SizedBox(width: 12),
                           Expanded(
-                            flex: 4,
                             child: _VillaAmount(
                               label: 'Vacancy Loss',
                               value: summary.vacancyLoss,
@@ -1484,7 +1479,8 @@ class _VillaRow extends StatelessWidget {
                                   : const Color(0xFF596070),
                             ),
                           ),
-                          const Expanded(flex: 4, child: SizedBox()),
+                          const SizedBox(width: 12),
+                          const Expanded(child: SizedBox()),
                         ],
                       ),
                     ],
@@ -1538,8 +1534,8 @@ class _VillaAmount extends StatelessWidget {
           overflow: TextOverflow.ellipsis,
           style: const TextStyle(
             color: Color(0xFF89909E),
-            fontSize: 11,
-            fontWeight: FontWeight.w800,
+            fontSize: 10,
+            fontWeight: FontWeight.w700,
           ),
         ),
         const SizedBox(height: 3),
@@ -1549,7 +1545,7 @@ class _VillaAmount extends StatelessWidget {
           child: CurrencyAmountText(
             amount: value,
             amountColor: color,
-            amountFontSize: 13,
+            amountFontSize: 14,
             currencyFontSize: 8,
           ),
         ),
@@ -1688,18 +1684,6 @@ class _RoomCountChip extends StatelessWidget {
           fontWeight: FontWeight.w900,
         ),
       ),
-    );
-  }
-}
-
-class _SmallDivider extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 1,
-      height: 34,
-      margin: const EdgeInsets.symmetric(horizontal: 6),
-      color: const Color(0xFFD8DCE5),
     );
   }
 }
