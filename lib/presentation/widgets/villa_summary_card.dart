@@ -65,6 +65,10 @@ class VillaSummaryCard extends StatelessWidget {
         .fold<double>(0, (sum, room) => sum + room.monthlyRent);
   }
 
+  _DepositSummary get _depositSummary {
+    return _DepositSummary.fromRooms(_activeRooms);
+  }
+
   @override
   Widget build(BuildContext context) {
     return PremiumCard(
@@ -255,11 +259,38 @@ class VillaSummaryCard extends StatelessWidget {
                   color: AppColors.error,
                 ),
               ];
+              final depositSummary = _depositSummary;
+              final depositRow = [
+                _MoneyMetric(
+                  label: 'Deposit Collected',
+                  value: depositSummary.totalCollected,
+                  color: AppColors.primary,
+                ),
+                _MoneyMetric(
+                  label: 'Held',
+                  value: depositSummary.totalHeld,
+                  color: AppColors.success,
+                ),
+                _MoneyMetric(
+                  label: 'Refunded',
+                  value: depositSummary.totalRefunded,
+                  color: AppColors.warning,
+                ),
+                _MoneyMetric(
+                  label: 'Forfeited',
+                  value: depositSummary.totalForfeited,
+                  color: AppColors.error,
+                ),
+              ];
 
               if (isNarrow) {
                 return Column(
                   children: [
-                    for (final metric in [...firstRow, ...secondRow])
+                    for (final metric in [
+                      ...firstRow,
+                      ...secondRow,
+                      ...depositRow,
+                    ])
                       Padding(
                         padding: const EdgeInsets.only(bottom: 8),
                         child: metric,
@@ -287,12 +318,73 @@ class VillaSummaryCard extends StatelessWidget {
                       Expanded(child: secondRow[2]),
                     ],
                   ),
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      Expanded(child: depositRow[0]),
+                      const SizedBox(width: 10),
+                      Expanded(child: depositRow[1]),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      Expanded(child: depositRow[2]),
+                      const SizedBox(width: 10),
+                      Expanded(child: depositRow[3]),
+                    ],
+                  ),
                 ],
               );
             },
           ),
         ],
       ),
+    );
+  }
+}
+
+class _DepositSummary {
+  final double totalCollected;
+  final double totalHeld;
+  final double totalRefunded;
+  final double totalForfeited;
+
+  const _DepositSummary({
+    required this.totalCollected,
+    required this.totalHeld,
+    required this.totalRefunded,
+    required this.totalForfeited,
+  });
+
+  factory _DepositSummary.fromRooms(Iterable<Room> rooms) {
+    var collected = 0.0;
+    var held = 0.0;
+    var refunded = 0.0;
+    var forfeited = 0.0;
+
+    for (final room in rooms) {
+      if (room.depositType != DepositTypes.none) {
+        collected += room.depositAmount;
+      }
+      if (room.depositStatus == DepositStatuses.held) {
+        held += room.depositAmount;
+      }
+      if (room.depositStatus == DepositStatuses.refunded ||
+          room.depositStatus == DepositStatuses.partiallyRefunded) {
+        refunded += room.refundAmount;
+      }
+      if (room.depositStatus == DepositStatuses.forfeited ||
+          room.depositStatus == DepositStatuses.partiallyRefunded) {
+        forfeited += room.retainedAmount;
+      }
+    }
+
+    return _DepositSummary(
+      totalCollected: collected,
+      totalHeld: held,
+      totalRefunded: refunded,
+      totalForfeited: forfeited,
     );
   }
 }

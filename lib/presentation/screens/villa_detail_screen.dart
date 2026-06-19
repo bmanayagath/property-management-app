@@ -207,6 +207,9 @@ class VillaDetailScreen extends ConsumerWidget {
                   _buildRoomsSummary(context, ref, villa.id),
                   const SizedBox(height: 24),
 
+                  _buildDepositSummary(context, ref, villa.id),
+                  const SizedBox(height: 24),
+
                   _buildLocationSection(context, ref, villa),
                   const SizedBox(height: 24),
 
@@ -444,6 +447,100 @@ class VillaDetailScreen extends ConsumerWidget {
       },
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (error, stack) => Text('Error loading rooms: $error'),
+    );
+  }
+
+  Widget _buildDepositSummary(
+    BuildContext context,
+    WidgetRef ref,
+    String villaId,
+  ) {
+    final roomsAsync = ref.watch(roomsByVillaProvider(villaId));
+
+    return roomsAsync.when(
+      data: (rooms) {
+        final summary = _DepositSummary.fromRooms(
+          rooms.where((room) => room.villaId == villaId && !room.isDeleted),
+        );
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Deposit Summary',
+              style: AppStyles.titleMedium,
+            ),
+            const SizedBox(height: 12),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppColors.border, width: 1),
+              ),
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final isNarrow = constraints.maxWidth < 360;
+                  final metrics = [
+                    _DepositMetric(
+                      label: 'Total Collected',
+                      value: summary.totalCollected,
+                      color: AppColors.primary,
+                    ),
+                    _DepositMetric(
+                      label: 'Held',
+                      value: summary.totalHeld,
+                      color: AppColors.success,
+                    ),
+                    _DepositMetric(
+                      label: 'Refunded',
+                      value: summary.totalRefunded,
+                      color: AppColors.warning,
+                    ),
+                    _DepositMetric(
+                      label: 'Forfeited',
+                      value: summary.totalForfeited,
+                      color: AppColors.error,
+                    ),
+                  ];
+                  if (isNarrow) {
+                    return Column(
+                      children: [
+                        for (var i = 0; i < metrics.length; i++) ...[
+                          metrics[i],
+                          if (i != metrics.length - 1)
+                            const SizedBox(height: 10),
+                        ],
+                      ],
+                    );
+                  }
+                  return Column(
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(child: metrics[0]),
+                          const SizedBox(width: 10),
+                          Expanded(child: metrics[1]),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      Row(
+                        children: [
+                          Expanded(child: metrics[2]),
+                          const SizedBox(width: 10),
+                          Expanded(child: metrics[3]),
+                        ],
+                      ),
+                    ],
+                  );
+                },
+              ),
+            ),
+          ],
+        );
+      },
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (error, stack) => Text('Error loading deposits: $error'),
     );
   }
 
@@ -974,5 +1071,100 @@ class VillaDetailScreen extends ConsumerWidget {
       );
     }
     return totals;
+  }
+}
+
+class _DepositSummary {
+  final double totalCollected;
+  final double totalHeld;
+  final double totalRefunded;
+  final double totalForfeited;
+
+  const _DepositSummary({
+    required this.totalCollected,
+    required this.totalHeld,
+    required this.totalRefunded,
+    required this.totalForfeited,
+  });
+
+  factory _DepositSummary.fromRooms(Iterable<Room> rooms) {
+    var collected = 0.0;
+    var held = 0.0;
+    var refunded = 0.0;
+    var forfeited = 0.0;
+
+    for (final room in rooms) {
+      if (room.depositType != DepositTypes.none) {
+        collected += room.depositAmount;
+      }
+      if (room.depositStatus == DepositStatuses.held) {
+        held += room.depositAmount;
+      }
+      if (room.depositStatus == DepositStatuses.refunded ||
+          room.depositStatus == DepositStatuses.partiallyRefunded) {
+        refunded += room.refundAmount;
+      }
+      if (room.depositStatus == DepositStatuses.forfeited ||
+          room.depositStatus == DepositStatuses.partiallyRefunded) {
+        forfeited += room.retainedAmount;
+      }
+    }
+
+    return _DepositSummary(
+      totalCollected: collected,
+      totalHeld: held,
+      totalRefunded: refunded,
+      totalForfeited: forfeited,
+    );
+  }
+}
+
+class _DepositMetric extends StatelessWidget {
+  final String label;
+  final double value;
+  final Color color;
+
+  const _DepositMetric({
+    required this.label,
+    required this.value,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFAFBFF),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: AppStyles.labelSmall.copyWith(
+              color: AppColors.textSecondary,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 6),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: CurrencyAmountText(
+              amount: value,
+              amountColor: color,
+              amountFontSize: 20,
+              currencyFontSize: 11,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }

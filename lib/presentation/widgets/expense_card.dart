@@ -123,21 +123,11 @@ class ExpenseCard extends StatelessWidget {
             ),
             if (onDelete != null || onEdit != null) ...[
               const SizedBox(width: 8),
-              if (onEdit != null)
-                _TinyIconButton(
-                  tooltip: 'Edit expense',
-                  icon: Icons.edit_outlined,
-                  color: const Color(0xFFF79009),
-                  onPressed: onEdit!,
-                ),
-              if (onEdit != null && onDelete != null) const SizedBox(width: 4),
-              if (onDelete != null)
-                _TinyIconButton(
-                  tooltip: 'Delete expense',
-                  icon: Icons.delete_outline_rounded,
-                  color: const Color(0xFFF04438),
-                  onPressed: onDelete!,
-                ),
+              _ExpenseActionMenu(
+                onView: onTap,
+                onEdit: onEdit,
+                onDelete: onDelete,
+              ),
             ],
           ],
         ),
@@ -146,28 +136,54 @@ class ExpenseCard extends StatelessWidget {
   }
 }
 
-class _TinyIconButton extends StatelessWidget {
-  final String tooltip;
-  final IconData icon;
-  final Color color;
-  final VoidCallback onPressed;
+class _ExpenseActionMenu extends StatelessWidget {
+  final VoidCallback onView;
+  final VoidCallback? onEdit;
+  final VoidCallback? onDelete;
 
-  const _TinyIconButton({
-    required this.tooltip,
-    required this.icon,
-    required this.color,
-    required this.onPressed,
+  const _ExpenseActionMenu({
+    required this.onView,
+    required this.onEdit,
+    required this.onDelete,
   });
 
   @override
   Widget build(BuildContext context) {
-    return IconButton(
-      tooltip: tooltip,
-      onPressed: onPressed,
-      icon: Icon(icon, color: color, size: 18),
-      visualDensity: VisualDensity.compact,
-      padding: EdgeInsets.zero,
-      constraints: const BoxConstraints.tightFor(width: 30, height: 30),
+    return PopupMenuButton<String>(
+      tooltip: 'More',
+      icon: const Icon(Icons.more_horiz_rounded),
+      onSelected: (value) {
+        switch (value) {
+          case 'view':
+            onView();
+            break;
+          case 'edit':
+            onEdit?.call();
+            break;
+          case 'delete':
+            onDelete?.call();
+            break;
+        }
+      },
+      itemBuilder: (context) => [
+        const PopupMenuItem(
+          value: 'view',
+          child: Text('View Details'),
+        ),
+        if (onEdit != null)
+          const PopupMenuItem(
+            value: 'edit',
+            child: Text('Edit Expense'),
+          ),
+        if (onDelete != null)
+          const PopupMenuItem(
+            value: 'delete',
+            child: Text(
+              'Delete Expense',
+              style: TextStyle(color: Color(0xFFF04438)),
+            ),
+          ),
+      ],
     );
   }
 }

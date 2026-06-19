@@ -10,6 +10,7 @@ import '../providers/dashboard_provider.dart';
 import '../providers/expense_provider.dart';
 import '../widgets/expense_card.dart';
 import '../widgets/currency_amount_text.dart';
+import '../widgets/destructive_action_dialog.dart';
 import '../widgets/premium_widgets.dart';
 import 'add_edit_expense_screen.dart';
 import 'expense_detail_screen.dart';
@@ -198,35 +199,18 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
     );
   }
 
-  void _confirmDelete(Expense expense) {
-    showDialog(
+  Future<void> _confirmDelete(Expense expense) async {
+    final confirmed = await showDestructiveActionDialog(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Delete Expense?'),
-        content: const Text('This action cannot be undone.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () async {
-              await ref
-                  .read(expenseProvider.notifier)
-                  .deleteExpense(expense.id);
-              ref.invalidate(expenseListProvider);
-              ref.invalidate(dashboardSummaryProvider);
-              if (!mounted) return;
-              Navigator.pop(dialogContext);
-            },
-            child: const Text(
-              'Delete',
-              style: TextStyle(color: Color(0xFFF04438)),
-            ),
-          ),
-        ],
-      ),
+      title: 'Delete Expense?',
+      message: 'This expense entry will be removed from active records.',
+      confirmLabel: 'Delete',
     );
+    if (!confirmed) return;
+
+    await ref.read(expenseProvider.notifier).deleteExpense(expense.id);
+    ref.invalidate(expenseListProvider);
+    ref.invalidate(dashboardSummaryProvider);
   }
 }
 
