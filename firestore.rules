@@ -85,6 +85,12 @@ service cloud.firestore {
       return false;
     }
 
+    function canHardDeleteSoftDeleted() {
+      return signedIn()
+        && isSuperAdmin()
+        && resource.data.isDeleted == true;
+    }
+
     function createsActiveRecord() {
       return request.resource.data.isDeleted != true;
     }
@@ -186,7 +192,7 @@ service cloud.firestore {
         && (isSuperAdmin() || (sameOrgOnRequest() && isOrgAdmin(request.resource.data.orgId)));
       allow update: if signedIn()
         && (isSuperAdmin() || (sameOrg() && isOrgAdmin(resource.data.orgId)));
-      allow delete: if noHardDelete();
+      allow delete: if canHardDeleteSoftDeleted();
     }
 
     match /rooms/{roomId} {
@@ -195,7 +201,7 @@ service cloud.firestore {
         && (isSuperAdmin() || (sameOrgOnRequest() && isOrgAdmin(request.resource.data.orgId)));
       allow update: if signedIn()
         && (isSuperAdmin() || (sameOrg() && isOrgAdmin(resource.data.orgId)));
-      allow delete: if noHardDelete();
+      allow delete: if canHardDeleteSoftDeleted();
     }
 
     match /incomes/{incomeId} {
@@ -210,7 +216,7 @@ service cloud.firestore {
           isSuperAdmin() ||
           ((isOrgAdmin(resource.data.orgId) || isOrgContributor(resource.data.orgId)) && sameOrg() && updatesActiveRecord())
         );
-      allow delete: if noHardDelete();
+      allow delete: if canHardDeleteSoftDeleted();
     }
 
     match /expenses/{expenseId} {
@@ -225,7 +231,7 @@ service cloud.firestore {
           isSuperAdmin() ||
           ((isOrgAdmin(resource.data.orgId) || isOrgContributor(resource.data.orgId)) && sameOrg() && updatesActiveRecord())
         );
-      allow delete: if noHardDelete();
+      allow delete: if canHardDeleteSoftDeleted();
     }
 
     match /notifications/{notificationId} {
@@ -240,7 +246,7 @@ service cloud.firestore {
           isSuperAdmin() ||
           ((isOrgAdmin(resource.data.orgId) || isOrgContributor(resource.data.orgId)) && sameOrg() && updatesActiveRecord())
         );
-      allow delete: if noHardDelete();
+      allow delete: if canHardDeleteSoftDeleted();
     }
 
     match /room_media/{mediaId} {
@@ -262,7 +268,20 @@ service cloud.firestore {
           ((isOrgAdmin(resource.data.orgId) || isOrgContributor(resource.data.orgId)) && sameOrg() && updatesActiveRecord())
         )
         && !request.resource.data.keys().hasAny(['localPath']);
-      allow delete: if noHardDelete();
+      allow delete: if canHardDeleteSoftDeleted();
+    }
+
+    match /tenant_history/{historyId} {
+      allow read: if signedIn()
+        && (isSuperAdmin() || sameOrgOnExisting());
+      allow create, update: if false;
+      allow delete: if canHardDeleteSoftDeleted();
+    }
+
+    match /app_logs/{logId} {
+      allow read: if signedIn() && isSuperAdmin();
+      allow create, update: if false;
+      allow delete: if canHardDeleteSoftDeleted();
     }
 
     match /{document=**} {

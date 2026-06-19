@@ -131,7 +131,7 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
                     crossAxisCount: 1,
                     crossAxisSpacing: 12,
                     mainAxisSpacing: 12,
-                    mainAxisExtent: 76,
+                    mainAxisExtent: 88,
                   ),
                   itemBuilder: (context, index) {
                     final expense = filteredExpenses[index];

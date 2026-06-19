@@ -5,6 +5,7 @@ import '../../../data/services/logger_service.dart';
 import '../../../domain/models/organization_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/organization_provider.dart';
+import '../../providers/super_admin_provider.dart';
 import '../../widgets/destructive_action_dialog.dart';
 import 'add_edit_organization_screen.dart';
 import 'organization_users_screen.dart';
@@ -36,6 +37,11 @@ class _SuperAdminDashboardScreenState
       appBar: AppBar(
         title: const Text('SuperAdmin'),
         actions: [
+          IconButton(
+            tooltip: 'Hard Delete Deleted Records',
+            icon: const Icon(Icons.delete_forever_rounded),
+            onPressed: _hardDeleteDeletedRecords,
+          ),
           IconButton(
             tooltip: 'Sign out',
             icon: const Icon(Icons.logout_rounded),
@@ -198,6 +204,35 @@ class _SuperAdminDashboardScreenState
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Unable to update organization status.')),
+      );
+    }
+  }
+
+  Future<void> _hardDeleteDeletedRecords() async {
+    final confirmed = await showDestructiveActionDialog(
+      context: context,
+      title: 'Permanently Delete Records?',
+      message:
+          'This will permanently delete all records marked as deleted. This action cannot be undone.',
+      confirmLabel: 'Delete Permanently',
+    );
+    if (!confirmed) return;
+
+    try {
+      final result =
+          await ref.read(superAdminToolsProvider).hardDeleteDeletedRecords();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Deleted ${result.totalDeleted} record(s). ${result.summary}',
+          ),
+        ),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Hard delete failed: $error')),
       );
     }
   }
