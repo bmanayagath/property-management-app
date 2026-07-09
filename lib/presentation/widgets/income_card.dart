@@ -22,6 +22,8 @@ class IncomeCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final subtitle = _subtitleFor(income);
+
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(12),
@@ -70,38 +72,15 @@ class IncomeCard extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      Text(
-                        income.villaName,
-                        style: const TextStyle(
-                          color: Color(0xFF646B7A),
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      Text(
-                        ' • ',
-                        style: const TextStyle(
-                          color: Color(0xFF646B7A),
-                          fontSize: 11,
-                        ),
-                      ),
-                      Expanded(
-                        child: Text(
-                          _dateFormat.format(income.paymentDate),
-                          style: const TextStyle(
-                            color: Color(0xFF646B7A),
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ],
+                  Text(
+                    subtitle,
+                    style: const TextStyle(
+                      color: Color(0xFF646B7A),
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ],
               ),
@@ -131,6 +110,32 @@ class IncomeCard extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  String _subtitleFor(Income income) {
+    final date = _dateFormat.format(income.paymentDate);
+    final villaName = income.villaName.trim();
+    final roomName = income.roomName.trim();
+    final location = villaName.isEmpty ? 'General Income' : villaName;
+
+    if (_isRentIncome(income)) {
+      final parts = [
+        if (villaName.isNotEmpty) villaName else 'Villa',
+        if (roomName.isNotEmpty) roomName,
+        date,
+      ];
+      return parts.join(' \u2022 ');
+    }
+
+    return '$location \u2022 $date';
+  }
+
+  bool _isRentIncome(Income income) {
+    return _normalize(income.incomeType) == 'rent';
+  }
+
+  String _normalize(String value) {
+    return value.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '');
   }
 }
 

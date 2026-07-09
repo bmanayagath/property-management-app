@@ -4,7 +4,9 @@ import 'package:intl/intl.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_permissions.dart';
+import '../../../core/utils/room_helpers.dart';
 import '../../../domain/models/income.dart';
+import '../../providers/active_org_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/dashboard_provider.dart';
 import '../../providers/income_provider.dart';
@@ -31,31 +33,40 @@ class _IncomeScreenState extends ConsumerState<IncomeScreen> {
     final selectedMonth = ref.watch(selectedMonthProvider);
     final incomeAsync = ref.watch(incomeListProvider);
     final authState = ref.watch(authProvider);
+    final activeOrgId = ref.watch(activeOrgProvider);
     final canManageIncome =
         authState.hasPermission(AppPermissions.manageIncome);
 
     return PremiumScaffold(
       body: incomeAsync.when(
         data: (incomes) {
-          final filteredIncomes = incomes.where((income) {
-            final sameMonth = income.paymentDate.year == selectedMonth.year &&
-                income.paymentDate.month == selectedMonth.month;
-            final matchesType =
-                _selectedType == 'All' || income.incomeType == _selectedType;
+          final monthlyIncomes = incomeCalculationService.filterForMonthlyTotal(
+            incomes,
+            selectedMonth,
+            orgId: activeOrgId,
+          );
+          final filteredIncomes = monthlyIncomes.where((income) {
+            final matchesType = _selectedType == 'All' ||
+                incomeCalculationService.matchesIncomeType(
+                  income.incomeType,
+                  _selectedType,
+                );
             final query = _searchQuery.toLowerCase().trim();
             final matchesSearch = query.isEmpty ||
                 income.incomeType.toLowerCase().contains(query) ||
                 income.villaName.toLowerCase().contains(query) ||
+                income.roomName.toLowerCase().contains(query) ||
                 income.paymentMethod.toLowerCase().contains(query) ||
                 income.notes.toLowerCase().contains(query);
 
-            return sameMonth && matchesType && matchesSearch;
+            return matchesType && matchesSearch;
           }).toList()
-            ..sort((a, b) => b.paymentDate.compareTo(a.paymentDate));
+            ..sort(_compareIncomeEntries);
 
-          final total = filteredIncomes.fold<double>(
-            0,
-            (sum, income) => sum + income.amount,
+          final total = incomeCalculationService.totalForMonth(
+            incomes,
+            selectedMonth,
+            orgId: activeOrgId,
           );
 
           return ListView(
@@ -107,12 +118,14 @@ class _IncomeScreenState extends ConsumerState<IncomeScreen> {
                 items: [
                   const DropdownMenuItem(
                       value: 'All', child: Text('All Income')),
-                  ...IncomeTypes.values.map(
-                    (type) => DropdownMenuItem(
-                      value: type,
-                      child: Text(type),
-                    ),
-                  ),
+                  ...IncomeTypes.values
+                      .where(incomeCalculationService.isCountableIncomeType)
+                      .map(
+                        (type) => DropdownMenuItem(
+                          value: type,
+                          child: Text(type),
+                        ),
+                      ),
                 ],
                 onChanged: (value) {
                   if (value == null) return;
@@ -217,6 +230,31 @@ class _IncomeScreenState extends ConsumerState<IncomeScreen> {
     if (!confirmed) return;
 
     await ref.read(incomeControllerProvider.notifier).deleteIncome(income.id);
+  }
+
+  int _compareIncomeEntries(Income left, Income right) {
+    final villaCompare = compareNaturalText(
+      _displayVillaName(left),
+      _displayVillaName(right),
+    );
+    if (villaCompare != 0) return villaCompare;
+
+    final leftRoom = left.roomName.trim();
+    final rightRoom = right.roomName.trim();
+    final leftHasRoom = leftRoom.isNotEmpty;
+    final rightHasRoom = rightRoom.isNotEmpty;
+    if (leftHasRoom != rightHasRoom) return leftHasRoom ? -1 : 1;
+    if (leftHasRoom && rightHasRoom) {
+      final roomCompare = compareNaturalText(leftRoom, rightRoom);
+      if (roomCompare != 0) return roomCompare;
+    }
+
+    return right.paymentDate.compareTo(left.paymentDate);
+  }
+
+  String _displayVillaName(Income income) {
+    final villaName = income.villaName.trim();
+    return villaName.isEmpty ? 'General Income' : villaName;
   }
 }
 

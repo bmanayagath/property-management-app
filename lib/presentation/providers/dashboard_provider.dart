@@ -82,6 +82,9 @@ class DashboardSummary {
     final activeRoomIds = activeRooms.map((room) => room.id).toSet();
     final activeIncomes = incomes.where((income) {
       if (income.isDeleted) return false;
+      if (!incomeCalculationService.isCountableIncomeType(income.incomeType)) {
+        return false;
+      }
       if (!activeVillaIds.contains(income.villaId)) return false;
       if (income.roomId.trim().isEmpty) return true;
       return activeRoomIds.contains(income.roomId);
@@ -121,7 +124,10 @@ class DashboardSummary {
         vacancyLoss: monthlySummary.vacancyLoss,
         rentReceived: monthlySummary.rentReceived,
       ),
-      totalIncome: monthlySummary.actualIncome,
+      totalIncome: incomeCalculationService.totalForMonth(
+        activeIncomes,
+        selectedMonth,
+      ),
       totalExpense: monthlySummary.expensesPaid,
     );
   }
