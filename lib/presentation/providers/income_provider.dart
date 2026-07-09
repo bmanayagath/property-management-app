@@ -4,11 +4,14 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/repositories/income_repository.dart';
+import '../../data/services/income_calculation_service.dart';
 import '../../domain/models/income.dart';
 import 'active_org_provider.dart';
 import 'auth_provider.dart';
 import 'database_provider.dart';
 import 'sync_provider.dart';
+
+const incomeCalculationService = IncomeCalculationService();
 
 final incomeRepositoryProvider = Provider<IncomeRepository>((ref) {
   final database = ref.watch(databaseProvider);
@@ -21,8 +24,9 @@ final incomeListProvider = StreamProvider<List<Income>>((ref) {
   final syncService = ref.watch(firebaseSyncServiceProvider);
   final orgId = ref.watch(activeOrgProvider);
   return _mergeIncomeStreams(
-    localStream: repository.watchAllIncomes(),
+    localStream: repository.watchAllIncomes(includeDeleted: true),
     cloudStream: syncService.watchCloudIncomes(orgId: orgId),
+    orgId: orgId,
   );
 });
 
@@ -35,11 +39,14 @@ final incomeControllerProvider =
 final totalIncomeForMonthProvider =
     Provider.family<AsyncValue<double>, DateTime>((ref, month) {
   final incomesAsync = ref.watch(incomeListProvider);
+  final orgId = ref.watch(activeOrgProvider);
 
   return incomesAsync.whenData((incomes) {
-    return incomes
-        .where((income) => _isSameMonth(income.paymentDate, month))
-        .fold<double>(0, (sum, income) => sum + income.amount);
+    return incomeCalculationService.totalForMonth(
+      incomes,
+      month,
+      orgId: orgId,
+    );
   });
 });
 
@@ -68,7 +75,8 @@ final incomeVillaSummaryProvider =
 
     for (final income in incomes.where(
       (income) =>
-          income.incomeType.toLowerCase() == IncomeTypes.rent.toLowerCase() &&
+          !income.isDeleted &&
+          incomeCalculationService.isRentIncome(income) &&
           _isSameMonth(income.monthCovered, month),
     )) {
       summary.update(
@@ -234,7 +242,7 @@ double rentAlreadyRecordedForRoomMonth({
             income.id != excludedIncomeId &&
             !income.isDeleted &&
             income.roomId == roomId &&
-            income.incomeType.toLowerCase() == IncomeTypes.rent.toLowerCase() &&
+            incomeCalculationService.isRentIncome(income) &&
             _isSameMonth(income.monthCovered, month),
       )
       .fold<double>(0, (sum, income) => sum + income.amount);
@@ -247,6 +255,7 @@ bool _isSameMonth(DateTime date, DateTime month) {
 Stream<List<Income>> _mergeIncomeStreams({
   required Stream<List<Income>> localStream,
   required Stream<List<Income>> cloudStream,
+  required String orgId,
 }) {
   late StreamController<List<Income>> controller;
   StreamSubscription<List<Income>>? localSubscription;
@@ -256,11 +265,20 @@ Stream<List<Income>> _mergeIncomeStreams({
 
   void emitMerged() {
     final byId = <String, Income>{};
+    final locallyDeletedIds = <String>{};
     for (final income in localIncomes) {
-      byId[income.id] = income;
+      if (income.orgId != orgId) continue;
+      if (income.isDeleted) {
+        locallyDeletedIds.add(income.id);
+        continue;
+      }
+      byId[income.id] = _preferIncome(byId[income.id], income);
     }
     for (final income in cloudIncomes) {
-      byId[income.id] = income;
+      if (income.orgId != orgId) continue;
+      if (income.isDeleted) continue;
+      if (locallyDeletedIds.contains(income.id)) continue;
+      byId[income.id] = _preferIncome(byId[income.id], income);
     }
 
     final merged = byId.values.toList()
@@ -299,4 +317,18 @@ Stream<List<Income>> _mergeIncomeStreams({
   );
 
   return controller.stream;
+}
+
+Income _preferIncome(Income? current, Income incoming) {
+  if (current == null) return incoming;
+  if (current.syncStatus == 'pending' && incoming.syncStatus != 'pending') {
+    return current;
+  }
+  if (incoming.syncStatus == 'pending' && current.syncStatus != 'pending') {
+    return incoming;
+  }
+
+  final currentUpdatedAt = current.updatedAt ?? current.createdAt;
+  final incomingUpdatedAt = incoming.updatedAt ?? incoming.createdAt;
+  return incomingUpdatedAt.isAfter(currentUpdatedAt) ? incoming : current;
 }

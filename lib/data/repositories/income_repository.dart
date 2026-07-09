@@ -1,12 +1,14 @@
 import 'package:drift/drift.dart';
 import 'package:uuid/uuid.dart';
 
+import '../services/income_calculation_service.dart';
 import '../../domain/models/income.dart';
 import '../local/database.dart' as db;
 
 class IncomeRepository {
   final db.AppDatabase database;
   final String orgId;
+  static const _incomeCalculation = IncomeCalculationService();
 
   IncomeRepository(this.database, {required this.orgId});
 
@@ -15,8 +17,13 @@ class IncomeRepository {
     return rows.map(_mapRowToIncome).toList();
   }
 
-  Stream<List<Income>> watchAllIncomes() {
-    return database.watchAllIncomes(orgId: orgId).map(
+  Stream<List<Income>> watchAllIncomes({bool includeDeleted = false}) {
+    return database
+        .watchAllIncomes(
+          orgId: orgId,
+          includeDeleted: includeDeleted,
+        )
+        .map(
           (rows) => rows.map(_mapRowToIncome).toList(),
         );
   }
@@ -106,12 +113,16 @@ class IncomeRepository {
 
   Future<double> getTotalIncomeForMonth(DateTime month) async {
     final incomes = await getIncomesForMonth(month);
-    return incomes.fold<double>(0, (sum, income) => sum + income.amount);
+    return _incomeCalculation.totalForMonth(incomes, month, orgId: orgId);
   }
 
   Future<List<Income>> getIncomesForMonth(DateTime month) async {
-    final rows = await database.getIncomesByMonth(month, orgId: orgId);
-    return rows.map(_mapRowToIncome).toList();
+    final rows = await database.getAllIncomes(orgId: orgId);
+    return _incomeCalculation.filterForMonthlyTotal(
+      rows.map(_mapRowToIncome),
+      month,
+      orgId: orgId,
+    );
   }
 
   Income _mapRowToIncome(db.Income row) {
@@ -132,6 +143,13 @@ class IncomeRepository {
       notes: row.notes ?? '',
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
+      isDeleted: row.isDeleted == 1,
+      syncStatus: row.syncStatus,
+      deletedAt: row.deletedAt,
+      deletedBy: row.deletedBy,
+      createdBy: row.createdBy,
+      updatedBy: row.updatedBy,
+      lastSyncedAt: row.lastSyncedAt,
     );
   }
 

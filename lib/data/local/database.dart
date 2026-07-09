@@ -807,12 +807,18 @@ class AppDatabase extends _$AppDatabase {
             ))
           .get();
 
-  Stream<List<Income>> watchAllIncomes({String orgId = 'default_org'}) =>
-      (select(incomes)
-            ..where(
-              (tbl) => tbl.isDeleted.equals(0) & tbl.orgId.equals(orgId),
-            ))
-          .watch();
+  Stream<List<Income>> watchAllIncomes({
+    String orgId = 'default_org',
+    bool includeDeleted = false,
+  }) {
+    final query = select(incomes)
+      ..where((tbl) {
+        final orgFilter = tbl.orgId.equals(orgId);
+        if (includeDeleted) return orgFilter;
+        return tbl.isDeleted.equals(0) & orgFilter;
+      });
+    return query.watch();
+  }
 
   Future<List<Income>> getIncomesByVillaId(
     String villaId, {
@@ -831,14 +837,14 @@ class AppDatabase extends _$AppDatabase {
     DateTime month, {
     String orgId = 'default_org',
   }) async {
-    final startOfMonth = DateTime(month.year, month.month, 1);
-    final endOfMonth = DateTime(month.year, month.month + 1, 0);
-    return (select(incomes)
-          ..where((tbl) =>
-              tbl.paymentDate.isBetweenValues(startOfMonth, endOfMonth) &
-              tbl.orgId.equals(orgId) &
-              tbl.isDeleted.equals(0)))
-        .get();
+    final rows = await getAllIncomes(orgId: orgId);
+    return rows.where((income) {
+      if (!_isCountableIncomeType(income.incomeType)) return false;
+      final date = _isRentIncomeType(income.incomeType)
+          ? income.monthCovered
+          : income.paymentDate;
+      return _isSameMonth(date, month);
+    }).toList();
   }
 
   Future<int> insertIncome(IncomesCompanion income) =>
@@ -1029,16 +1035,8 @@ class AppDatabase extends _$AppDatabase {
     DateTime month, {
     String orgId = 'default_org',
   }) async {
-    final startOfMonth = DateTime(month.year, month.month, 1);
-    final endOfMonth = DateTime(month.year, month.month + 1, 0);
-    final result = await (select(incomes)
-          ..where((tbl) =>
-              tbl.paymentDate.isBetweenValues(startOfMonth, endOfMonth) &
-              tbl.orgId.equals(orgId) &
-              tbl.isDeleted.equals(0)))
-        .map((r) => r.amount)
-        .get();
-    return result.fold<double>(0, (sum, amount) => sum + amount);
+    final result = await getIncomesByMonth(month, orgId: orgId);
+    return result.fold<double>(0, (sum, income) => sum + income.amount);
   }
 
   Future<double> getTotalExpenseForMonth(
@@ -1085,14 +1083,7 @@ class AppDatabase extends _$AppDatabase {
     DateTime month, {
     String orgId = 'default_org',
   }) async {
-    final startOfMonth = DateTime(month.year, month.month, 1);
-    final endOfMonth = DateTime(month.year, month.month + 1, 0);
-    final incomeList = await (select(incomes)
-          ..where((tbl) =>
-              tbl.paymentDate.isBetweenValues(startOfMonth, endOfMonth) &
-              tbl.orgId.equals(orgId) &
-              tbl.isDeleted.equals(0)))
-        .get();
+    final incomeList = await getIncomesByMonth(month, orgId: orgId);
 
     final villaSummary = <String, double>{};
     for (var income in incomeList) {
@@ -1103,6 +1094,26 @@ class AppDatabase extends _$AppDatabase {
       );
     }
     return villaSummary;
+  }
+
+  bool _isCountableIncomeType(String type) {
+    final normalized = _normalizeIncomeType(type);
+    return normalized == 'rent' ||
+        normalized == 'maintenancecharge' ||
+        normalized == 'penalty' ||
+        normalized == 'other';
+  }
+
+  bool _isRentIncomeType(String type) {
+    return _normalizeIncomeType(type) == 'rent';
+  }
+
+  bool _isSameMonth(DateTime date, DateTime month) {
+    return date.year == month.year && date.month == month.month;
+  }
+
+  String _normalizeIncomeType(String type) {
+    return type.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '');
   }
 }
 
