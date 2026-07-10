@@ -17,6 +17,7 @@ enum ExpenseCategory {
   electricity,
   water,
   internet,
+  ac,
   cleaning,
   petrol,
   commission,
@@ -77,6 +78,8 @@ extension ExpenseCategoryExt on ExpenseCategory {
         return 'Water';
       case ExpenseCategory.internet:
         return 'Internet';
+      case ExpenseCategory.ac:
+        return 'AC';
       case ExpenseCategory.cleaning:
         return 'Cleaning';
       case ExpenseCategory.petrol:

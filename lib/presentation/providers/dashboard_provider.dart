@@ -69,35 +69,28 @@ class DashboardSummary {
     required List<Income> incomes,
     required List<Expense> expenses,
   }) {
-    final monthlySummary =
-        const ProfitCalculationService().calculateMonthlySummary(
+    const profitService = ProfitCalculationService();
+    final activeRooms = profitService.activeRoomsFor(
+      rooms: rooms,
       villas: villas,
-      rooms: activeRoomsOnly(rooms: rooms, villas: villas),
+    );
+    final activeIncomes = profitService.activeIncomesFor(
       incomes: incomes,
+      villas: villas,
+      rooms: activeRooms,
+    );
+    final activeExpenses = profitService.activeExpensesFor(
       expenses: expenses,
+      villas: villas,
+      rooms: activeRooms,
+    );
+    final monthlySummary = profitService.calculateMonthlySummary(
+      villas: villas,
+      rooms: activeRooms,
+      incomes: activeIncomes,
+      expenses: activeExpenses,
       month: selectedMonth,
     );
-    final activeVillaIds = villas.map((villa) => villa.id).toSet();
-    final activeRooms = activeRoomsOnly(rooms: rooms, villas: villas);
-    final activeRoomIds = activeRooms.map((room) => room.id).toSet();
-    final activeIncomes = incomes.where((income) {
-      if (income.isDeleted) return false;
-      if (!incomeCalculationService.isCountableIncomeType(income.incomeType)) {
-        return false;
-      }
-      if (!activeVillaIds.contains(income.villaId)) return false;
-      if (income.roomId.trim().isEmpty) return true;
-      return activeRoomIds.contains(income.roomId);
-    }).toList();
-    final activeExpenses = expenses.where((expense) {
-      if (expense.isDeleted) return false;
-      final villaId = expense.villaId;
-      if (villaId == null || villaId.trim().isEmpty) return true;
-      if (!activeVillaIds.contains(villaId)) return false;
-      final roomId = expense.roomId;
-      if (roomId == null || roomId.trim().isEmpty) return true;
-      return activeRoomIds.contains(roomId);
-    }).toList();
 
     final rentReceivedByRoom = _rentReceivedByRoom(
       incomes: activeIncomes,
@@ -124,10 +117,7 @@ class DashboardSummary {
         vacancyLoss: monthlySummary.vacancyLoss,
         rentReceived: monthlySummary.rentReceived,
       ),
-      totalIncome: incomeCalculationService.totalForMonth(
-        activeIncomes,
-        selectedMonth,
-      ),
+      totalIncome: monthlySummary.actualIncome,
       totalExpense: monthlySummary.expensesPaid,
     );
   }

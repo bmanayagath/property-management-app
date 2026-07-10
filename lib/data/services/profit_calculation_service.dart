@@ -3,9 +3,12 @@ import '../../domain/models/income.dart';
 import '../../domain/models/room.dart';
 import '../../domain/models/room_profit_summary.dart';
 import '../../domain/models/villa_model.dart';
+import 'income_calculation_service.dart';
 
 class ProfitCalculationService {
   const ProfitCalculationService();
+
+  static const _incomeCalculation = IncomeCalculationService();
 
   MonthlyProfitSummary calculateMonthlySummary({
     required List<VillaModel> villas,
@@ -14,34 +17,32 @@ class ProfitCalculationService {
     required List<Expense> expenses,
     required DateTime month,
   }) {
-    final activeVillaIds = villas.map((villa) => villa.id).toSet();
+    final activeVillas = villas.where((villa) => !villa.isDeleted).toList();
+    final activeVillaIds = activeVillas.map((villa) => villa.id).toSet();
     final activeRooms = _activeRoomsForVillas(rooms, activeVillaIds);
     final activeRoomIds = activeRooms.map((room) => room.id).toSet();
     final activeIncomes =
         _activeIncomes(incomes, activeVillaIds, activeRoomIds);
     final activeExpenses =
         _activeExpenses(expenses, activeVillaIds, activeRoomIds);
-    final monthlyCashIncomes = activeIncomes
-        .where((income) => _isSameMonth(income.paymentDate, month))
-        .toList();
+    final monthlyIncomes = monthlyIncomesFor(
+      incomes: activeIncomes,
+      month: month,
+    );
     final monthlyRentIncomes = activeIncomes
         .where((income) =>
             _isRentIncome(income) && _isSameMonth(income.monthCovered, month))
         .toList();
-    final monthlyExpenses = activeExpenses
-        .where((expense) => _isSameMonth(expense.expenseDate, month))
-        .toList();
+    final monthlyExpenses = monthlyExpensesFor(
+      expenses: activeExpenses,
+      month: month,
+    );
 
-    final actualIncome = _sumIncome(monthlyCashIncomes);
-    final rentReceived = _sumIncome(
-      monthlyRentIncomes.where(
-        (income) => activeRooms
-            .any((room) => room.id == income.roomId && room.isOccupied),
-      ),
-    );
+    final rentReceived = _sumIncome(monthlyRentIncomes);
     final otherIncome = _sumIncome(
-      monthlyCashIncomes.where((income) => !_isRentIncome(income)),
+      monthlyIncomes.where((income) => !_isRentIncome(income)),
     );
+    final actualIncome = rentReceived + otherIncome;
     final expensesPaid = _sumExpense(monthlyExpenses);
     final totalRoomRent = calculateTotalMonthlyRent(activeRooms);
     final expectedRent = calculateExpectedRent(activeRooms);
@@ -79,37 +80,40 @@ class ProfitCalculationService {
     required List<Expense> expenses,
     required DateTime month,
   }) {
-    final activeVillaIds = villas.map((villa) => villa.id).toSet();
+    final activeVillas = villas.where((villa) => !villa.isDeleted).toList();
+    final activeVillaIds = activeVillas.map((villa) => villa.id).toSet();
     final activeRooms = _activeRoomsForVillas(rooms, activeVillaIds);
     final activeRoomIds = activeRooms.map((room) => room.id).toSet();
     final activeIncomes =
         _activeIncomes(incomes, activeVillaIds, activeRoomIds);
     final activeExpenses =
         _activeExpenses(expenses, activeVillaIds, activeRoomIds);
-    final monthlyCashIncomes = activeIncomes
-        .where((income) => _isSameMonth(income.paymentDate, month))
-        .toList();
+    final monthlyIncomes = monthlyIncomesFor(
+      incomes: activeIncomes,
+      month: month,
+    );
     final monthlyRentIncomes = activeIncomes
         .where((income) =>
             _isRentIncome(income) && _isSameMonth(income.monthCovered, month))
         .toList();
-    final monthlyExpenses = activeExpenses
-        .where((expense) => _isSameMonth(expense.expenseDate, month))
-        .toList();
+    final monthlyExpenses = monthlyExpensesFor(
+      expenses: activeExpenses,
+      month: month,
+    );
 
-    return villas.map((villa) {
+    return activeVillas.map((villa) {
       final villaRooms =
           activeRooms.where((room) => room.villaId == villa.id).toList();
       final occupiedRooms =
           villaRooms.where((room) => room.isOccupied).toList();
       final vacantRooms = villaRooms.where((room) => room.isVacant).toList();
-      final occupiedRoomIds = occupiedRooms.map((room) => room.id).toSet();
+      final villaRoomIds = villaRooms.map((room) => room.id).toSet();
       final rentReceived = _sumIncome(
         monthlyRentIncomes
-            .where((income) => occupiedRoomIds.contains(income.roomId)),
+            .where((income) => villaRoomIds.contains(income.roomId)),
       );
       final otherVillaIncome = _sumIncome(
-        monthlyCashIncomes.where(
+        monthlyIncomes.where(
           (income) => income.villaId == villa.id && !_isRentIncome(income),
         ),
       );
@@ -200,7 +204,9 @@ class ProfitCalculationService {
     final activeRoomIds = activeRooms.map((room) => room.id).toSet();
     final activeIncomes = incomes.where((income) {
       if (income.isDeleted) return false;
-      if (_isDepositIncome(income)) return false;
+      if (!_incomeCalculation.isCountableIncomeType(income.incomeType)) {
+        return false;
+      }
       if (income.roomId.trim().isEmpty) return true;
       return activeRoomIds.contains(income.roomId);
     }).toList();
@@ -211,16 +217,18 @@ class ProfitCalculationService {
       if (roomId == null || roomId.trim().isEmpty) return true;
       return activeRoomIds.contains(roomId);
     }).toList();
-    final monthlyCashIncomes = activeIncomes
-        .where((income) => _isSameMonth(income.paymentDate, month))
-        .toList();
+    final monthlyIncomes = monthlyIncomesFor(
+      incomes: activeIncomes,
+      month: month,
+    );
     final monthlyRentIncomes = activeIncomes
         .where((income) =>
             _isRentIncome(income) && _isSameMonth(income.monthCovered, month))
         .toList();
-    final monthlyExpenses = activeExpenses
-        .where((expense) => _isSameMonth(expense.expenseDate, month))
-        .toList();
+    final monthlyExpenses = monthlyExpensesFor(
+      expenses: activeExpenses,
+      month: month,
+    );
 
     return activeRooms.where((room) {
       if (villaId != null && villaId.isNotEmpty && room.villaId != villaId) {
@@ -239,7 +247,7 @@ class ProfitCalculationService {
     }).map((room) {
       return _calculateRoomProfitSummary(
         room: room,
-        monthlyCashIncomes: monthlyCashIncomes,
+        monthlyIncomes: monthlyIncomes,
         monthlyRentIncomes: monthlyRentIncomes,
         monthlyExpenses: monthlyExpenses,
       );
@@ -309,7 +317,7 @@ class ProfitCalculationService {
       expenses: const [],
       month: month,
     )
-        .where((item) => item.isOccupied && item.pendingRent > 0)
+        .where((item) => item.pendingRent > 0)
         .map(
           (item) => PendingRentCalculation(
             villaId: item.villaId,
@@ -327,7 +335,7 @@ class ProfitCalculationService {
 
   double calculateExpectedRent(List<Room> rooms) {
     return _sumMonthlyRent(
-      rooms.where((room) => !room.isDeleted && room.isOccupied),
+      rooms.where((room) => !room.isDeleted),
     );
   }
 
@@ -349,22 +357,77 @@ class ProfitCalculationService {
     return pendingRent < 0 ? 0 : pendingRent;
   }
 
-  bool _isRentIncome(Income income) {
-    return income.incomeType.toLowerCase() == IncomeTypes.rent.toLowerCase();
+  List<Room> activeRoomsFor({
+    required List<Room> rooms,
+    required List<VillaModel> villas,
+  }) {
+    final activeVillaIds = villas
+        .where((villa) => !villa.isDeleted)
+        .map((villa) => villa.id)
+        .toSet();
+    return _activeRoomsForVillas(rooms, activeVillaIds);
   }
 
-  bool _isDepositIncome(Income income) {
-    return income.incomeType.toLowerCase() == IncomeTypes.deposit.toLowerCase();
+  List<Income> activeIncomesFor({
+    required List<Income> incomes,
+    required List<VillaModel> villas,
+    required List<Room> rooms,
+  }) {
+    final activeVillaIds = villas
+        .where((villa) => !villa.isDeleted)
+        .map((villa) => villa.id)
+        .toSet();
+    final activeRoomIds = activeRoomsFor(rooms: rooms, villas: villas)
+        .map((room) => room.id)
+        .toSet();
+    return _activeIncomes(incomes, activeVillaIds, activeRoomIds);
+  }
+
+  List<Expense> activeExpensesFor({
+    required List<Expense> expenses,
+    required List<VillaModel> villas,
+    required List<Room> rooms,
+  }) {
+    final activeVillaIds = villas
+        .where((villa) => !villa.isDeleted)
+        .map((villa) => villa.id)
+        .toSet();
+    final activeRoomIds = activeRoomsFor(rooms: rooms, villas: villas)
+        .map((room) => room.id)
+        .toSet();
+    return _activeExpenses(expenses, activeVillaIds, activeRoomIds);
+  }
+
+  List<Income> monthlyIncomesFor({
+    required Iterable<Income> incomes,
+    required DateTime month,
+  }) {
+    return _incomeCalculation.filterForMonthlyTotal(incomes, month);
+  }
+
+  List<Expense> monthlyExpensesFor({
+    required Iterable<Expense> expenses,
+    required DateTime month,
+  }) {
+    return expenses.where((expense) {
+      if (expense.isDeleted) return false;
+      if (_isDepositRefundExpense(expense)) return false;
+      return _isSameMonth(expense.expenseDate, month);
+    }).toList();
+  }
+
+  bool _isRentIncome(Income income) {
+    return _incomeCalculation.isRentIncome(income);
   }
 
   bool _isDepositRefundExpense(Expense expense) {
-    return expense.category.toLowerCase() ==
-        ExpenseCategories.depositRefund.toLowerCase();
+    return _normalize(expense.category) ==
+        _normalize(ExpenseCategories.depositRefund);
   }
 
   RoomProfitSummary _calculateRoomProfitSummary({
     required Room room,
-    required List<Income> monthlyCashIncomes,
+    required List<Income> monthlyIncomes,
     required List<Income> monthlyRentIncomes,
     required List<Expense> monthlyExpenses,
   }) {
@@ -372,29 +435,25 @@ class ProfitCalculationService {
     final roomRentIncomes = monthlyRentIncomes.where(
       (income) => income.roomId == room.id,
     );
-    final roomOtherIncomes = monthlyCashIncomes.where(
+    final roomOtherIncomes = monthlyIncomes.where(
       (income) => income.roomId == room.id && !_isRentIncome(income),
     );
     final roomExpenses = monthlyExpenses.where(
       (expense) => expense.roomId == room.id,
     );
 
-    final expectedRent = isOccupied ? room.monthlyRent : 0.0;
-    final rentReceived = isOccupied ? _sumIncome(roomRentIncomes) : 0.0;
+    final expectedRent = room.monthlyRent;
+    final rentReceived = _sumIncome(roomRentIncomes);
     final otherIncome = _sumIncome(roomOtherIncomes);
     final totalExpenses = _sumExpense(roomExpenses);
-    final pendingRent = isOccupied
-        ? calculatePendingRent(
-            expectedRent: expectedRent,
-            rentReceived: rentReceived,
-          )
-        : 0.0;
-    final overpaidAmount = isOccupied
-        ? _calculateOverpaidAmount(
-            expectedRent: expectedRent,
-            rentReceived: rentReceived,
-          )
-        : 0.0;
+    final pendingRent = calculatePendingRent(
+      expectedRent: expectedRent,
+      rentReceived: rentReceived,
+    );
+    final overpaidAmount = _calculateOverpaidAmount(
+      expectedRent: expectedRent,
+      rentReceived: rentReceived,
+    );
     final vacancyLoss = room.isVacant ? room.monthlyRent : 0.0;
     final actualProfit = rentReceived + otherIncome - totalExpenses;
     final expectedProfit = expectedRent + otherIncome - totalExpenses;
@@ -425,6 +484,10 @@ class ProfitCalculationService {
 
   bool _isSameMonth(DateTime date, DateTime month) {
     return date.year == month.year && date.month == month.month;
+  }
+
+  String _normalize(String value) {
+    return value.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '');
   }
 
   double _calculateOverpaidAmount({
@@ -460,7 +523,9 @@ class ProfitCalculationService {
   ) {
     return incomes.where((income) {
       if (income.isDeleted) return false;
-      if (_isDepositIncome(income)) return false;
+      if (!_incomeCalculation.isCountableIncomeType(income.incomeType)) {
+        return false;
+      }
       if (!villaIds.contains(income.villaId)) return false;
       if (income.roomId.trim().isEmpty) return true;
       return roomIds.contains(income.roomId);

@@ -64,7 +64,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
     final villasAsync = ref.watch(villasProvider);
     final roomsAsync = ref.watch(allRoomsProvider);
     final incomesAsync = ref.watch(incomeListProvider);
-    final expenses = ref.watch(expenseProvider);
+    final expensesAsync = ref.watch(expenseListProvider);
     final authState = ref.watch(authProvider);
     final canViewReports = authState.hasPermission(AppPermissions.viewReports);
     final canExportReports =
@@ -78,57 +78,61 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
       body: villasAsync.when(
         data: (villas) => roomsAsync.when(
           data: (rooms) => incomesAsync.when(
-            data: (incomes) {
-              final reportData =
-                  _buildReportData(villas, rooms, incomes, expenses);
+            data: (incomes) => expensesAsync.when(
+              data: (expenses) {
+                final reportData =
+                    _buildReportData(villas, rooms, incomes, expenses);
 
-              return ListView(
-                padding: const EdgeInsets.fromLTRB(18, 14, 18, 142),
-                children: [
-                  _ReportsHeader(
-                    title: 'Reports',
-                    subtitle: 'Property Financial Overview',
-                    trailing: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        if (canExportReports) ...[
+                return ListView(
+                  padding: const EdgeInsets.fromLTRB(18, 14, 18, 142),
+                  children: [
+                    _ReportsHeader(
+                      title: 'Reports',
+                      subtitle: 'Property Financial Overview',
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (canExportReports) ...[
+                            _CircleIconButton(
+                              icon: Icons.picture_as_pdf_rounded,
+                              tooltip: 'Export PDF',
+                              onPressed: _isExporting
+                                  ? null
+                                  : () => _export(
+                                        villasAsync.valueOrNull ?? const [],
+                                        roomsAsync.valueOrNull ?? const [],
+                                        incomesAsync.valueOrNull ?? const [],
+                                        expensesAsync.valueOrNull ?? const [],
+                                        ExportFormat.pdf,
+                                      ),
+                            ),
+                            const SizedBox(width: 8),
+                          ],
                           _CircleIconButton(
-                            icon: Icons.picture_as_pdf_rounded,
-                            tooltip: 'Export PDF',
-                            onPressed: _isExporting
-                                ? null
-                                : () => _export(
-                                      villasAsync.valueOrNull ?? const [],
-                                      roomsAsync.valueOrNull ?? const [],
-                                      incomesAsync.valueOrNull ?? const [],
-                                      expenses,
-                                      ExportFormat.pdf,
-                                    ),
+                            icon: Icons.tune_rounded,
+                            tooltip: 'Filters',
+                            onPressed: () => _showFiltersSheet(
+                              villas: villas,
+                              rooms: rooms,
+                            ),
                           ),
-                          const SizedBox(width: 8),
                         ],
-                        _CircleIconButton(
-                          icon: Icons.tune_rounded,
-                          tooltip: 'Filters',
-                          onPressed: () => _showFiltersSheet(
-                            villas: villas,
-                            rooms: rooms,
-                          ),
-                        ),
-                      ],
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 18),
-                  _PeriodPills(
-                    selectedPeriod: _selectedPeriod,
-                    onSelected: (period) =>
-                        _selectPeriod(period, villas, rooms),
-                  ),
-                  const SizedBox(height: 16),
-                  _buildSelectedReport(reportData),
-                ],
-              );
-            },
+                    const SizedBox(height: 18),
+                    _PeriodPills(
+                      selectedPeriod: _selectedPeriod,
+                      onSelected: (period) =>
+                          _selectPeriod(period, villas, rooms),
+                    ),
+                    const SizedBox(height: 16),
+                    _buildSelectedReport(reportData),
+                  ],
+                );
+              },
+              error: (error, _) => Center(child: Text(error.toString())),
+              loading: () => const Center(child: CircularProgressIndicator()),
+            ),
             error: (error, _) => Center(child: Text(error.toString())),
             loading: () => const Center(child: CircularProgressIndicator()),
           ),
@@ -148,29 +152,31 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
     List<Expense> expenses,
   ) {
     final filteredRooms = _filteredRooms(rooms);
-    final activeVillaIds = villas.map((villa) => villa.id).toSet();
-    final activeRooms = filteredRooms
-        .where(
-            (room) => !room.isDeleted && activeVillaIds.contains(room.villaId))
+    final scopedVillas = _selectedVillaId == null
+        ? villas.where((villa) => !villa.isDeleted).toList()
+        : villas
+            .where((villa) => !villa.isDeleted && villa.id == _selectedVillaId)
+            .toList();
+    final activeRooms = _profitService.activeRoomsFor(
+      rooms: filteredRooms,
+      villas: scopedVillas,
+    );
+    final activeIncomes = _profitService
+        .activeIncomesFor(
+          incomes: incomes,
+          villas: scopedVillas,
+          rooms: activeRooms,
+        )
+        .where(_matchesIncomeFilters)
         .toList();
-    final activeRoomIds = activeRooms.map((room) => room.id).toSet();
-    final activeIncomes = incomes.where((income) {
-      if (income.isDeleted) return false;
-      if (_isDepositIncome(income)) return false;
-      if (!activeVillaIds.contains(income.villaId)) return false;
-      if (income.roomId.trim().isEmpty) return true;
-      return activeRoomIds.contains(income.roomId);
-    }).toList();
-    final activeExpenses = expenses.where((expense) {
-      if (expense.isDeleted) return false;
-      if (_isDepositRefundExpense(expense)) return false;
-      final villaId = expense.villaId;
-      if (villaId == null || villaId.trim().isEmpty) return true;
-      if (!activeVillaIds.contains(villaId)) return false;
-      final roomId = expense.roomId;
-      if (roomId == null || roomId.trim().isEmpty) return true;
-      return activeRoomIds.contains(roomId);
-    }).toList();
+    final activeExpenses = _profitService
+        .activeExpensesFor(
+          expenses: expenses,
+          villas: scopedVillas,
+          rooms: activeRooms,
+        )
+        .where(_matchesExpenseFilters)
+        .toList();
     final roomSummaries = _profitService.calculateRoomProfitSummaries(
       rooms: activeRooms,
       incomes: activeIncomes,
@@ -178,85 +184,65 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
       month: _selectedMonth,
       status: _selectedStatus,
     );
-    final roomTotals = _profitService.calculateRoomProfitTotals(roomSummaries);
-    final monthlyIncomes = activeIncomes
-        .where((income) =>
-            _isSameMonth(income.paymentDate, _selectedMonth) &&
-            _matchesIncomeFilters(income))
-        .toList();
-    final monthlyExpenses = activeExpenses
-        .where((expense) =>
-            _isSameMonth(expense.expenseDate, _selectedMonth) &&
-            _matchesExpenseFilters(expense))
-        .toList();
-    final totalIncome =
-        monthlyIncomes.fold<double>(0, (sum, income) => sum + income.amount);
-    final totalExpenses =
-        monthlyExpenses.fold<double>(0, (sum, expense) => sum + expense.amount);
-
-    final monthlySummary = MonthlySummaryReportData(
-      totalIncome: totalIncome,
-      totalExpenses: totalExpenses,
-      netProfit: totalIncome - totalExpenses,
-      totalRoomRent: activeRooms.fold<double>(
-        0,
-        (sum, room) => sum + room.monthlyRent,
-      ),
-      expectedRent: roomTotals.expectedRent,
-      pendingRent: roomTotals.pendingRent,
-      vacancyLoss: roomTotals.vacancyLoss,
-      rentCollectionPercentage: roomTotals.rentCollectionPercentage,
+    final monthlyProfitSummary = _profitService.calculateMonthlySummary(
+      villas: scopedVillas,
+      rooms: activeRooms,
+      incomes: activeIncomes,
+      expenses: activeExpenses,
+      month: _selectedMonth,
+    );
+    final monthlyIncomes = _profitService.monthlyIncomesFor(
+      incomes: activeIncomes,
+      month: _selectedMonth,
+    );
+    final monthlyExpenses = _profitService.monthlyExpensesFor(
+      expenses: activeExpenses,
+      month: _selectedMonth,
     );
 
-    final scopedVillas = _selectedVillaId == null
-        ? villas
-        : villas.where((villa) => villa.id == _selectedVillaId).toList();
-    final villaProfitItems = scopedVillas.map((villa) {
-      final villaIncomes =
-          monthlyIncomes.where((income) => income.villaId == villa.id).toList();
-      final villaExpenses = monthlyExpenses
-          .where((expense) => expense.villaId == villa.id)
+    final monthlySummary = MonthlySummaryReportData(
+      totalIncome: monthlyProfitSummary.actualIncome,
+      totalExpenses: monthlyProfitSummary.expensesPaid,
+      netProfit: monthlyProfitSummary.actualNetProfit,
+      totalRoomRent: monthlyProfitSummary.totalRoomRent,
+      expectedRent: monthlyProfitSummary.expectedRent,
+      pendingRent: monthlyProfitSummary.pendingRent,
+      vacancyLoss: monthlyProfitSummary.vacancyLoss,
+      rentCollectionPercentage: monthlyProfitSummary.rentCollectionPercentage,
+    );
+
+    final villaProfit = _profitService.calculateVillaProfit(
+      villas: scopedVillas,
+      rooms: activeRooms,
+      incomes: activeIncomes,
+      expenses: activeExpenses,
+      month: _selectedMonth,
+    );
+    final villaProfitItems = villaProfit.map((profit) {
+      final villaRoomSummaries = roomSummaries
+          .where((item) => item.villaId == profit.villaId)
           .toList();
-      final villaIncome =
-          villaIncomes.fold<double>(0, (sum, income) => sum + income.amount);
-      final villaExpense =
-          villaExpenses.fold<double>(0, (sum, expense) => sum + expense.amount);
-      final villaRoomSummaries =
-          roomSummaries.where((item) => item.villaId == villa.id).toList();
-      final villaExpectedRent = villaRoomSummaries.fold<double>(
-        0,
-        (sum, item) => sum + item.expectedRent,
-      );
-      final villaPendingRent = villaRoomSummaries.fold<double>(
-        0,
-        (sum, item) => sum + item.pendingRent,
-      );
-      final villaVacancyLoss = villaRoomSummaries.fold<double>(
-        0,
-        (sum, item) => sum + item.vacancyLoss,
-      );
       final occupiedRooms =
           villaRoomSummaries.where((item) => item.isOccupied).length;
       final vacantRooms =
           villaRoomSummaries.where((item) => item.isVacant).length;
 
       return VillaProfitReportItem(
-        villaId: villa.id,
-        villaName: villa.villaName,
+        villaId: profit.villaId,
+        villaName: profit.villaName,
         totalRooms: villaRoomSummaries.length,
         occupiedRooms: occupiedRooms,
         vacantRooms: vacantRooms,
-        expectedRent: villaExpectedRent,
-        receivedIncome: villaIncome,
-        totalExpense: villaExpense,
-        netProfit: villaIncome - villaExpense,
-        pendingAmount: villaPendingRent,
-        vacancyLoss: villaVacancyLoss,
+        expectedRent: profit.expectedRent,
+        receivedIncome: profit.rentReceived + profit.otherIncome,
+        totalExpense: profit.expensesPaid,
+        netProfit: profit.actualProfit,
+        pendingAmount: profit.pendingRent,
+        vacancyLoss: profit.vacancyLoss,
       );
     }).toList();
 
     final pendingRentItems = roomSummaries
-        .where((item) => item.isOccupied)
         .map(
           (item) => PendingRentReportItem(
             villaName: '${item.villaName} > ${item.displayRoomName}',
@@ -275,22 +261,19 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
 
     final yearlyItems = List.generate(12, (index) {
       final month = DateTime(_selectedYear, index + 1, 1);
-      final income = activeIncomes
-          .where((item) =>
-              _isSameMonth(item.paymentDate, month) &&
-              _matchesIncomeFilters(item))
-          .fold<double>(0, (sum, item) => sum + item.amount);
-      final expense = activeExpenses
-          .where((item) =>
-              _isSameMonth(item.expenseDate, month) &&
-              _matchesExpenseFilters(item))
-          .fold<double>(0, (sum, item) => sum + item.amount);
+      final summary = _profitService.calculateMonthlySummary(
+        villas: scopedVillas,
+        rooms: activeRooms,
+        incomes: activeIncomes,
+        expenses: activeExpenses,
+        month: month,
+      );
 
       return YearlySummaryReportItem(
         month: month,
-        income: income,
-        expense: expense,
-        profit: income - expense,
+        income: summary.actualIncome,
+        expense: summary.expensesPaid,
+        profit: summary.actualNetProfit,
       );
     });
 
@@ -702,20 +685,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
     ref.read(selectedMonthProvider.notifier).state = _selectedMonth;
   }
 
-  bool _isSameMonth(DateTime date, DateTime month) {
-    return date.year == month.year && date.month == month.month;
-  }
-
   String _money(double value) => CurrencyFormatter.formatQAR(value);
-
-  bool _isDepositIncome(Income income) {
-    return income.incomeType.toLowerCase() == IncomeTypes.deposit.toLowerCase();
-  }
-
-  bool _isDepositRefundExpense(Expense expense) {
-    return expense.category.toLowerCase() ==
-        ExpenseCategories.depositRefund.toLowerCase();
-  }
 
   List<Room> _filteredRooms(List<Room> rooms) {
     return rooms.where((room) {
