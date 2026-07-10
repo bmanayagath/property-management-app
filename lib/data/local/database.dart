@@ -904,12 +904,18 @@ class AppDatabase extends _$AppDatabase {
             ))
           .get();
 
-  Stream<List<Expense>> watchAllExpenses({String orgId = 'default_org'}) =>
-      (select(expenses)
-            ..where(
-              (tbl) => tbl.isDeleted.equals(0) & tbl.orgId.equals(orgId),
-            ))
-          .watch();
+  Stream<List<Expense>> watchAllExpenses({
+    String orgId = 'default_org',
+    bool includeDeleted = false,
+  }) {
+    final query = select(expenses)
+      ..where((tbl) {
+        final orgFilter = tbl.orgId.equals(orgId);
+        if (includeDeleted) return orgFilter;
+        return tbl.isDeleted.equals(0) & orgFilter;
+      });
+    return query.watch();
+  }
 
   Future<List<Expense>> getExpensesByVillaId(
     String villaId, {
@@ -929,7 +935,7 @@ class AppDatabase extends _$AppDatabase {
     String orgId = 'default_org',
   }) async {
     final startOfMonth = DateTime(month.year, month.month, 1);
-    final endOfMonth = DateTime(month.year, month.month + 1, 0);
+    final endOfMonth = _endOfMonth(month);
     return (select(expenses)
           ..where((tbl) =>
               tbl.expenseDate.isBetweenValues(startOfMonth, endOfMonth) &
@@ -1044,7 +1050,7 @@ class AppDatabase extends _$AppDatabase {
     String orgId = 'default_org',
   }) async {
     final startOfMonth = DateTime(month.year, month.month, 1);
-    final endOfMonth = DateTime(month.year, month.month + 1, 0);
+    final endOfMonth = _endOfMonth(month);
     final result = await (select(expenses)
           ..where((tbl) =>
               tbl.expenseDate.isBetweenValues(startOfMonth, endOfMonth) &
@@ -1060,7 +1066,7 @@ class AppDatabase extends _$AppDatabase {
     String orgId = 'default_org',
   }) async {
     final startOfMonth = DateTime(month.year, month.month, 1);
-    final endOfMonth = DateTime(month.year, month.month + 1, 0);
+    final endOfMonth = _endOfMonth(month);
     final expenseList = await (select(expenses)
           ..where((tbl) =>
               tbl.expenseDate.isBetweenValues(startOfMonth, endOfMonth) &
@@ -1114,6 +1120,11 @@ class AppDatabase extends _$AppDatabase {
 
   String _normalizeIncomeType(String type) {
     return type.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '');
+  }
+
+  DateTime _endOfMonth(DateTime month) {
+    return DateTime(month.year, month.month + 1, 1)
+        .subtract(const Duration(milliseconds: 1));
   }
 }
 

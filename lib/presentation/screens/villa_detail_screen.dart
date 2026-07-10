@@ -1029,7 +1029,8 @@ class VillaDetailScreen extends ConsumerWidget {
     final totals = <String, double>{};
     for (final income in incomes.where(
       (income) =>
-          income.incomeType.toLowerCase() == IncomeTypes.rent.toLowerCase() &&
+          !income.isDeleted &&
+          incomeCalculationService.isRentIncome(income) &&
           income.roomId.trim().isNotEmpty &&
           income.monthCovered.year == month.year &&
           income.monthCovered.month == month.month,

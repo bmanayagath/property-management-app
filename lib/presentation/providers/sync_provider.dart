@@ -73,7 +73,7 @@ class SyncController {
     final villas = await _ref.read(villaListProvider.future);
     final rooms = await _ref.read(roomListProvider.future);
     final incomes = _ref.read(incomeListProvider).valueOrNull ?? const [];
-    final expenses = _ref.read(expenseProvider);
+    final expenses = _ref.read(expenseListProvider).valueOrNull ?? const [];
 
     for (final villa in villas) {
       await syncService.queueVilla(villa: villa, userId: currentUser.id);

@@ -29,128 +29,139 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
   @override
   Widget build(BuildContext context) {
     final selectedMonth = ref.watch(selectedMonthProvider);
-    final expenses = ref.watch(expenseProvider);
-    final notifier = ref.read(expenseProvider.notifier);
-    final total = notifier.getTotalExpensesForMonth(selectedMonth);
+    final expensesAsync = ref.watch(expenseListProvider);
     final authState = ref.watch(authProvider);
     final canManageExpenses =
         authState.hasPermission(AppPermissions.manageExpenses);
 
-    final filteredExpenses = expenses.where((expense) {
-      final sameMonth = expense.expenseDate.year == selectedMonth.year &&
-          expense.expenseDate.month == selectedMonth.month;
-      final matchesCategory =
-          _selectedCategory == 'All' || expense.category == _selectedCategory;
-      final query = _searchQuery.toLowerCase().trim();
-      final matchesSearch = query.isEmpty ||
-          expense.category.toLowerCase().contains(query) ||
-          expense.villaName.toLowerCase().contains(query) ||
-          expense.paidTo.toLowerCase().contains(query) ||
-          expense.paymentMethod.toLowerCase().contains(query) ||
-          expense.notes.toLowerCase().contains(query);
-
-      return sameMonth && matchesCategory && matchesSearch;
-    }).toList()
-      ..sort((a, b) => b.expenseDate.compareTo(a.expenseDate));
-
     return PremiumScaffold(
-      body: ListView(
-        padding: PremiumTokens.pagePadding,
-        children: [
-          PremiumPageHeader(
-            title: 'Expenses',
-            subtitle: 'Track upkeep, payments, and property costs',
-            actions: [
-              if (canManageExpenses)
-                ModuleActionButton.expense(
-                  onPressed: _openAddExpense,
-                  icon: Icons.add_rounded,
-                  label: 'Add Expense',
-                ),
-            ],
-          ),
-          const SizedBox(height: 18),
-          _MonthSelector(
-            month: selectedMonth,
-            onPrevious: () => _changeMonth(selectedMonth, -1),
-            onNext: () => _changeMonth(selectedMonth, 1),
-          ),
-          const SizedBox(height: 14),
-          _SummaryCard(total: total, month: selectedMonth),
-          const SizedBox(height: 16),
-          PremiumSearchBar(
-            onChanged: (value) => setState(() => _searchQuery = value),
-            hintText: 'Search expenses...',
-            value: _searchQuery,
-            onClear: () => setState(() => _searchQuery = ''),
-          ),
-          const SizedBox(height: 12),
-          DropdownButtonFormField<String>(
-            initialValue: _selectedCategory,
-            decoration: InputDecoration(
-              labelText: 'Category',
-              filled: true,
-              fillColor: Colors.white,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(16),
-                borderSide: const BorderSide(color: Color(0xFFE8EAF0)),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(16),
-                borderSide: const BorderSide(color: Color(0xFFE8EAF0)),
-              ),
-            ),
-            items: [
-              const DropdownMenuItem(
-                  value: 'All', child: Text('All Categories')),
-              ...ExpenseCategories.values.map(
-                (category) => DropdownMenuItem(
-                  value: category,
-                  child: Text(category),
-                ),
-              ),
-            ],
-            onChanged: (value) {
-              if (value == null) return;
-              setState(() => _selectedCategory = value);
-            },
-          ),
-          const SizedBox(height: 18),
-          if (filteredExpenses.isEmpty)
-            _EmptyExpenses(
-              onAddExpense: canManageExpenses ? _openAddExpense : null,
-            )
-          else
-            LayoutBuilder(
-              builder: (context, constraints) {
-                return GridView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: filteredExpenses.length,
-                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 1,
-                    crossAxisSpacing: 12,
-                    mainAxisSpacing: 12,
-                    mainAxisExtent: 88,
-                  ),
-                  itemBuilder: (context, index) {
-                    final expense = filteredExpenses[index];
+      body: expensesAsync.when(
+        data: (expenses) {
+          final monthlyExpenses = expenses
+              .where(
+                  (expense) => _isSameMonth(expense.expenseDate, selectedMonth))
+              .toList();
+          final total = monthlyExpenses.fold<double>(
+            0,
+            (sum, expense) => sum + expense.amount,
+          );
+          final filteredExpenses = monthlyExpenses.where((expense) {
+            final matchesCategory = _selectedCategory == 'All' ||
+                _sameCategory(expense.category, _selectedCategory);
+            final query = _searchQuery.toLowerCase().trim();
+            final matchesSearch = query.isEmpty ||
+                expense.category.toLowerCase().contains(query) ||
+                expense.villaName.toLowerCase().contains(query) ||
+                (expense.roomName ?? '').toLowerCase().contains(query) ||
+                expense.paidTo.toLowerCase().contains(query) ||
+                expense.paymentMethod.toLowerCase().contains(query) ||
+                expense.notes.toLowerCase().contains(query);
 
-                    return ExpenseCard(
-                      expense: expense,
-                      onTap: () => _openDetail(expense),
-                      onEdit: canManageExpenses
-                          ? () => _openEditExpense(expense)
-                          : null,
-                      onDelete: canManageExpenses
-                          ? () => _confirmDelete(expense)
-                          : null,
+            return matchesCategory && matchesSearch;
+          }).toList()
+            ..sort((a, b) => b.expenseDate.compareTo(a.expenseDate));
+
+          return ListView(
+            padding: PremiumTokens.pagePadding,
+            children: [
+              PremiumPageHeader(
+                title: 'Expenses',
+                subtitle: 'Track upkeep, payments, and property costs',
+                actions: [
+                  if (canManageExpenses)
+                    ModuleActionButton.expense(
+                      onPressed: _openAddExpense,
+                      icon: Icons.add_rounded,
+                      label: 'Add Expense',
+                    ),
+                ],
+              ),
+              const SizedBox(height: 18),
+              _MonthSelector(
+                month: selectedMonth,
+                onPrevious: () => _changeMonth(selectedMonth, -1),
+                onNext: () => _changeMonth(selectedMonth, 1),
+              ),
+              const SizedBox(height: 14),
+              _SummaryCard(total: total, month: selectedMonth),
+              const SizedBox(height: 16),
+              PremiumSearchBar(
+                onChanged: (value) => setState(() => _searchQuery = value),
+                hintText: 'Search expenses...',
+                value: _searchQuery,
+                onClear: () => setState(() => _searchQuery = ''),
+              ),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<String>(
+                initialValue: _selectedCategory,
+                decoration: InputDecoration(
+                  labelText: 'Category',
+                  filled: true,
+                  fillColor: Colors.white,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: const BorderSide(color: Color(0xFFE8EAF0)),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: const BorderSide(color: Color(0xFFE8EAF0)),
+                  ),
+                ),
+                items: [
+                  const DropdownMenuItem(
+                      value: 'All', child: Text('All Categories')),
+                  ...ExpenseCategories.values.map(
+                    (category) => DropdownMenuItem(
+                      value: category,
+                      child: Text(category),
+                    ),
+                  ),
+                ],
+                onChanged: (value) {
+                  if (value == null) return;
+                  setState(() => _selectedCategory = value);
+                },
+              ),
+              const SizedBox(height: 18),
+              if (filteredExpenses.isEmpty)
+                _EmptyExpenses(
+                  onAddExpense: canManageExpenses ? _openAddExpense : null,
+                )
+              else
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    return GridView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: filteredExpenses.length,
+                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 1,
+                        crossAxisSpacing: 12,
+                        mainAxisSpacing: 12,
+                        mainAxisExtent: 88,
+                      ),
+                      itemBuilder: (context, index) {
+                        final expense = filteredExpenses[index];
+
+                        return ExpenseCard(
+                          expense: expense,
+                          onTap: () => _openDetail(expense),
+                          onEdit: canManageExpenses
+                              ? () => _openEditExpense(expense)
+                              : null,
+                          onDelete: canManageExpenses
+                              ? () => _confirmDelete(expense)
+                              : null,
+                        );
+                      },
                     );
                   },
-                );
-              },
-            ),
-        ],
+                ),
+            ],
+          );
+        },
+        error: (error, _) => Center(child: Text(error.toString())),
+        loading: () => const Center(child: CircularProgressIndicator()),
       ),
       floatingActionButton: canManageExpenses
           ? Padding(
@@ -211,6 +222,18 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
     await ref.read(expenseProvider.notifier).deleteExpense(expense.id);
     ref.invalidate(expenseListProvider);
     ref.invalidate(dashboardSummaryProvider);
+  }
+
+  bool _isSameMonth(DateTime date, DateTime month) {
+    return date.year == month.year && date.month == month.month;
+  }
+
+  bool _sameCategory(String left, String right) {
+    return _normalize(left) == _normalize(right);
+  }
+
+  String _normalize(String value) {
+    return value.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '');
   }
 }
 

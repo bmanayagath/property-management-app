@@ -46,6 +46,7 @@ const _$ExpenseCategoryEnumMap = {
   ExpenseCategory.electricity: 'electricity',
   ExpenseCategory.water: 'water',
   ExpenseCategory.internet: 'internet',
+  ExpenseCategory.ac: 'ac',
   ExpenseCategory.cleaning: 'cleaning',
   ExpenseCategory.petrol: 'petrol',
   ExpenseCategory.commission: 'commission',

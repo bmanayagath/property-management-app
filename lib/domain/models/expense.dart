@@ -112,6 +112,7 @@ class ExpenseCategories {
   static const electricity = 'Electricity';
   static const water = 'Water';
   static const internet = 'Internet';
+  static const ac = 'AC';
   static const cleaning = 'Cleaning';
   static const petrol = 'Petrol';
   static const commission = 'Commission';
@@ -128,6 +129,7 @@ class ExpenseCategories {
     electricity,
     water,
     internet,
+    ac,
     cleaning,
     petrol,
     commission,

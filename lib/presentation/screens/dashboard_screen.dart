@@ -7,6 +7,7 @@ import 'package:intl/intl.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_permissions.dart';
 import '../../domain/models/expense.dart';
+import '../../domain/models/income.dart';
 import '../../domain/models/room.dart';
 import '../../domain/models/villa_model.dart';
 import '../providers/auth_provider.dart';
@@ -107,6 +108,7 @@ class DashboardScreen extends ConsumerWidget {
             _VillaSummary(
               villas: summary.villas,
               rooms: summary.rooms,
+              incomes: summary.incomes,
               expenses: summary.expenses,
               rentReceivedByRoom: summary.rentReceivedByRoom,
               selectedMonth: summary.selectedMonth,
@@ -1208,6 +1210,7 @@ class _CollectionAmount extends StatelessWidget {
 class _VillaSummary extends StatelessWidget {
   final List<VillaModel> villas;
   final List<Room> rooms;
+  final List<Income> incomes;
   final List<Expense> expenses;
   final Map<String, double> rentReceivedByRoom;
   final DateTime selectedMonth;
@@ -1216,6 +1219,7 @@ class _VillaSummary extends StatelessWidget {
   const _VillaSummary({
     required this.villas,
     required this.rooms,
+    required this.incomes,
     required this.expenses,
     required this.rentReceivedByRoom,
     required this.selectedMonth,
@@ -1275,6 +1279,7 @@ class _VillaSummary extends StatelessWidget {
               final summary = _VillaRoomSummary.fromData(
                 rooms.where((room) => room.villaId == villa.id),
                 rentReceivedByRoom,
+                incomes.where((income) => income.villaId == villa.id),
                 expenses.where((expense) => expense.villaId == villa.id),
                 selectedMonth,
               );
@@ -1606,6 +1611,7 @@ class _VillaRoomSummary {
   static _VillaRoomSummary fromData(
     Iterable<Room> rooms,
     Map<String, double> rentReceivedByRoom,
+    Iterable<Income> incomes,
     Iterable<Expense> expenses,
     DateTime selectedMonth,
   ) {
@@ -1620,28 +1626,40 @@ class _VillaRoomSummary {
     final totalExpenses = expenses
         .where(
           (expense) =>
+              !expense.isDeleted &&
               expense.expenseDate.year == selectedMonth.year &&
               expense.expenseDate.month == selectedMonth.month,
         )
         .fold<double>(0, (sum, expense) => sum + expense.amount);
+    final otherIncome = incomes
+        .where(
+          (income) =>
+              !income.isDeleted &&
+              !incomeCalculationService.isRentIncome(income) &&
+              incomeCalculationService.isInSelectedMonth(
+                income,
+                selectedMonth,
+              ),
+        )
+        .fold<double>(0, (sum, income) => sum + income.amount);
 
     for (final room in rooms.where((room) => !room.isDeleted)) {
       totalRooms++;
       totalRoomRent += room.monthlyRent;
       final received = rentReceivedByRoom[room.id] ?? 0;
       rentReceived += received;
+      expectedRent += room.monthlyRent;
       if (room.isOccupied) {
         occupiedRooms++;
-        expectedRent += room.monthlyRent;
-        pendingRent += _calculatePendingRent(
-          expectedRent: room.monthlyRent,
-          rentReceived: received,
-        );
       } else if (room.isVacant) {
         vacantRooms++;
         vacancyLoss += room.monthlyRent;
       }
     }
+    pendingRent = _calculatePendingRent(
+      expectedRent: expectedRent,
+      rentReceived: rentReceived,
+    );
 
     return _VillaRoomSummary(
       totalRooms: totalRooms,
@@ -1653,8 +1671,8 @@ class _VillaRoomSummary {
       pendingRent: pendingRent,
       vacancyLoss: vacancyLoss,
       totalExpenses: totalExpenses,
-      actualNetProfit: rentReceived - totalExpenses,
-      expectedNetProfit: expectedRent - totalExpenses,
+      actualNetProfit: rentReceived + otherIncome - totalExpenses,
+      expectedNetProfit: expectedRent + otherIncome - totalExpenses,
     );
   }
 }

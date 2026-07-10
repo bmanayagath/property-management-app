@@ -5,24 +5,28 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../core/constants/enums.dart';
+import '../../data/local/database.dart' as db;
 import '../../domain/models/expense.dart';
 import '../../domain/models/expense_model.dart';
 import '../../domain/repositories/expense_repository.dart';
 import '../../domain/repositories/villa_repository.dart';
 import 'active_org_provider.dart';
 import 'auth_provider.dart';
+import 'database_provider.dart';
 import 'repository_provider.dart';
 import 'sync_provider.dart';
 
 final expenseListProvider = StreamProvider<List<Expense>>((ref) {
-  final repository = ref.watch(expenseRepositoryProvider);
+  final database = ref.watch(databaseProvider);
   final syncService = ref.watch(firebaseSyncServiceProvider);
   final orgId = ref.watch(activeOrgProvider);
   return _mergeExpenseStreams(
-    localStream: repository.watchAllExpenses().map(
-          (models) => models.map(_expenseFromModel).toList(),
-        ),
+    localStream:
+        database.watchAllExpenses(orgId: orgId, includeDeleted: true).map(
+              (rows) => rows.map(_expenseFromRow).toList(),
+            ),
     cloudStream: syncService.watchCloudExpenses(orgId: orgId),
+    orgId: orgId,
   );
 });
 
@@ -238,46 +242,10 @@ class ExpenseNotifier extends StateNotifier<List<Expense>> {
   }
 }
 
-Expense _expenseFromModel(ExpenseModel model) {
-  return Expense(
-    id: model.id,
-    orgId: model.orgId,
-    villaId: model.villaId,
-    villaName: model.villaName.isNotEmpty
-        ? model.villaName
-        : model.villaId == null
-            ? 'General Expense'
-            : 'Villa ${model.villaId}',
-    roomId: model.roomId,
-    roomName: model.roomName,
-    category: model.category.displayName,
-    amount: model.amount,
-    expenseDate: model.expenseDate,
-    paidTo: model.paidTo,
-    paymentMethod: _paymentMethodLabel(model.paymentMethod),
-    notes: model.notes ?? '',
-    createdAt: model.createdAt,
-  );
-}
-
-String _paymentMethodLabel(PaymentMethod method) {
-  switch (method) {
-    case PaymentMethod.cash:
-      return ExpensePaymentMethods.cash;
-    case PaymentMethod.transfer:
-      return ExpensePaymentMethods.bankTransfer;
-    case PaymentMethod.online:
-      return ExpensePaymentMethods.card;
-    case PaymentMethod.check:
-      return ExpensePaymentMethods.cheque;
-    case PaymentMethod.other:
-      return ExpensePaymentMethods.other;
-  }
-}
-
 Stream<List<Expense>> _mergeExpenseStreams({
   required Stream<List<Expense>> localStream,
   required Stream<List<Expense>> cloudStream,
+  required String orgId,
 }) {
   late StreamController<List<Expense>> controller;
   StreamSubscription<List<Expense>>? localSubscription;
@@ -287,11 +255,20 @@ Stream<List<Expense>> _mergeExpenseStreams({
 
   void emitMerged() {
     final byId = <String, Expense>{};
+    final locallyDeletedIds = <String>{};
     for (final expense in localExpenses) {
-      byId[expense.id] = expense;
+      if (expense.orgId != orgId) continue;
+      if (expense.isDeleted) {
+        locallyDeletedIds.add(expense.id);
+        continue;
+      }
+      byId[expense.id] = _preferExpense(byId[expense.id], expense);
     }
     for (final expense in cloudExpenses) {
-      byId[expense.id] = expense;
+      if (expense.orgId != orgId) continue;
+      if (expense.isDeleted) continue;
+      if (locallyDeletedIds.contains(expense.id)) continue;
+      byId[expense.id] = _preferExpense(byId[expense.id], expense);
     }
 
     final merged = byId.values.toList()
@@ -330,4 +307,82 @@ Stream<List<Expense>> _mergeExpenseStreams({
   );
 
   return controller.stream;
+}
+
+Expense _expenseFromRow(db.Expense row) {
+  return Expense(
+    id: row.id,
+    orgId: row.orgId,
+    villaId: row.villaId,
+    villaName: row.villaName.trim().isEmpty
+        ? row.villaId == null
+            ? 'General Expense'
+            : 'Villa ${row.villaId}'
+        : row.villaName,
+    roomId: row.roomId,
+    roomName: row.roomName,
+    category: _expenseCategoryLabel(row.category),
+    amount: row.amount,
+    expenseDate: row.expenseDate,
+    paidTo: row.paidTo,
+    paymentMethod: _paymentMethodLabelFromRaw(row.paymentMethod),
+    notes: row.notes ?? '',
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+    isDeleted: row.isDeleted == 1,
+    syncStatus: row.syncStatus,
+    deletedAt: row.deletedAt,
+    deletedBy: row.deletedBy,
+    createdBy: row.createdBy,
+    updatedBy: row.updatedBy,
+    lastSyncedAt: row.lastSyncedAt,
+  );
+}
+
+String _expenseCategoryLabel(String value) {
+  final normalized = _normalize(value);
+  return ExpenseCategory.values
+      .firstWhere(
+        (category) =>
+            category.name == value ||
+            _normalize(category.displayName) == normalized,
+        orElse: () => ExpenseCategory.other,
+      )
+      .displayName;
+}
+
+String _paymentMethodLabelFromRaw(String value) {
+  switch (_normalize(value)) {
+    case 'cash':
+      return ExpensePaymentMethods.cash;
+    case 'banktransfer':
+    case 'transfer':
+      return ExpensePaymentMethods.bankTransfer;
+    case 'card':
+    case 'online':
+      return ExpensePaymentMethods.card;
+    case 'cheque':
+    case 'check':
+      return ExpensePaymentMethods.cheque;
+    default:
+      return ExpensePaymentMethods.other;
+  }
+}
+
+Expense _preferExpense(Expense? current, Expense incoming) {
+  if (current == null) return incoming;
+  if (current.syncStatus == 'pending' && incoming.syncStatus != 'pending') {
+    return current;
+  }
+  if (incoming.syncStatus == 'pending' && current.syncStatus != 'pending') {
+    return incoming;
+  }
+
+  final currentUpdatedAt = current.updatedAt ?? current.createdAt;
+  final incomingUpdatedAt = incoming.updatedAt ?? incoming.createdAt;
+  return incomingUpdatedAt.isAfter(currentUpdatedAt) ? incoming : current;
+}
+
+String _normalize(String value) {
+  return value.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '');
 }
