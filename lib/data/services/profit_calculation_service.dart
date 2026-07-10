@@ -4,11 +4,13 @@ import '../../domain/models/room.dart';
 import '../../domain/models/room_profit_summary.dart';
 import '../../domain/models/villa_model.dart';
 import 'income_calculation_service.dart';
+import 'rent_status_calculation_service.dart';
 
 class ProfitCalculationService {
   const ProfitCalculationService();
 
   static const _incomeCalculation = IncomeCalculationService();
+  static const _rentStatusCalculation = RentStatusCalculationService();
 
   MonthlyProfitSummary calculateMonthlySummary({
     required List<VillaModel> villas,
@@ -250,6 +252,7 @@ class ProfitCalculationService {
         monthlyIncomes: monthlyIncomes,
         monthlyRentIncomes: monthlyRentIncomes,
         monthlyExpenses: monthlyExpenses,
+        month: month,
       );
     }).toList();
   }
@@ -430,6 +433,7 @@ class ProfitCalculationService {
     required List<Income> monthlyIncomes,
     required List<Income> monthlyRentIncomes,
     required List<Expense> monthlyExpenses,
+    required DateTime month,
   }) {
     final isOccupied = room.isOccupied;
     final roomRentIncomes = monthlyRentIncomes.where(
@@ -457,6 +461,11 @@ class ProfitCalculationService {
     final vacancyLoss = room.isVacant ? room.monthlyRent : 0.0;
     final actualProfit = rentReceived + otherIncome - totalExpenses;
     final expectedProfit = expectedRent + otherIncome - totalExpenses;
+    final rentStatus = _rentStatusCalculation.calculateRoomStatus(
+      room: room,
+      rentReceived: rentReceived,
+      now: _rentStatusReferenceDate(month),
+    );
 
     return RoomProfitSummary(
       roomId: room.id,
@@ -479,7 +488,23 @@ class ProfitCalculationService {
       expectedProfit: expectedProfit,
       rentCollectionPercentage:
           expectedRent == 0 ? 0 : (rentReceived / expectedRent) * 100,
+      dueDate: rentStatus.dueDate,
+      isOverdue: rentStatus.isOverdue,
+      overdueDays: rentStatus.overdueDays,
     );
+  }
+
+  DateTime _rentStatusReferenceDate(DateTime month) {
+    final now = DateTime.now();
+    final selectedMonth = DateTime(month.year, month.month);
+    final currentMonth = DateTime(now.year, now.month);
+    if (selectedMonth.isBefore(currentMonth)) {
+      return DateTime(month.year, month.month + 1, 0);
+    }
+    if (selectedMonth.isAfter(currentMonth)) {
+      return DateTime(month.year, month.month, 1);
+    }
+    return now;
   }
 
   bool _isSameMonth(DateTime date, DateTime month) {

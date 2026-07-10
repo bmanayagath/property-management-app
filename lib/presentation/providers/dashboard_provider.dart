@@ -6,10 +6,12 @@ import '../../data/services/profit_calculation_service.dart';
 import '../../domain/models/expense.dart';
 import '../../domain/models/income.dart';
 import '../../domain/models/room.dart';
+import '../../domain/models/room_rent_status.dart';
 import '../../domain/models/villa_model.dart';
 import 'expense_provider.dart';
 import 'income_provider.dart';
 import 'room_provider.dart';
+import 'rent_status_provider.dart';
 import 'villa_provider.dart';
 
 final selectedMonthProvider = StateProvider<DateTime>((ref) {
@@ -22,6 +24,7 @@ final dashboardSummaryProvider = Provider<DashboardSummary>((ref) {
   final incomesAsync = ref.watch(incomeListProvider);
   final expensesAsync = ref.watch(expenseListProvider);
   final selectedMonth = ref.watch(selectedMonthProvider);
+  final rentStatus = ref.watch(rentStatusSummaryProvider);
 
   final villas = villasAsync.valueOrNull ?? const <VillaModel>[];
   final rooms = roomsAsync.valueOrNull ?? const <Room>[];
@@ -34,6 +37,7 @@ final dashboardSummaryProvider = Provider<DashboardSummary>((ref) {
     rooms: rooms.where((room) => !room.isDeleted).toList(),
     incomes: incomes.where((income) => !income.isDeleted).toList(),
     expenses: expenses.where((expense) => !expense.isDeleted).toList(),
+    rentStatus: rentStatus,
   );
 });
 
@@ -46,6 +50,7 @@ class DashboardSummary {
   final Map<String, double> rentReceivedByRoom;
   final Map<String, double> expensesByCategory;
   final DashboardRoomMetrics metrics;
+  final RentStatusSummary rentStatus;
   final double totalIncome;
   final double totalExpense;
 
@@ -58,6 +63,7 @@ class DashboardSummary {
     required this.rentReceivedByRoom,
     required this.expensesByCategory,
     required this.metrics,
+    required this.rentStatus,
     required this.totalIncome,
     required this.totalExpense,
   });
@@ -68,6 +74,7 @@ class DashboardSummary {
     required List<Room> rooms,
     required List<Income> incomes,
     required List<Expense> expenses,
+    required RentStatusSummary rentStatus,
   }) {
     const profitService = ProfitCalculationService();
     final activeRooms = profitService.activeRoomsFor(
@@ -117,6 +124,7 @@ class DashboardSummary {
         vacancyLoss: monthlySummary.vacancyLoss,
         rentReceived: monthlySummary.rentReceived,
       ),
+      rentStatus: rentStatus,
       totalIncome: monthlySummary.actualIncome,
       totalExpense: monthlySummary.expensesPaid,
     );

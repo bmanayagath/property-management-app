@@ -71,7 +71,7 @@ class ExpenseCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 3),
                   Text(
-                    _locationLabel(expense),
+                    expense.locationLabel,
                     style: const TextStyle(
                       color: Color(0xFF646B7A),
                       fontSize: 11,
@@ -122,14 +122,6 @@ class ExpenseCard extends StatelessWidget {
         ),
       ),
     );
-  }
-
-  String _locationLabel(Expense expense) {
-    final roomName = expense.roomName?.trim() ?? '';
-    if (roomName.isNotEmpty) return roomName;
-    final villaName = expense.villaName.trim();
-    if (villaName.isNotEmpty) return villaName;
-    return 'General Expense';
   }
 }
 

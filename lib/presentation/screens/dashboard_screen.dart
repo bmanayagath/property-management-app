@@ -9,6 +9,7 @@ import '../../core/constants/app_permissions.dart';
 import '../../domain/models/expense.dart';
 import '../../domain/models/income.dart';
 import '../../domain/models/room.dart';
+import '../../domain/models/room_rent_status.dart';
 import '../../domain/models/villa_model.dart';
 import '../providers/auth_provider.dart';
 import '../providers/dashboard_provider.dart';
@@ -20,10 +21,12 @@ import '../providers/room_provider.dart';
 import '../providers/villa_provider.dart';
 import '../widgets/premium_widgets.dart';
 import '../widgets/currency_amount_text.dart';
+import '../widgets/overdue_badge.dart';
 import 'add_edit_expense_screen.dart';
 import 'add_edit_villa_screen.dart';
 import 'income/add_edit_income_screen.dart';
 import 'notifications/notifications_screen.dart';
+import 'room_rent_status_screen.dart';
 import 'villa_detail_screen.dart';
 
 class DashboardScreen extends ConsumerWidget {
@@ -74,6 +77,18 @@ class DashboardScreen extends ConsumerWidget {
               vacancyLoss: dashboard.vacancyLoss,
             ),
             const SizedBox(height: 20),
+            _OverdueRentCard(
+              roomCount: summary.rentStatus.overdueRoomCount,
+              villaCount: summary.rentStatus.overdueVillaCount,
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => const RoomRentStatusScreen(
+                    initialFilter: RoomRentFilter.overdue,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
             _QuickActions(
               onAddIncome: canManageIncome
                   ? () => Navigator.of(context).push(
@@ -111,6 +126,7 @@ class DashboardScreen extends ConsumerWidget {
               incomes: summary.incomes,
               expenses: summary.expenses,
               rentReceivedByRoom: summary.rentReceivedByRoom,
+              rentStatus: summary.rentStatus,
               selectedMonth: summary.selectedMonth,
               onViewAll: () => ref.read(selectedTabProvider.notifier).state = 1,
             ),
@@ -897,6 +913,111 @@ class _MetricCard extends StatelessWidget {
   }
 }
 
+class _OverdueRentCard extends StatelessWidget {
+  final int roomCount;
+  final int villaCount;
+  final VoidCallback onTap;
+
+  const _OverdueRentCard({
+    required this.roomCount,
+    required this.villaCount,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final hasOverdueRent = roomCount > 0;
+    final color = hasOverdueRent ? AppColors.error : AppColors.success;
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.055),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: color.withValues(alpha: 0.24)),
+          boxShadow: [
+            BoxShadow(
+              color: color.withValues(alpha: 0.055),
+              blurRadius: 18,
+              offset: const Offset(0, 7),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.12),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                hasOverdueRent
+                    ? Icons.warning_amber_rounded
+                    : Icons.check_circle_outline_rounded,
+                color: color,
+                size: 25,
+              ),
+            ),
+            const SizedBox(width: 13),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Overdue Rent',
+                    style: TextStyle(
+                      color: color,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    '$roomCount ${roomCount == 1 ? 'Room' : 'Rooms'}',
+                    style: const TextStyle(
+                      color: Color(0xFF060B26),
+                      fontSize: 20,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  Text(
+                    'Across $villaCount ${villaCount == 1 ? 'Villa' : 'Villas'}',
+                    style: const TextStyle(
+                      color: Color(0xFF656B7B),
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(
+                  'Tap to View',
+                  style: TextStyle(
+                    color: color,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Icon(Icons.chevron_right_rounded, color: color),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _QuickActions extends StatelessWidget {
   final VoidCallback? onAddIncome;
   final VoidCallback? onAddExpense;
@@ -1213,6 +1334,7 @@ class _VillaSummary extends StatelessWidget {
   final List<Income> incomes;
   final List<Expense> expenses;
   final Map<String, double> rentReceivedByRoom;
+  final RentStatusSummary rentStatus;
   final DateTime selectedMonth;
   final VoidCallback onViewAll;
 
@@ -1222,6 +1344,7 @@ class _VillaSummary extends StatelessWidget {
     required this.incomes,
     required this.expenses,
     required this.rentReceivedByRoom,
+    required this.rentStatus,
     required this.selectedMonth,
     required this.onViewAll,
   });
@@ -1282,6 +1405,7 @@ class _VillaSummary extends StatelessWidget {
                 incomes.where((income) => income.villaId == villa.id),
                 expenses.where((expense) => expense.villaId == villa.id),
                 selectedMonth,
+                rentStatus.forVilla(villa.id),
               );
 
               return Padding(
@@ -1362,6 +1486,10 @@ class _VillaRow extends StatelessWidget {
                           ),
                         ),
                       ),
+                      if (summary.overdueRooms > 0) ...[
+                        const SizedBox(height: 6),
+                        VillaOverdueIndicator(count: summary.overdueRooms),
+                      ],
                       if (villa.location.trim().isNotEmpty) ...[
                         const SizedBox(height: 3),
                         Row(
@@ -1585,6 +1713,7 @@ class _VillaRoomSummary {
   final int totalRooms;
   final int occupiedRooms;
   final int vacantRooms;
+  final int overdueRooms;
   final double totalRoomRent;
   final double expectedRent;
   final double rentReceived;
@@ -1598,6 +1727,7 @@ class _VillaRoomSummary {
     required this.totalRooms,
     required this.occupiedRooms,
     required this.vacantRooms,
+    required this.overdueRooms,
     required this.totalRoomRent,
     required this.expectedRent,
     required this.rentReceived,
@@ -1614,6 +1744,7 @@ class _VillaRoomSummary {
     Iterable<Income> incomes,
     Iterable<Expense> expenses,
     DateTime selectedMonth,
+    VillaRentStatus rentStatus,
   ) {
     var totalRooms = 0;
     var occupiedRooms = 0;
@@ -1665,6 +1796,7 @@ class _VillaRoomSummary {
       totalRooms: totalRooms,
       occupiedRooms: occupiedRooms,
       vacantRooms: vacantRooms,
+      overdueRooms: rentStatus.overdueRoomCount,
       totalRoomRent: totalRoomRent,
       expectedRent: expectedRent,
       rentReceived: rentReceived,

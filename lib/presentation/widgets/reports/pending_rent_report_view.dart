@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../domain/models/report_models.dart';
 import '../currency_amount_text.dart';
+import '../overdue_badge.dart';
 
 class PendingRentReportView extends StatelessWidget {
   final List<PendingRentReportItem> items;
@@ -88,6 +89,11 @@ class _PendingRentCard extends StatelessWidget {
                   ),
                 ),
               ),
+              if (item.isOverdue) ...[
+                const SizedBox(width: 6),
+                const OverdueBadge(),
+              ],
+              const SizedBox(width: 6),
               Text(
                 'Day ${item.dueDay}',
                 style: const TextStyle(

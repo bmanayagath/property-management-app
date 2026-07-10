@@ -4,13 +4,12 @@ import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_styles.dart';
 import '../../core/constants/app_permissions.dart';
 import '../../data/services/logger_service.dart';
-import '../../domain/models/income.dart';
 import '../../domain/models/room.dart';
 import '../../domain/models/villa_model.dart';
 import '../providers/auth_provider.dart';
 import '../providers/dashboard_provider.dart';
 import '../providers/database_provider.dart';
-import '../providers/income_provider.dart';
+import '../providers/rent_status_provider.dart';
 import '../providers/room_provider.dart';
 import '../providers/villa_provider.dart';
 import '../widgets/premium_widgets.dart';
@@ -34,7 +33,7 @@ class _VillasScreenState extends ConsumerState<VillasScreen> {
   Widget build(BuildContext context) {
     final villasAsync = ref.watch(villasProvider);
     final roomsAsync = ref.watch(allRoomsProvider);
-    final incomesAsync = ref.watch(incomeListProvider);
+    final rentStatus = ref.watch(rentStatusSummaryProvider);
     final authState = ref.watch(authProvider);
     final canManageVillas =
         authState.hasPermission(AppPermissions.manageVillas);
@@ -55,11 +54,10 @@ class _VillasScreenState extends ConsumerState<VillasScreen> {
               activeRooms: activeRooms,
               activeVillas: activeVillas,
             );
-            final rentReceivedByRoom = _rentReceivedByRoom(
-              incomesAsync.valueOrNull ?? const <Income>[],
-              DateTime.now(),
-              activeRoomIds: activeRooms.map((room) => room.id).toSet(),
-            );
+            final rentReceivedByRoom = <String, double>{
+              for (final status in rentStatus.rooms)
+                status.room.id: status.rentReceived,
+            };
             final roomsByVilla = <String, List<Room>>{};
             for (final room in activeRooms) {
               roomsByVilla.putIfAbsent(room.villaId, () => []).add(room);
@@ -187,6 +185,7 @@ class _VillasScreenState extends ConsumerState<VillasScreen> {
                                 villa: villa,
                                 rooms: _villaRooms(villa, roomsByVilla),
                                 rentReceivedByRoom: rentReceivedByRoom,
+                                rentStatus: rentStatus.forVilla(villa.id),
                                 onTap: () {
                                   Navigator.of(context).push(
                                     MaterialPageRoute(
@@ -281,30 +280,6 @@ class _VillasScreenState extends ConsumerState<VillasScreen> {
     Map<String, List<Room>> roomsByVilla,
   ) {
     return roomsByVilla[villa.id] ?? const [];
-  }
-
-  Map<String, double> _rentReceivedByRoom(
-    List<Income> incomes,
-    DateTime month, {
-    required Set<String> activeRoomIds,
-  }) {
-    final totals = <String, double>{};
-    for (final income in incomes.where(
-      (income) =>
-          !income.isDeleted &&
-          income.incomeType.toLowerCase() == IncomeTypes.rent.toLowerCase() &&
-          income.roomId.trim().isNotEmpty &&
-          activeRoomIds.contains(income.roomId) &&
-          income.monthCovered.year == month.year &&
-          income.monthCovered.month == month.month,
-    )) {
-      totals.update(
-        income.roomId,
-        (value) => value + income.amount,
-        ifAbsent: () => income.amount,
-      );
-    }
-    return totals;
   }
 
   void _logRoomSummaryOnce({

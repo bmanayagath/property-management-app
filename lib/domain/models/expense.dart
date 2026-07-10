@@ -45,6 +45,26 @@ class Expense {
     this.lastSyncedAt,
   });
 
+  bool get hasRoomAssociation =>
+      (roomId?.trim().isNotEmpty ?? false) ||
+      (roomName?.trim().isNotEmpty ?? false);
+
+  String get displayVillaName {
+    final name = villaName.trim();
+    return name.isEmpty ? 'General Expense' : name;
+  }
+
+  String get displayRoomName {
+    final name = roomName?.trim() ?? '';
+    return name.isEmpty ? 'Room' : name;
+  }
+
+  String get locationLabel {
+    if (!hasRoomAssociation) return displayVillaName;
+    final villa = villaName.trim().isEmpty ? 'Villa' : villaName.trim();
+    return '$villa • $displayRoomName';
+  }
+
   Expense copyWith({
     String? id,
     String? orgId,
