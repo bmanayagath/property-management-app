@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../core/constants/app_colors.dart';
 import '../../domain/models/room.dart';
 import 'currency_amount_text.dart';
+import 'overdue_badge.dart';
 
 class RoomCard extends StatelessWidget {
   final Room room;
@@ -16,6 +17,8 @@ class RoomCard extends StatelessWidget {
   final VoidCallback? onShareMedia;
   final double? pendingRent;
   final String pendingRentLabel;
+  final bool isOverdue;
+  final bool showVillaName;
 
   const RoomCard({
     Key? key,
@@ -31,6 +34,8 @@ class RoomCard extends StatelessWidget {
     this.onShareMedia,
     this.pendingRent,
     this.pendingRentLabel = 'Pending',
+    this.isOverdue = false,
+    this.showVillaName = false,
   }) : super(key: key);
 
   Color _getStatusColor(bool isOccupied) {
@@ -90,14 +95,37 @@ class RoomCard extends StatelessWidget {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
+                      if (showVillaName &&
+                          room.villaName.trim().isNotEmpty) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          room.villaName.trim(),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: Color(0xFF646B7A),
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                      const SizedBox(height: 5),
+                      Wrap(
+                        spacing: 5,
+                        runSpacing: 4,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        children: [
+                          _StatusBadge(
+                            label: room.isOccupied ? 'Occupied' : 'Vacant',
+                            color: _getStatusColor(room.isOccupied),
+                          ),
+                          if (isOverdue) const OverdueBadge(),
+                        ],
+                      ),
                     ],
                   ),
                 ),
                 const SizedBox(width: 8),
-                _StatusBadge(
-                  label: room.isOccupied ? 'Occupied' : 'Vacant',
-                  color: _getStatusColor(room.isOccupied),
-                ),
                 if (onCallTenant != null) ...[
                   const SizedBox(width: 6),
                   _TenantActionButton(

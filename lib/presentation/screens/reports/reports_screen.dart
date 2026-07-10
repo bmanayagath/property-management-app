@@ -251,10 +251,22 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
             receivedRent: item.rentReceived,
             pendingRent: item.pendingRent,
             dueDay: item.paymentDueDay,
+            isOverdue: item.isOverdue,
+            overdueDays: item.overdueDays,
           ),
         )
         .where((item) => item.pendingRent > 0)
-        .toList();
+        .toList()
+      ..sort((left, right) {
+        if (left.isOverdue != right.isOverdue) {
+          return left.isOverdue ? -1 : 1;
+        }
+        final pending = right.pendingRent.compareTo(left.pendingRent);
+        if (pending != 0) return pending;
+        final dueDay = left.dueDay.compareTo(right.dueDay);
+        if (dueDay != 0) return dueDay;
+        return left.villaName.compareTo(right.villaName);
+      });
     final roomProfitItems = roomSummaries.map(_toRoomReportItem).toList();
     final vacancyItems =
         roomProfitItems.where((item) => item.isVacant).toList();
@@ -570,6 +582,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
             'Received Rent',
             'Pending Rent',
             'Due Day',
+            'Status',
           ],
           rows: data.pendingRentItems
               .map(
@@ -580,6 +593,9 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                   _money(item.receivedRent),
                   _money(item.pendingRent),
                   item.dueDay.toString(),
+                  item.isOverdue
+                      ? 'Overdue ${item.overdueDays} days'
+                      : 'Pending',
                 ],
               )
               .toList(),

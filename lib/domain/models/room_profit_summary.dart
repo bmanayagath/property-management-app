@@ -18,6 +18,9 @@ class RoomProfitSummary {
   final double actualProfit;
   final double expectedProfit;
   final double rentCollectionPercentage;
+  final DateTime dueDate;
+  final bool isOverdue;
+  final int overdueDays;
 
   const RoomProfitSummary({
     required this.roomId,
@@ -39,6 +42,9 @@ class RoomProfitSummary {
     required this.actualProfit,
     required this.expectedProfit,
     required this.rentCollectionPercentage,
+    required this.dueDate,
+    required this.isOverdue,
+    required this.overdueDays,
   });
 
   bool get isOccupied => status.toLowerCase() == 'occupied';

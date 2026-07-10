@@ -104,11 +104,15 @@ class ExpenseDetailScreen extends ConsumerWidget {
                     const SizedBox(height: 22),
                     _DetailRow(
                       label: 'Villa',
-                      value: expense.villaName.trim().isEmpty
-                          ? 'General Expense'
-                          : expense.villaName,
+                      value: expense.displayVillaName,
                       icon: Icons.home_outlined,
                     ),
+                    if (expense.hasRoomAssociation)
+                      _DetailRow(
+                        label: 'Room',
+                        value: expense.displayRoomName,
+                        icon: Icons.meeting_room_outlined,
+                      ),
                     _DetailRow(
                       label: 'Date',
                       value: _dateFormat.format(expense.expenseDate),

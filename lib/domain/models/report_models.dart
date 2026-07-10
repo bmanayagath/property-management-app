@@ -92,6 +92,8 @@ class PendingRentReportItem {
   final double receivedRent;
   final double pendingRent;
   final int dueDay;
+  final bool isOverdue;
+  final int overdueDays;
 
   const PendingRentReportItem({
     required this.villaName,
@@ -100,6 +102,8 @@ class PendingRentReportItem {
     required this.receivedRent,
     required this.pendingRent,
     required this.dueDay,
+    required this.isOverdue,
+    required this.overdueDays,
   });
 }
 

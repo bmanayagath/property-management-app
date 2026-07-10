@@ -12,8 +12,8 @@ import '../../data/services/logger_service.dart';
 import '../../data/services/room_media_picker_service.dart';
 import '../../data/services/tenant_contact_service.dart';
 import '../../data/services/whatsapp_share_service.dart';
-import '../../domain/models/income.dart';
 import '../../domain/models/room.dart';
+import '../../domain/models/room_rent_status.dart';
 import '../../domain/models/villa_model.dart';
 import '../../models/room_media.dart';
 import '../widgets/currency_amount_text.dart';
@@ -21,7 +21,7 @@ import '../widgets/destructive_action_dialog.dart';
 import '../providers/auth_provider.dart';
 import '../providers/dashboard_provider.dart';
 import '../providers/database_provider.dart';
-import '../providers/income_provider.dart';
+import '../providers/rent_status_provider.dart';
 import '../providers/room_media_provider.dart';
 import '../providers/villa_provider.dart';
 import '../providers/room_provider.dart';
@@ -32,6 +32,11 @@ import '../widgets/premium_widgets.dart';
 import '../widgets/room_card.dart';
 import 'add_edit_villa_screen.dart';
 import 'add_edit_room_screen.dart';
+
+final _villaRoomFilterProvider =
+    StateProvider.autoDispose.family<RoomRentFilter, String>(
+  (ref, villaId) => RoomRentFilter.all,
+);
 
 class VillaDetailScreen extends ConsumerWidget {
   final String villaId;
@@ -211,6 +216,9 @@ class VillaDetailScreen extends ConsumerWidget {
                   const SizedBox(height: 24),
 
                   _buildLocationSection(context, ref, villa),
+                  const SizedBox(height: 24),
+
+                  _buildRentStatus(ref, villa.id),
                   const SizedBox(height: 24),
 
                   // Rooms List
@@ -604,6 +612,66 @@ class VillaDetailScreen extends ConsumerWidget {
     );
   }
 
+  Widget _buildRentStatus(WidgetRef ref, String villaId) {
+    final status = ref.watch(rentStatusSummaryProvider).forVilla(villaId);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Rent Status', style: AppStyles.titleMedium),
+        const SizedBox(height: 12),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: status.hasOverdueRent
+                ? AppColors.error.withValues(alpha: 0.045)
+                : AppColors.surface,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: status.hasOverdueRent
+                  ? AppColors.error.withValues(alpha: 0.28)
+                  : AppColors.border,
+            ),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: _RentStatusMetric(
+                  label: 'Overdue Rooms',
+                  value: status.overdueRoomCount.toString(),
+                  color: status.hasOverdueRent
+                      ? AppColors.error
+                      : AppColors.textPrimary,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _RentStatusMetric(
+                  label: 'Pending Amount',
+                  amount: status.overduePendingAmount,
+                  color: status.hasOverdueRent
+                      ? AppColors.error
+                      : AppColors.textPrimary,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _RentStatusMetric(
+                  label: 'Oldest Overdue',
+                  value: '${status.oldestOverdueDays} Days',
+                  color: status.hasOverdueRent
+                      ? AppColors.error
+                      : AppColors.textPrimary,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildRoomsList(
     BuildContext context,
     WidgetRef ref,
@@ -613,10 +681,8 @@ class VillaDetailScreen extends ConsumerWidget {
     bool canShareRoomMedia,
   ) {
     final roomsAsync = ref.watch(watchRoomsByVillaProvider(villaId));
-    final incomes =
-        ref.watch(incomeListProvider).valueOrNull ?? const <Income>[];
-    final currentMonth = DateTime(DateTime.now().year, DateTime.now().month, 1);
-    final rentReceivedByRoom = _rentReceivedByRoom(incomes, currentMonth);
+    final rentStatus = ref.watch(rentStatusSummaryProvider);
+    final selectedFilter = ref.watch(_villaRoomFilterProvider(villaId));
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -642,6 +708,42 @@ class VillaDetailScreen extends ConsumerWidget {
                 label: const Text('Add Room'),
               ),
           ],
+        ),
+        const SizedBox(height: 12),
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: RoomRentFilter.values.map((filter) {
+              final isSelected = filter == selectedFilter;
+              return Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: ChoiceChip(
+                  label: Text(filter.label),
+                  selected: isSelected,
+                  onSelected: (_) {
+                    ref.read(_villaRoomFilterProvider(villaId).notifier).state =
+                        filter;
+                  },
+                  selectedColor: filter == RoomRentFilter.overdue
+                      ? AppColors.error.withValues(alpha: 0.13)
+                      : AppColors.primary.withValues(alpha: 0.12),
+                  labelStyle: TextStyle(
+                    color: isSelected && filter == RoomRentFilter.overdue
+                        ? AppColors.error
+                        : isSelected
+                            ? AppColors.primary
+                            : AppColors.textSecondary,
+                    fontWeight: FontWeight.w800,
+                  ),
+                  side: BorderSide(
+                    color: isSelected && filter == RoomRentFilter.overdue
+                        ? AppColors.error.withValues(alpha: 0.35)
+                        : AppColors.border,
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
         ),
         const SizedBox(height: 12),
         roomsAsync.when(
@@ -695,24 +797,47 @@ class VillaDetailScreen extends ConsumerWidget {
               );
             }
 
+            final activeRoomIds = activeRooms.map((room) => room.id).toSet();
+            final visibleStatuses = rentStatus
+                .filtered(selectedFilter, villaId: villaId)
+                .where((status) => activeRoomIds.contains(status.room.id))
+                .toList();
+
+            if (visibleStatuses.isEmpty) {
+              return Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: AppColors.surface,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppColors.border),
+                ),
+                child: Text(
+                  'No ${selectedFilter.label.toLowerCase()} rooms found.',
+                  textAlign: TextAlign.center,
+                  style: AppStyles.bodyMedium.copyWith(
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              );
+            }
+
             return ListView.builder(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
-              itemCount: activeRooms.length,
+              itemCount: visibleStatuses.length,
               itemBuilder: (context, index) {
-                final room = activeRooms[index];
-                final received = rentReceivedByRoom[room.id] ?? 0;
-                final pending = room.isOccupied
-                    ? (room.monthlyRent - received)
-                        .clamp(0.0, double.infinity)
-                        .toDouble()
-                    : room.monthlyRent;
+                final status = visibleStatuses[index];
+                final room = status.room;
+                final pending =
+                    room.isOccupied ? status.pendingRent : room.monthlyRent;
                 final hasTenantPhone = room.tenantPhone.trim().isNotEmpty;
                 return RoomCard(
                   room: room,
                   pendingRent: pending,
                   pendingRentLabel:
                       room.isOccupied ? 'Pending' : 'Potential Loss',
+                  isOverdue: status.isOverdue,
                   onTap: () {
                     Navigator.push(
                       context,
@@ -1023,25 +1148,56 @@ class VillaDetailScreen extends ConsumerWidget {
       'raw rooms for villa=$rawCount',
     );
   }
+}
 
-  Map<String, double> _rentReceivedByRoom(
-      List<Income> incomes, DateTime month) {
-    final totals = <String, double>{};
-    for (final income in incomes.where(
-      (income) =>
-          !income.isDeleted &&
-          incomeCalculationService.isRentIncome(income) &&
-          income.roomId.trim().isNotEmpty &&
-          income.monthCovered.year == month.year &&
-          income.monthCovered.month == month.month,
-    )) {
-      totals.update(
-        income.roomId,
-        (value) => value + income.amount,
-        ifAbsent: () => income.amount,
-      );
-    }
-    return totals;
+class _RentStatusMetric extends StatelessWidget {
+  final String label;
+  final String? value;
+  final double? amount;
+  final Color color;
+
+  const _RentStatusMetric({
+    required this.label,
+    this.value,
+    this.amount,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: AppStyles.labelSmall,
+        ),
+        const SizedBox(height: 5),
+        if (amount != null)
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: CurrencyAmountText(
+              amount: amount!,
+              amountColor: color,
+              amountFontSize: 14,
+              currencyFontSize: 8,
+            ),
+          )
+        else
+          Text(
+            value ?? '',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: AppStyles.bodyMedium.copyWith(
+              color: color,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+      ],
+    );
   }
 }
 

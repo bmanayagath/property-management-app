@@ -2,13 +2,16 @@ import 'package:flutter/material.dart';
 
 import '../../core/constants/app_colors.dart';
 import '../../domain/models/room.dart';
+import '../../domain/models/room_rent_status.dart';
 import '../../domain/models/villa_model.dart';
 import 'currency_amount_text.dart';
+import 'overdue_badge.dart';
 
 class VillaCard extends StatelessWidget {
   final VillaModel villa;
   final List<Room> rooms;
   final Map<String, double> rentReceivedByRoom;
+  final VillaRentStatus? rentStatus;
   final VoidCallback onTap;
   final VoidCallback? onDelete;
 
@@ -17,6 +20,7 @@ class VillaCard extends StatelessWidget {
     required this.villa,
     this.rooms = const [],
     this.rentReceivedByRoom = const {},
+    this.rentStatus,
     required this.onTap,
     this.onDelete,
   }) : super(key: key);
@@ -98,6 +102,12 @@ class VillaCard extends StatelessWidget {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
+                      if (rentStatus?.hasOverdueRent ?? false) ...[
+                        const SizedBox(height: 5),
+                        VillaOverdueIndicator(
+                          count: rentStatus!.overdueRoomCount,
+                        ),
+                      ],
                       const SizedBox(height: 2),
                       Text(
                         villa.location,
