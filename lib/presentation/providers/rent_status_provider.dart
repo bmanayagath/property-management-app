@@ -32,16 +32,31 @@ final rentStatusClockProvider = StreamProvider<DateTime>((ref) {
 });
 
 final rentStatusSummaryProvider = Provider<RentStatusSummary>((ref) {
+  final now = ref.watch(rentStatusClockProvider).valueOrNull ?? DateTime.now();
+  return _buildRentStatusSummary(ref, now);
+});
+
+final rentStatusSummaryForMonthProvider =
+    Provider.family<RentStatusSummary, DateTime>((ref, month) {
+  final now = ref.watch(rentStatusClockProvider).valueOrNull ?? DateTime.now();
+  final service = const RentStatusCalculationService();
+  final referenceDate = service.referenceDateForMonth(
+    month: month,
+    now: now,
+  );
+  return _buildRentStatusSummary(ref, referenceDate);
+});
+
+RentStatusSummary _buildRentStatusSummary(Ref ref, DateTime referenceDate) {
   final villas =
       ref.watch(villaListProvider).valueOrNull ?? const <VillaModel>[];
   final rooms = ref.watch(roomListProvider).valueOrNull ?? const <Room>[];
   final incomes = ref.watch(incomeListProvider).valueOrNull ?? const <Income>[];
-  final now = ref.watch(rentStatusClockProvider).valueOrNull ?? DateTime.now();
   final activeRooms = activeRoomsOnly(rooms: rooms, villas: villas);
 
   return const RentStatusCalculationService().buildSummary(
     rooms: activeRooms,
     incomes: incomes,
-    now: now,
+    now: referenceDate,
   );
-});
+}

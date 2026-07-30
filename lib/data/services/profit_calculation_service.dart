@@ -464,7 +464,10 @@ class ProfitCalculationService {
     final rentStatus = _rentStatusCalculation.calculateRoomStatus(
       room: room,
       rentReceived: rentReceived,
-      now: _rentStatusReferenceDate(month),
+      now: _rentStatusCalculation.referenceDateForMonth(
+        month: month,
+        now: DateTime.now(),
+      ),
     );
 
     return RoomProfitSummary(
@@ -492,19 +495,6 @@ class ProfitCalculationService {
       isOverdue: rentStatus.isOverdue,
       overdueDays: rentStatus.overdueDays,
     );
-  }
-
-  DateTime _rentStatusReferenceDate(DateTime month) {
-    final now = DateTime.now();
-    final selectedMonth = DateTime(month.year, month.month);
-    final currentMonth = DateTime(now.year, now.month);
-    if (selectedMonth.isBefore(currentMonth)) {
-      return DateTime(month.year, month.month + 1, 0);
-    }
-    if (selectedMonth.isAfter(currentMonth)) {
-      return DateTime(month.year, month.month, 1);
-    }
-    return now;
   }
 
   bool _isSameMonth(DateTime date, DateTime month) {

@@ -70,6 +70,26 @@ void main() {
       final februaryDueDate = service.dueDateFor(31, DateTime(2026, 2, 1));
       expect(februaryDueDate, DateTime(2026, 2, 28));
     });
+
+    test('uses today, month end, or month start for selected dashboard month',
+        () {
+      final current = service.referenceDateForMonth(
+        month: DateTime(2026, 7),
+        now: now,
+      );
+      final past = service.referenceDateForMonth(
+        month: DateTime(2026, 6),
+        now: now,
+      );
+      final future = service.referenceDateForMonth(
+        month: DateTime(2026, 8),
+        now: now,
+      );
+
+      expect(current, DateTime(2026, 7, 10));
+      expect(past, DateTime(2026, 6, 30));
+      expect(future, DateTime(2026, 8, 1));
+    });
   });
 
   test('aggregates villas and applies the required room sort order', () {

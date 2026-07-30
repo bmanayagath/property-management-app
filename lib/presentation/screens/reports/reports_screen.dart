@@ -15,6 +15,7 @@ import '../../../domain/models/villa_model.dart';
 import '../../providers/expense_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/dashboard_provider.dart';
+import '../../providers/active_data_helpers.dart';
 import '../../providers/income_provider.dart';
 import '../../providers/room_provider.dart';
 import '../../providers/villa_provider.dart';
@@ -377,60 +378,77 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
     required List<VillaModel> villas,
     required List<Room> rooms,
   }) {
+    final activeVillas = activeVillasOnly(villas);
+    final activeRooms = activeRoomsForVillas(
+      rooms: rooms,
+      villas: activeVillas,
+    );
+    var sheetVillaId = _selectedVillaId;
+    var sheetRoomId = _selectedRoomId;
+
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) {
-        return SafeArea(
-          child: Padding(
-            padding: EdgeInsets.only(
-              left: 14,
-              right: 14,
-              bottom: MediaQuery.viewInsetsOf(context).bottom + 14,
-            ),
-            child: Material(
-              color: const Color(0xFFF8F9FA),
-              borderRadius: BorderRadius.circular(28),
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(16),
-                child: _Filters(
-                  selectedMonth: _selectedMonth,
-                  selectedYear: _selectedYear,
-                  selectedReportType: _selectedReportType,
-                  villas: villas,
-                  rooms: rooms,
-                  selectedVillaId: _selectedVillaId,
-                  selectedRoomId: _selectedRoomId,
-                  selectedStatus: _selectedStatus,
-                  onPreviousMonth: () => _changeMonth(-1),
-                  onNextMonth: () => _changeMonth(1),
-                  onYearChanged: (year) {
-                    if (year == null) return;
-                    setState(() => _selectedYear = year);
-                  },
-                  onReportTypeChanged: (type) {
-                    if (type == null) return;
-                    setState(() => _selectedReportType = type);
-                    Navigator.of(context).pop();
-                  },
-                  onVillaChanged: (villaId) {
-                    setState(() {
-                      _selectedVillaId = villaId;
-                      _selectedRoomId = null;
-                    });
-                  },
-                  onRoomChanged: (roomId) {
-                    setState(() => _selectedRoomId = roomId);
-                  },
-                  onStatusChanged: (status) {
-                    if (status == null) return;
-                    setState(() => _selectedStatus = status);
-                  },
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            return SafeArea(
+              child: Padding(
+                padding: EdgeInsets.only(
+                  left: 14,
+                  right: 14,
+                  bottom: MediaQuery.viewInsetsOf(context).bottom + 14,
+                ),
+                child: Material(
+                  color: const Color(0xFFF8F9FA),
+                  borderRadius: BorderRadius.circular(28),
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.all(16),
+                    child: _Filters(
+                      selectedMonth: _selectedMonth,
+                      selectedYear: _selectedYear,
+                      selectedReportType: _selectedReportType,
+                      villas: activeVillas,
+                      rooms: activeRooms,
+                      selectedVillaId: sheetVillaId,
+                      selectedRoomId: sheetRoomId,
+                      selectedStatus: _selectedStatus,
+                      onPreviousMonth: () => _changeMonth(-1),
+                      onNextMonth: () => _changeMonth(1),
+                      onYearChanged: (year) {
+                        if (year == null) return;
+                        setState(() => _selectedYear = year);
+                      },
+                      onReportTypeChanged: (type) {
+                        if (type == null) return;
+                        setState(() => _selectedReportType = type);
+                        Navigator.of(context).pop();
+                      },
+                      onVillaChanged: (villaId) {
+                        setSheetState(() {
+                          sheetVillaId = villaId;
+                          sheetRoomId = null;
+                        });
+                        setState(() {
+                          _selectedVillaId = villaId;
+                          _selectedRoomId = null;
+                        });
+                      },
+                      onRoomChanged: (roomId) {
+                        setSheetState(() => sheetRoomId = roomId);
+                        setState(() => _selectedRoomId = roomId);
+                      },
+                      onStatusChanged: (status) {
+                        if (status == null) return;
+                        setState(() => _selectedStatus = status);
+                      },
+                    ),
+                  ),
                 ),
               ),
-            ),
-          ),
+            );
+          },
         );
       },
     );

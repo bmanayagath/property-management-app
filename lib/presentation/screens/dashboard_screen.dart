@@ -82,8 +82,9 @@ class DashboardScreen extends ConsumerWidget {
               villaCount: summary.rentStatus.overdueVillaCount,
               onTap: () => Navigator.of(context).push(
                 MaterialPageRoute(
-                  builder: (_) => const RoomRentStatusScreen(
+                  builder: (_) => RoomRentStatusScreen(
                     initialFilter: RoomRentFilter.overdue,
+                    month: selectedMonth,
                   ),
                 ),
               ),

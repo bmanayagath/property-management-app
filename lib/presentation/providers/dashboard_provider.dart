@@ -24,7 +24,9 @@ final dashboardSummaryProvider = Provider<DashboardSummary>((ref) {
   final incomesAsync = ref.watch(incomeListProvider);
   final expensesAsync = ref.watch(expenseListProvider);
   final selectedMonth = ref.watch(selectedMonthProvider);
-  final rentStatus = ref.watch(rentStatusSummaryProvider);
+  final rentStatus = ref.watch(
+    rentStatusSummaryForMonthProvider(selectedMonth),
+  );
 
   final villas = villasAsync.valueOrNull ?? const <VillaModel>[];
   final rooms = roomsAsync.valueOrNull ?? const <Room>[];
