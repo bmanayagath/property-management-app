@@ -82,8 +82,9 @@ class DashboardScreen extends ConsumerWidget {
               villaCount: summary.rentStatus.overdueVillaCount,
               onTap: () => Navigator.of(context).push(
                 MaterialPageRoute(
-                  builder: (_) => const RoomRentStatusScreen(
+                  builder: (_) => RoomRentStatusScreen(
                     initialFilter: RoomRentFilter.overdue,
+                    month: selectedMonth,
                   ),
                 ),
               ),
@@ -417,7 +418,9 @@ class _DashboardHeader extends ConsumerWidget {
 
   String _greeting() {
     final hour = DateTime.now().hour;
-    return hour < 12 ? 'Good Morning' : 'Good Evening';
+    if (hour < 12) return 'Good Morning';
+    if (hour < 17) return 'Good Afternoon';
+    return 'Good Evening';
   }
 }
 
@@ -552,19 +555,22 @@ class _MonthFilter extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final month = DateFormat('MMMM yyyy').format(selectedMonth);
+    final now = DateTime.now();
+    final isCurrentMonth =
+        selectedMonth.year == now.year && selectedMonth.month == now.month;
 
     return Material(
       color: Colors.white,
-      borderRadius: BorderRadius.circular(22),
+      borderRadius: BorderRadius.circular(20),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(20),
         child: Ink(
           width: double.infinity,
-          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 17),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(22),
+            borderRadius: BorderRadius.circular(20),
             border: Border.all(color: const Color(0xFFE8EAF0)),
             boxShadow: [
               BoxShadow(
@@ -575,35 +581,68 @@ class _MonthFilter extends StatelessWidget {
             ],
           ),
           child: Row(
-            mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(
-                Icons.calendar_month_rounded,
-                color: Color(0xFF5549DE),
-                size: 24,
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF0EEFF),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: const Icon(
+                  Icons.calendar_month_rounded,
+                  color: Color(0xFF5549DE),
+                  size: 23,
+                ),
               ),
-              const SizedBox(width: 9),
-              Flexible(
-                child: FittedBox(
-                  fit: BoxFit.scaleDown,
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    month,
-                    maxLines: 1,
-                    style: const TextStyle(
-                      color: Color(0xFF060B26),
-                      fontSize: 19,
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'REPORTING PERIOD',
+                      style: TextStyle(
+                        color: Color(0xFF7A8190),
+                        fontSize: 10,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0.7,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      month,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Color(0xFF060B26),
+                        fontSize: 17,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (isCurrentMonth) ...[
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFEAF8EE),
+                    borderRadius: BorderRadius.circular(99),
+                  ),
+                  child: const Text(
+                    'Current',
+                    style: TextStyle(
+                      color: Color(0xFF238636),
+                      fontSize: 10,
                       fontWeight: FontWeight.w900,
                     ),
                   ),
                 ),
-              ),
-              const SizedBox(width: 6),
-              const Icon(
-                Icons.keyboard_arrow_down_rounded,
-                color: Color(0xFF5549DE),
-                size: 25,
-              ),
+                const SizedBox(width: 7),
+              ],
+              const Icon(Icons.expand_more_rounded, color: Color(0xFF5549DE)),
             ],
           ),
         ),
@@ -752,84 +791,104 @@ class _MetricGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final metrics = [
+      _MetricCard(
+        title: 'Income',
+        amount: totalIncome,
+        icon: Icons.trending_up_rounded,
+        color: const Color(0xFF2EA043),
+        background: const Color(0xFFF1FCF3),
+        border: const Color(0xFFC8EFD0),
+      ),
+      _MetricCard(
+        title: 'Net Profit',
+        amount: actualNetProfit,
+        icon: Icons.account_balance_wallet_rounded,
+        color: actualNetProfit >= 0
+            ? const Color(0xFF2EA043)
+            : const Color(0xFFF04438),
+        background: actualNetProfit >= 0
+            ? const Color(0xFFF1FCF3)
+            : const Color(0xFFFFF6F4),
+        border: actualNetProfit >= 0
+            ? const Color(0xFFC8EFD0)
+            : const Color(0xFFFBD2CE),
+      ),
+      _MetricCard(
+        title: 'Pending Rent',
+        amount: pendingRent,
+        icon: Icons.schedule_rounded,
+        color: const Color(0xFFF59E0B),
+        background: const Color(0xFFFFFAF0),
+        border: const Color(0xFFF8E4BC),
+      ),
+      _MetricCard(
+        title: 'Vacancy Loss',
+        amount: vacancyLoss,
+        icon: Icons.money_off_csred_rounded,
+        color: const Color(0xFFF04438),
+        background: const Color(0xFFFFF6F4),
+        border: const Color(0xFFFBD2CE),
+      ),
+      _MetricCard(
+        title: 'Occupied Rooms',
+        value: occupiedRooms.toString(),
+        icon: Icons.bed_rounded,
+        color: const Color(0xFF2EA043),
+        background: const Color(0xFFF1FCF3),
+        border: const Color(0xFFC8EFD0),
+      ),
+      _MetricCard(
+        title: 'Total Rooms',
+        value: totalRooms.toString(),
+        icon: Icons.meeting_room_rounded,
+        color: const Color(0xFF2563EB),
+        background: const Color(0xFFF4F8FF),
+        border: const Color(0xFFD2E2FF),
+      ),
+    ];
+
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          children: [
-            Expanded(
-              child: _MetricCard(
-                title: 'Income',
-                amount: totalIncome,
-                color: const Color(0xFF2EA043),
-                background: const Color(0xFFF1FCF3),
-                border: const Color(0xFFC8EFD0),
-              ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: _MetricCard(
-                title: 'Profit',
-                amount: actualNetProfit,
-                color: actualNetProfit >= 0
-                    ? const Color(0xFF2EA043)
-                    : const Color(0xFFF04438),
-                background: actualNetProfit >= 0
-                    ? const Color(0xFFF1FCF3)
-                    : const Color(0xFFFFF6F4),
-                border: actualNetProfit >= 0
-                    ? const Color(0xFFC8EFD0)
-                    : const Color(0xFFFBD2CE),
-              ),
-            ),
-          ],
+        const Text(
+          'Financial Snapshot',
+          style: TextStyle(
+            color: Color(0xFF060B26),
+            fontSize: 18,
+            fontWeight: FontWeight.w900,
+          ),
         ),
-        const SizedBox(height: 16),
-        Row(
-          children: [
-            Expanded(
-              child: _MetricCard(
-                title: 'Pending Rent',
-                amount: pendingRent,
-                color: const Color(0xFFF59E0B),
-                background: const Color(0xFFFFFAF0),
-                border: const Color(0xFFF8E4BC),
-              ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: _MetricCard(
-                title: 'Vacancy Loss',
-                amount: vacancyLoss,
-                color: const Color(0xFFF04438),
-                background: const Color(0xFFFFF6F4),
-                border: const Color(0xFFFBD2CE),
-              ),
-            ),
-          ],
+        const SizedBox(height: 4),
+        const Text(
+          'Key performance for the selected period',
+          style: TextStyle(
+            color: Color(0xFF7A8190),
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+          ),
         ),
-        const SizedBox(height: 16),
-        Row(
-          children: [
-            Expanded(
-              child: _MetricCard(
-                title: 'Occupied Rooms',
-                value: occupiedRooms.toString(),
-                color: const Color(0xFF2EA043),
-                background: const Color(0xFFF1FCF3),
-                border: const Color(0xFFC8EFD0),
-              ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: _MetricCard(
-                title: 'Total Rooms',
-                value: totalRooms.toString(),
-                color: const Color(0xFF2563EB),
-                background: const Color(0xFFF4F8FF),
-                border: const Color(0xFFD2E2FF),
-              ),
-            ),
-          ],
+        const SizedBox(height: 14),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final columns = constraints.maxWidth >= 720 ? 3 : 2;
+            const spacing = 12.0;
+            final cardWidth =
+                (constraints.maxWidth - spacing * (columns - 1)) / columns;
+
+            return Wrap(
+              spacing: spacing,
+              runSpacing: spacing,
+              children: metrics
+                  .map(
+                    (metric) => SizedBox(
+                      width: cardWidth,
+                      child: metric,
+                    ),
+                  )
+                  .toList(),
+            );
+          },
         ),
       ],
     );
@@ -840,6 +899,7 @@ class _MetricCard extends StatelessWidget {
   final String title;
   final String? value;
   final double? amount;
+  final IconData icon;
   final Color color;
   final Color background;
   final Color border;
@@ -848,6 +908,7 @@ class _MetricCard extends StatelessWidget {
     required this.title,
     this.value,
     this.amount,
+    required this.icon,
     required this.color,
     required this.background,
     required this.border,
@@ -858,8 +919,8 @@ class _MetricCard extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         return Container(
-          height: 72,
-          padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 9),
+          height: 98,
+          padding: const EdgeInsets.all(13),
           decoration: BoxDecoration(
             color: background,
             borderRadius: BorderRadius.circular(18),
@@ -872,38 +933,60 @@ class _MetricCard extends StatelessWidget {
               ),
             ],
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          child: Stack(
             children: [
-              Text(
-                title,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: color,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w800,
+              Positioned(
+                top: 0,
+                right: 0,
+                child: Container(
+                  width: 30,
+                  height: 30,
+                  decoration: BoxDecoration(
+                    color: color.withValues(alpha: 0.11),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(icon, color: color, size: 17),
                 ),
               ),
-              const SizedBox(height: 5),
-              FittedBox(
-                fit: BoxFit.scaleDown,
-                alignment: Alignment.centerLeft,
-                child: amount != null
-                    ? CurrencyAmountText(
-                        amount: amount!,
-                        amountFontSize: 21,
-                        currencyFontSize: 8,
-                      )
-                    : Text(
-                        value ?? '',
-                        maxLines: 1,
-                        style: const TextStyle(
-                          color: Color(0xFF060B26),
-                          fontSize: 21,
-                          fontWeight: FontWeight.w900,
-                        ),
+              Positioned.fill(
+                right: 34,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    Text(
+                      title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: color,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
                       ),
+                    ),
+                    const SizedBox(height: 7),
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerLeft,
+                      child: amount != null
+                          ? CurrencyAmountText(
+                              amount: amount!,
+                              amountColor: const Color(0xFF060B26),
+                              amountFontSize: 20,
+                              currencyFontSize: 8,
+                            )
+                          : Text(
+                              value ?? '',
+                              maxLines: 1,
+                              style: const TextStyle(
+                                color: Color(0xFF060B26),
+                                fontSize: 23,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
@@ -978,15 +1061,19 @@ class _OverdueRentCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 3),
                   Text(
-                    '$roomCount ${roomCount == 1 ? 'Room' : 'Rooms'}',
+                    hasOverdueRent
+                        ? '$roomCount ${roomCount == 1 ? 'Room' : 'Rooms'}'
+                        : 'All rents are on track',
                     style: const TextStyle(
                       color: Color(0xFF060B26),
-                      fontSize: 20,
+                      fontSize: 18,
                       fontWeight: FontWeight.w900,
                     ),
                   ),
                   Text(
-                    'Across $villaCount ${villaCount == 1 ? 'Villa' : 'Villas'}',
+                    hasOverdueRent
+                        ? 'Across $villaCount ${villaCount == 1 ? 'Villa' : 'Villas'}'
+                        : 'No overdue rooms for this period',
                     style: const TextStyle(
                       color: Color(0xFF656B7B),
                       fontSize: 12,
@@ -1000,7 +1087,7 @@ class _OverdueRentCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 Text(
-                  'Tap to View',
+                  hasOverdueRent ? 'View details' : 'View rooms',
                   style: TextStyle(
                     color: color,
                     fontSize: 11,

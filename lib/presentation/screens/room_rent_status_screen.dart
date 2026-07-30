@@ -12,10 +12,12 @@ import 'room_detail_screen.dart';
 
 class RoomRentStatusScreen extends ConsumerStatefulWidget {
   final RoomRentFilter initialFilter;
+  final DateTime? month;
 
   const RoomRentStatusScreen({
     super.key,
     this.initialFilter = RoomRentFilter.overdue,
+    this.month,
   });
 
   @override
@@ -34,7 +36,9 @@ class _RoomRentStatusScreenState extends ConsumerState<RoomRentStatusScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final summary = ref.watch(rentStatusSummaryProvider);
+    final summary = widget.month == null
+        ? ref.watch(rentStatusSummaryProvider)
+        : ref.watch(rentStatusSummaryForMonthProvider(widget.month!));
     final rooms = summary.filtered(_filter);
     final canManage =
         ref.watch(authProvider).hasPermission(AppPermissions.manageVillas);

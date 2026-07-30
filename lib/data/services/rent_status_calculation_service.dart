@@ -110,6 +110,21 @@ class RentStatusCalculationService {
     return DateTime(month.year, month.month, validDueDay);
   }
 
+  DateTime referenceDateForMonth({
+    required DateTime month,
+    required DateTime now,
+  }) {
+    final selectedMonth = DateTime(month.year, month.month);
+    final currentMonth = DateTime(now.year, now.month);
+    if (selectedMonth.isBefore(currentMonth)) {
+      return DateTime(month.year, month.month + 1, 0);
+    }
+    if (selectedMonth.isAfter(currentMonth)) {
+      return DateTime(month.year, month.month, 1);
+    }
+    return _dateOnly(now);
+  }
+
   int compareRoomStatuses(RoomRentStatus left, RoomRentStatus right) {
     final overdueComparison = _compareTrueFirst(
       left.isOverdue,
