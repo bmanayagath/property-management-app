@@ -16,6 +16,7 @@ import 'presentation/providers/database_provider.dart';
 import 'presentation/screens/dashboard_screen.dart';
 import 'presentation/screens/auth/choose_organization_screen.dart';
 import 'presentation/screens/auth/login_screen.dart';
+import 'presentation/screens/animated_splash_screen.dart';
 import 'presentation/screens/expenses_screen.dart';
 import 'presentation/screens/income/income_screen.dart';
 import 'presentation/screens/reports/reports_screen.dart';
@@ -156,8 +157,51 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'VillaBooks',
       theme: AppTheme.lightTheme,
-      home: const AuthGate(),
+      home: const StartupExperience(),
       debugShowCheckedModeBanner: false,
+    );
+  }
+}
+
+class StartupExperience extends ConsumerStatefulWidget {
+  const StartupExperience({super.key});
+
+  @override
+  ConsumerState<StartupExperience> createState() =>
+      _StartupExperienceState();
+}
+
+class _StartupExperienceState extends ConsumerState<StartupExperience> {
+  Timer? _timer;
+  bool _showSplash = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _timer = Timer(const Duration(milliseconds: 1500), () {
+      if (!mounted) return;
+      setState(() => _showSplash = false);
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Start authentication while the brand animation is playing.
+    ref.watch(authProvider);
+
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 320),
+      switchInCurve: Curves.easeOut,
+      switchOutCurve: Curves.easeIn,
+      child: _showSplash
+          ? const AnimatedSplashScreen(key: ValueKey('startup-splash'))
+          : const AuthGate(key: ValueKey('auth-gate')),
     );
   }
 }
