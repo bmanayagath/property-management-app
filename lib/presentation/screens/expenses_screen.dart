@@ -8,10 +8,12 @@ import '../../domain/models/expense.dart';
 import '../providers/auth_provider.dart';
 import '../providers/dashboard_provider.dart';
 import '../providers/expense_provider.dart';
+import '../providers/villa_provider.dart';
 import '../widgets/expense_card.dart';
 import '../widgets/currency_amount_text.dart';
 import '../widgets/destructive_action_dialog.dart';
 import '../widgets/premium_widgets.dart';
+import '../widgets/villa_filter_chips.dart';
 import 'add_edit_expense_screen.dart';
 import 'expense_detail_screen.dart';
 
@@ -25,11 +27,13 @@ class ExpensesScreen extends ConsumerStatefulWidget {
 class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
   String _searchQuery = '';
   String _selectedCategory = 'All';
+  String? _selectedVillaId;
 
   @override
   Widget build(BuildContext context) {
     final selectedMonth = ref.watch(selectedMonthProvider);
     final expensesAsync = ref.watch(expenseListProvider);
+    final villas = ref.watch(villaListProvider).valueOrNull ?? const [];
     final authState = ref.watch(authProvider);
     final canManageExpenses =
         authState.hasPermission(AppPermissions.manageExpenses);
@@ -43,9 +47,14 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
               .toList();
           final total = monthlyExpenses.fold<double>(
             0,
-            (sum, expense) => sum + expense.amount,
+            (sum, expense) => _selectedVillaId == null ||
+                    expense.villaId == _selectedVillaId
+                ? sum + expense.amount
+                : sum,
           );
           final filteredExpenses = monthlyExpenses.where((expense) {
+            final matchesVilla = _selectedVillaId == null ||
+                expense.villaId == _selectedVillaId;
             final matchesCategory = _selectedCategory == 'All' ||
                 _sameCategory(expense.category, _selectedCategory);
             final query = _searchQuery.toLowerCase().trim();
@@ -57,7 +66,7 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
                 expense.paymentMethod.toLowerCase().contains(query) ||
                 expense.notes.toLowerCase().contains(query);
 
-            return matchesCategory && matchesSearch;
+            return matchesVilla && matchesCategory && matchesSearch;
           }).toList()
             ..sort((a, b) => b.expenseDate.compareTo(a.expenseDate));
 
@@ -81,6 +90,13 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
                 month: selectedMonth,
                 onPrevious: () => _changeMonth(selectedMonth, -1),
                 onNext: () => _changeMonth(selectedMonth, 1),
+              ),
+              const SizedBox(height: 10),
+              VillaFilterChips(
+                villas: villas,
+                selectedVillaId: _selectedVillaId,
+                onSelected: (villaId) =>
+                    setState(() => _selectedVillaId = villaId),
               ),
               const SizedBox(height: 14),
               _SummaryCard(total: total, month: selectedMonth),
