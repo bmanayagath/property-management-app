@@ -67,7 +67,7 @@ class DashboardScreen extends ConsumerWidget {
               selectedMonth: selectedMonth,
               onTap: () => _showMonthFilter(context, ref, selectedMonth),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
             _MetricGrid(
               totalRooms: dashboard.totalRooms,
               occupiedRooms: dashboard.occupiedRooms,
@@ -76,7 +76,7 @@ class DashboardScreen extends ConsumerWidget {
               pendingRent: dashboard.pendingRent,
               vacancyLoss: dashboard.vacancyLoss,
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 14),
             _OverdueRentCard(
               roomCount: summary.rentStatus.overdueRoomCount,
               villaCount: summary.rentStatus.overdueVillaCount,
@@ -868,11 +868,11 @@ class _MetricGrid extends StatelessWidget {
             fontWeight: FontWeight.w600,
           ),
         ),
-        const SizedBox(height: 14),
+        const SizedBox(height: 10),
         LayoutBuilder(
           builder: (context, constraints) {
             final columns = constraints.maxWidth >= 720 ? 3 : 2;
-            const spacing = 12.0;
+            const spacing = 8.0;
             final cardWidth =
                 (constraints.maxWidth - spacing * (columns - 1)) / columns;
 
@@ -919,8 +919,8 @@ class _MetricCard extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         return Container(
-          height: 98,
-          padding: const EdgeInsets.all(13),
+          height: 86,
+          padding: const EdgeInsets.all(11),
           decoration: BoxDecoration(
             color: background,
             borderRadius: BorderRadius.circular(18),
@@ -939,13 +939,13 @@ class _MetricCard extends StatelessWidget {
                 top: 0,
                 right: 0,
                 child: Container(
-                  width: 30,
-                  height: 30,
+                  width: 28,
+                  height: 28,
                   decoration: BoxDecoration(
                     color: color.withValues(alpha: 0.11),
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: Icon(icon, color: color, size: 17),
+                  child: Icon(icon, color: color, size: 16),
                 ),
               ),
               Positioned.fill(
@@ -964,7 +964,7 @@ class _MetricCard extends StatelessWidget {
                         fontWeight: FontWeight.w800,
                       ),
                     ),
-                    const SizedBox(height: 7),
+                    const SizedBox(height: 3),
                     FittedBox(
                       fit: BoxFit.scaleDown,
                       alignment: Alignment.centerLeft,

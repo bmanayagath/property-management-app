@@ -178,50 +178,94 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
         )
         .where(_matchesExpenseFilters)
         .toList();
-    final roomSummaries = _profitService.calculateRoomProfitSummaries(
-      rooms: activeRooms,
-      incomes: activeIncomes,
-      expenses: activeExpenses,
-      month: _selectedMonth,
-      status: _selectedStatus,
+    final reportMonths = _reportMonths;
+    final roomSummaries = _aggregateRoomSummaries(
+      reportMonths
+          .map(
+            (month) => _profitService.calculateRoomProfitSummaries(
+              rooms: activeRooms,
+              incomes: activeIncomes,
+              expenses: activeExpenses,
+              month: month,
+              status: _selectedStatus,
+            ),
+          )
+          .toList(),
     );
-    final monthlyProfitSummary = _profitService.calculateMonthlySummary(
-      villas: scopedVillas,
-      rooms: activeRooms,
-      incomes: activeIncomes,
-      expenses: activeExpenses,
-      month: _selectedMonth,
+    final profitSummaries = reportMonths
+        .map(
+          (month) => _profitService.calculateMonthlySummary(
+            villas: scopedVillas,
+            rooms: activeRooms,
+            incomes: activeIncomes,
+            expenses: activeExpenses,
+            month: month,
+          ),
+        )
+        .toList();
+    final monthlyIncomes = reportMonths
+        .expand(
+          (month) => _profitService.monthlyIncomesFor(
+            incomes: activeIncomes,
+            month: month,
+          ),
+        )
+        .toList();
+    final monthlyExpenses = reportMonths
+        .expand(
+          (month) => _profitService.monthlyExpensesFor(
+            expenses: activeExpenses,
+            month: month,
+          ),
+        )
+        .toList();
+
+    final totalExpectedRent = profitSummaries.fold<double>(
+      0,
+      (sum, item) => sum + item.expectedRent,
     );
-    final monthlyIncomes = _profitService.monthlyIncomesFor(
-      incomes: activeIncomes,
-      month: _selectedMonth,
-    );
-    final monthlyExpenses = _profitService.monthlyExpensesFor(
-      expenses: activeExpenses,
-      month: _selectedMonth,
+    final totalRentReceived = profitSummaries.fold<double>(
+      0,
+      (sum, item) => sum + item.rentReceived,
     );
 
     final monthlySummary = MonthlySummaryReportData(
-      totalIncome: monthlyProfitSummary.actualIncome,
-      totalExpenses: monthlyProfitSummary.expensesPaid,
-      netProfit: monthlyProfitSummary.actualNetProfit,
-      totalRoomRent: monthlyProfitSummary.totalRoomRent,
-      expectedRent: monthlyProfitSummary.expectedRent,
-      pendingRent: monthlyProfitSummary.pendingRent,
-      vacancyLoss: monthlyProfitSummary.vacancyLoss,
-      rentCollectionPercentage: monthlyProfitSummary.rentCollectionPercentage,
+      totalIncome:
+          profitSummaries.fold(0.0, (sum, item) => sum + item.actualIncome),
+      totalExpenses:
+          profitSummaries.fold(0.0, (sum, item) => sum + item.expensesPaid),
+      netProfit:
+          profitSummaries.fold(0.0, (sum, item) => sum + item.actualNetProfit),
+      totalRoomRent:
+          profitSummaries.fold(0.0, (sum, item) => sum + item.totalRoomRent),
+      expectedRent: totalExpectedRent,
+      pendingRent:
+          profitSummaries.fold(0.0, (sum, item) => sum + item.pendingRent),
+      vacancyLoss:
+          profitSummaries.fold(0.0, (sum, item) => sum + item.vacancyLoss),
+      rentCollectionPercentage: totalExpectedRent == 0
+          ? 0
+          : (totalRentReceived / totalExpectedRent) * 100,
     );
 
-    final villaProfit = _profitService.calculateVillaProfit(
-      villas: scopedVillas,
-      rooms: activeRooms,
-      incomes: activeIncomes,
-      expenses: activeExpenses,
-      month: _selectedMonth,
-    );
-    final villaProfitItems = villaProfit.map((profit) {
+    final villaProfitByMonth = reportMonths
+        .map(
+          (month) => _profitService.calculateVillaProfit(
+            villas: scopedVillas,
+            rooms: activeRooms,
+            incomes: activeIncomes,
+            expenses: activeExpenses,
+            month: month,
+          ),
+        )
+        .toList();
+    final villaProfitItems = scopedVillas.map((villa) {
+      final profits = villaProfitByMonth
+          .expand((items) => items)
+          .where((item) => item.villaId == villa.id)
+          .toList();
       final villaRoomSummaries = roomSummaries
-          .where((item) => item.villaId == profit.villaId)
+          .where((item) => item.villaId == villa.id)
           .toList();
       final occupiedRooms =
           villaRoomSummaries.where((item) => item.isOccupied).length;
@@ -229,17 +273,25 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
           villaRoomSummaries.where((item) => item.isVacant).length;
 
       return VillaProfitReportItem(
-        villaId: profit.villaId,
-        villaName: profit.villaName,
+        villaId: villa.id,
+        villaName: villa.villaName,
         totalRooms: villaRoomSummaries.length,
         occupiedRooms: occupiedRooms,
         vacantRooms: vacantRooms,
-        expectedRent: profit.expectedRent,
-        receivedIncome: profit.rentReceived + profit.otherIncome,
-        totalExpense: profit.expensesPaid,
-        netProfit: profit.actualProfit,
-        pendingAmount: profit.pendingRent,
-        vacancyLoss: profit.vacancyLoss,
+        expectedRent:
+            profits.fold(0.0, (sum, item) => sum + item.expectedRent),
+        receivedIncome: profits.fold(
+          0.0,
+          (sum, item) => sum + item.rentReceived + item.otherIncome,
+        ),
+        totalExpense:
+            profits.fold(0.0, (sum, item) => sum + item.expensesPaid),
+        netProfit:
+            profits.fold(0.0, (sum, item) => sum + item.actualProfit),
+        pendingAmount:
+            profits.fold(0.0, (sum, item) => sum + item.pendingRent),
+        vacancyLoss:
+            profits.fold(0.0, (sum, item) => sum + item.vacancyLoss),
       );
     }).toList();
 
@@ -311,8 +363,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
         return _DashboardReportView(
           data: data,
           money: _money,
-          dateFormat: _dateFormat,
-          periodLabel: _monthFormat.format(_selectedMonth),
+          periodLabel: _periodLabel,
           onVillaTap: (item) => Navigator.of(context).push(
             MaterialPageRoute(
               builder: (context) => VillaDetailScreen(villaId: item.villaId),
@@ -347,7 +398,6 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
     setState(() {
       _selectedPeriod = period;
       switch (period) {
-        case _ReportPeriod.today:
         case _ReportPeriod.thisMonth:
           _selectedMonth = DateTime(now.year, now.month, 1);
           _selectedYear = now.year;
@@ -466,7 +516,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
       final data = _buildReportData(villas, rooms, incomes, expenses);
       final exportData = _buildExportData(data);
       final title =
-          '${_selectedReportType.label} - ${_selectedReportType == ReportType.yearlySummary ? _selectedYear : _monthFormat.format(_selectedMonth)}';
+          '${_selectedReportType.label} - ${_selectedReportType == ReportType.yearlySummary ? _selectedYear : _periodLabel}';
 
       if (format == ExportFormat.csv) {
         await _exportService.exportCsv(
@@ -482,7 +532,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
           rows: exportData.rows,
           period: _selectedReportType == ReportType.yearlySummary
               ? _selectedYear.toString()
-              : _monthFormat.format(_selectedMonth),
+              : _periodLabel,
           villaProfitItems: _selectedReportType == ReportType.villaWiseProfit
               ? data.villaProfitItems
               : null,
@@ -522,7 +572,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
             ],
           ],
           summaryLines: [
-            'Period: ${_monthFormat.format(_selectedMonth)}',
+            'Period: $_periodLabel',
           ],
         );
       case ReportType.villaWiseProfit:
@@ -549,7 +599,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                 ],
               )
               .toList(),
-          summaryLines: ['Period: ${_monthFormat.format(_selectedMonth)}'],
+          summaryLines: ['Period: $_periodLabel'],
         );
       case ReportType.roomWiseProfit:
         return _roomWiseExportData(data.roomProfitItems);
@@ -567,7 +617,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                 ],
               )
               .toList(),
-          summaryLines: ['Period: ${_monthFormat.format(_selectedMonth)}'],
+          summaryLines: ['Period: $_periodLabel'],
         );
       case ReportType.expenseReport:
         return _ExportData(
@@ -589,7 +639,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                 ],
               )
               .toList(),
-          summaryLines: ['Period: ${_monthFormat.format(_selectedMonth)}'],
+          summaryLines: ['Period: $_periodLabel'],
         );
       case ReportType.pendingRentReport:
         return _ExportData(
@@ -617,7 +667,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                 ],
               )
               .toList(),
-          summaryLines: ['Period: ${_monthFormat.format(_selectedMonth)}'],
+          summaryLines: ['Period: $_periodLabel'],
         );
       case ReportType.vacancyReport:
         return _roomWiseExportData(data.vacancyItems);
@@ -703,7 +753,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
             ],
           )
           .toList(),
-      summaryLines: ['Period: ${_monthFormat.format(_selectedMonth)}'],
+      summaryLines: ['Period: $_periodLabel'],
     );
   }
 
@@ -758,6 +808,76 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
     return true;
   }
 
+  List<DateTime> get _reportMonths {
+    if (_selectedPeriod != _ReportPeriod.last3Months) {
+      return [_selectedMonth];
+    }
+    return List.generate(
+      3,
+      (index) => DateTime(
+        _selectedMonth.year,
+        _selectedMonth.month + index,
+        1,
+      ),
+    );
+  }
+
+  String get _periodLabel {
+    final months = _reportMonths;
+    if (months.length == 1) return _monthFormat.format(months.first);
+    final first = months.first;
+    final last = months.last;
+    if (first.year == last.year) {
+      return '${DateFormat('MMMM').format(first)} - '
+          '${DateFormat('MMMM yyyy').format(last)}';
+    }
+    return '${DateFormat('MMMM yyyy').format(first)} - '
+        '${DateFormat('MMMM yyyy').format(last)}';
+  }
+
+  List<RoomProfitSummary> _aggregateRoomSummaries(
+    List<List<RoomProfitSummary>> summariesByMonth,
+  ) {
+    final grouped = <String, List<RoomProfitSummary>>{};
+    for (final summary in summariesByMonth.expand((items) => items)) {
+      grouped.putIfAbsent(summary.roomId, () => []).add(summary);
+    }
+
+    return grouped.values.map((items) {
+      final latest = items.last;
+      double sum(double Function(RoomProfitSummary item) select) =>
+          items.fold(0.0, (total, item) => total + select(item));
+      final expectedRent = sum((item) => item.expectedRent);
+      final rentReceived = sum((item) => item.rentReceived);
+
+      return RoomProfitSummary(
+        roomId: latest.roomId,
+        villaId: latest.villaId,
+        villaName: latest.villaName,
+        roomName: latest.roomName,
+        tenantName: latest.tenantName,
+        status: latest.status,
+        paymentDueDay: latest.paymentDueDay,
+        monthlyRent: latest.monthlyRent,
+        expectedRent: expectedRent,
+        rentReceived: rentReceived,
+        otherIncome: sum((item) => item.otherIncome),
+        totalIncome: sum((item) => item.totalIncome),
+        totalExpenses: sum((item) => item.totalExpenses),
+        pendingRent: sum((item) => item.pendingRent),
+        overpaidAmount: sum((item) => item.overpaidAmount),
+        vacancyLoss: sum((item) => item.vacancyLoss),
+        actualProfit: sum((item) => item.actualProfit),
+        expectedProfit: sum((item) => item.expectedProfit),
+        rentCollectionPercentage:
+            expectedRent == 0 ? 0 : (rentReceived / expectedRent) * 100,
+        dueDate: latest.dueDate,
+        isOverdue: latest.isOverdue,
+        overdueDays: latest.overdueDays,
+      );
+    }).toList();
+  }
+
   RoomWiseProfitReportItem _toRoomReportItem(RoomProfitSummary summary) {
     return RoomWiseProfitReportItem(
       villaId: summary.villaId,
@@ -782,7 +902,6 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
 enum ExportFormat { pdf, csv }
 
 enum _ReportPeriod {
-  today('Today'),
   thisMonth('This Month'),
   last3Months('Last 3 Months'),
   thisYear('This Year'),
@@ -940,14 +1059,12 @@ class _PeriodPills extends StatelessWidget {
 class _DashboardReportView extends StatelessWidget {
   final _ReportData data;
   final String Function(double value) money;
-  final DateFormat dateFormat;
   final String periodLabel;
   final ValueChanged<VillaProfitReportItem> onVillaTap;
 
   const _DashboardReportView({
     required this.data,
     required this.money,
-    required this.dateFormat,
     required this.periodLabel,
     required this.onVillaTap,
   });
@@ -956,7 +1073,6 @@ class _DashboardReportView extends StatelessWidget {
   Widget build(BuildContext context) {
     final sortedVillas = [...data.villaProfitItems]
       ..sort((a, b) => b.netProfit.compareTo(a.netProfit));
-    final transactions = _recentTransactions();
     final occupiedRooms =
         data.roomProfitItems.where((item) => item.isOccupied).length;
     final vacantRooms =
@@ -966,8 +1082,7 @@ class _DashboardReportView extends StatelessWidget {
     final hasData = data.monthlySummary.totalIncome != 0 ||
         data.monthlySummary.totalExpenses != 0 ||
         data.monthlySummary.expectedRent != 0 ||
-        sortedVillas.isNotEmpty ||
-        transactions.isNotEmpty;
+        sortedVillas.isNotEmpty;
 
     if (!hasData) {
       return const _EmptyReportsState();
@@ -996,39 +1111,9 @@ class _DashboardReportView extends StatelessWidget {
             money: money,
             onTap: onVillaTap,
           ),
-          const SizedBox(height: 22),
-          _RecentTransactionsSection(
-            transactions: transactions,
-            money: money,
-            dateFormat: dateFormat,
-          ),
         ],
       ),
     );
-  }
-
-  List<_ReportTransaction> _recentTransactions() {
-    final transactions = <_ReportTransaction>[
-      ...data.monthlyIncomes.map(
-        (income) => _ReportTransaction(
-          date: income.paymentDate,
-          description: income.incomeType,
-          type: 'Income',
-          amount: income.amount,
-          isIncome: true,
-        ),
-      ),
-      ...data.monthlyExpenses.map(
-        (expense) => _ReportTransaction(
-          date: expense.expenseDate,
-          description: expense.category,
-          type: 'Expense',
-          amount: expense.amount,
-          isIncome: false,
-        ),
-      ),
-    ]..sort((a, b) => b.date.compareTo(a.date));
-    return transactions.take(6).toList();
   }
 }
 
@@ -1549,123 +1634,6 @@ class _MoneyColumn extends StatelessWidget {
   }
 }
 
-class _RecentTransactionsSection extends StatelessWidget {
-  final List<_ReportTransaction> transactions;
-  final String Function(double value) money;
-  final DateFormat dateFormat;
-
-  const _RecentTransactionsSection({
-    required this.transactions,
-    required this.money,
-    required this.dateFormat,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return _ReportSurface(
-      padding: const EdgeInsets.fromLTRB(18, 18, 18, 8),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const _SectionTitle(title: 'Recent Transactions'),
-          const SizedBox(height: 8),
-          if (transactions.isEmpty)
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 18),
-              child: Text(
-                'No transactions found.',
-                style: TextStyle(color: Color(0xFF6B7280)),
-              ),
-            )
-          else
-            for (var index = 0; index < transactions.length; index++)
-              _TransactionRow(
-                transaction: transactions[index],
-                money: money,
-                dateFormat: dateFormat,
-                showDivider: index != transactions.length - 1,
-              ),
-        ],
-      ),
-    );
-  }
-}
-
-class _TransactionRow extends StatelessWidget {
-  final _ReportTransaction transaction;
-  final String Function(double value) money;
-  final DateFormat dateFormat;
-  final bool showDivider;
-
-  const _TransactionRow({
-    required this.transaction,
-    required this.money,
-    required this.dateFormat,
-    required this.showDivider,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final amountColor = transaction.isIncome
-        ? const Color(0xFF059669)
-        : const Color(0xFFE5484D);
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(vertical: 12),
-          child: Row(
-            children: [
-              SizedBox(
-                width: 72,
-                child: Text(
-                  dateFormat.format(transaction.date),
-                  style: const TextStyle(
-                    color: Color(0xFF6B7280),
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ),
-              Expanded(
-                child: Text(
-                  transaction.description,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: Color(0xFF111827),
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Text(
-                transaction.type,
-                style: const TextStyle(
-                  color: Color(0xFF6B7280),
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              const SizedBox(width: 12),
-              SizedBox(
-                width: 96,
-                child: CurrencyAmountText(
-                  amount: transaction.amount,
-                  amountColor: amountColor,
-                  amountFontSize: 14,
-                  currencyFontSize: 9,
-                  textAlign: TextAlign.right,
-                ),
-              ),
-            ],
-          ),
-        ),
-        if (showDivider) const Divider(height: 1, color: Color(0xFFE9ECEF)),
-      ],
-    );
-  }
-}
-
 class _SectionTitle extends StatelessWidget {
   final String title;
 
@@ -1763,22 +1731,6 @@ class _EmptyReportsState extends StatelessWidget {
       ),
     );
   }
-}
-
-class _ReportTransaction {
-  final DateTime date;
-  final String description;
-  final String type;
-  final double amount;
-  final bool isIncome;
-
-  const _ReportTransaction({
-    required this.date,
-    required this.description,
-    required this.type,
-    required this.amount,
-    required this.isIncome,
-  });
 }
 
 class _Filters extends StatelessWidget {

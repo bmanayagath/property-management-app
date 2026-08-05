@@ -10,10 +10,12 @@ import '../../providers/active_org_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/dashboard_provider.dart';
 import '../../providers/income_provider.dart';
+import '../../providers/villa_provider.dart';
 import '../../widgets/income_card.dart';
 import '../../widgets/currency_amount_text.dart';
 import '../../widgets/destructive_action_dialog.dart';
 import '../../widgets/premium_widgets.dart';
+import '../../widgets/villa_filter_chips.dart';
 import 'add_edit_income_screen.dart';
 import 'income_detail_screen.dart';
 
@@ -27,11 +29,13 @@ class IncomeScreen extends ConsumerStatefulWidget {
 class _IncomeScreenState extends ConsumerState<IncomeScreen> {
   String _searchQuery = '';
   String _selectedType = 'All';
+  String? _selectedVillaId;
 
   @override
   Widget build(BuildContext context) {
     final selectedMonth = ref.watch(selectedMonthProvider);
     final incomeAsync = ref.watch(incomeListProvider);
+    final villas = ref.watch(villaListProvider).valueOrNull ?? const [];
     final authState = ref.watch(authProvider);
     final activeOrgId = ref.watch(activeOrgProvider);
     final canManageIncome =
@@ -46,6 +50,8 @@ class _IncomeScreenState extends ConsumerState<IncomeScreen> {
             orgId: activeOrgId,
           );
           final filteredIncomes = monthlyIncomes.where((income) {
+            final matchesVilla =
+                _selectedVillaId == null || income.villaId == _selectedVillaId;
             final matchesType = _selectedType == 'All' ||
                 incomeCalculationService.matchesIncomeType(
                   income.incomeType,
@@ -59,14 +65,16 @@ class _IncomeScreenState extends ConsumerState<IncomeScreen> {
                 income.paymentMethod.toLowerCase().contains(query) ||
                 income.notes.toLowerCase().contains(query);
 
-            return matchesType && matchesSearch;
+            return matchesVilla && matchesType && matchesSearch;
           }).toList()
             ..sort(_compareIncomeEntries);
 
-          final total = incomeCalculationService.totalForMonth(
-            incomes,
-            selectedMonth,
-            orgId: activeOrgId,
+          final total = monthlyIncomes.where((income) {
+            return _selectedVillaId == null ||
+                income.villaId == _selectedVillaId;
+          }).fold<double>(
+            0,
+            (sum, income) => sum + income.amount,
           );
 
           return ListView(
@@ -89,6 +97,13 @@ class _IncomeScreenState extends ConsumerState<IncomeScreen> {
                 month: selectedMonth,
                 onPrevious: () => _changeMonth(selectedMonth, -1),
                 onNext: () => _changeMonth(selectedMonth, 1),
+              ),
+              const SizedBox(height: 10),
+              VillaFilterChips(
+                villas: villas,
+                selectedVillaId: _selectedVillaId,
+                onSelected: (villaId) =>
+                    setState(() => _selectedVillaId = villaId),
               ),
               const SizedBox(height: 14),
               _SummaryCard(total: total, month: selectedMonth),
