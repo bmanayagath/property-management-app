@@ -76,7 +76,6 @@ class AuthService {
   final FirebaseFirestore _firestore;
   final FirebaseSyncService? _firebaseSyncService;
   final OrganizationRepository _organizationRepository;
-  bool _legacyDataMappingAttempted = false;
 
   Stream<firebase_auth.User?> authStateChanges() {
     return _auth.authStateChanges();
@@ -373,11 +372,32 @@ class AuthService {
       throw const AuthServiceException('Organization access not assigned.');
     }
     if (user.role == AppRoles.superAdmin) {
-      await _mapLegacyDataToAdornVillas(user.id);
-      await _migrateLegacyUsersToMemberships();
+      // Select existing data without running organization setup or migrations
+      // during sign-in. These memberships are session-only access choices.
+      final organizations = await _organizationRepository.fetchOrganizations();
+      final memberships = organizations
+          .where((organization) => organization.isActive)
+          .map((organization) => OrganizationMembership(
+                orgId: organization.id,
+                uid: user.id,
+                email: user.username,
+                displayName: user.displayName,
+                role: AppRoles.superAdmin,
+                status: MembershipStatus.active,
+                createdAt: user.createdAt,
+              ))
+          .toList();
+      if (organizations.isNotEmpty && memberships.isEmpty) {
+        throw const AuthServiceException(
+            'No active organization is available.');
+      }
       return AuthSession(
-        user: user.copyWith(clearOrgId: true),
-        activeMemberships: const [],
+        user: user.copyWith(
+          orgId: memberships.isEmpty
+              ? DefaultOrganization.id
+              : memberships.first.orgId,
+        ),
+        activeMemberships: memberships,
       );
     }
 
@@ -839,29 +859,6 @@ class AuthService {
     );
   }
 
-  Future<void> _migrateLegacyUsersToMemberships() async {
-    final snapshot = await _firestore.collection('users').get();
-    for (final doc in snapshot.docs) {
-      final user = _appUserFromCloud(doc.id, doc.data());
-      if (user.role == AppRoles.superAdmin) continue;
-      if (!user.isActive) continue;
-      final orgId = user.orgId;
-      if (orgId == null || orgId.trim().isEmpty) continue;
-      final memberDoc = await _membershipDoc(orgId, user.id).get();
-      if (memberDoc.exists) continue;
-      await _setMembership(
-        orgId: orgId,
-        uid: user.id,
-        email: user.username,
-        displayName: user.displayName,
-        role: user.role,
-        status: MembershipStatus.active,
-        invitedBy: user.createdBy,
-        approvedBy: user.createdBy,
-      );
-    }
-  }
-
   Future<bool> _createPendingMembershipForExistingEmail({
     required String email,
     required String displayName,
@@ -1016,39 +1013,6 @@ class AuthService {
       'createdBy': user.createdBy,
       'updatedAt': FieldValue.serverTimestamp(),
     };
-  }
-
-  Future<void> _mapLegacyDataToAdornVillas(String updatedBy) async {
-    if (_legacyDataMappingAttempted) return;
-    _legacyDataMappingAttempted = true;
-    try {
-      final result = await _organizationRepository.mapLegacyDataToAdornVillas(
-        updatedBy: updatedBy,
-      );
-      if (result.organizationMissing) {
-        await LoggerService.logWarning(
-          screenName: 'AuthService',
-          operation: 'MapLegacyDataToOrganization',
-          message: 'Adorn Villas organization was not found.',
-        );
-        return;
-      }
-      await LoggerService.logAuth(
-        screenName: 'AuthService',
-        operation: 'MapLegacyDataToOrganization',
-        message: 'Legacy data mapping completed.',
-        details:
-            'organizationId: ${result.organizationId}\nupdated: ${result.updatedCounts}',
-      );
-    } catch (error, stackTrace) {
-      await LoggerService.logError(
-        screenName: 'AuthService',
-        operation: 'MapLegacyDataToOrganization',
-        message: 'Legacy data mapping failed.',
-        details: error.toString(),
-        stackTrace: stackTrace.toString(),
-      );
-    }
   }
 
   AppUser _appUserFromCloud(String id, Map<String, dynamic> data) {

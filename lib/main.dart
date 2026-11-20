@@ -6,7 +6,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 import 'core/constants/app_permissions.dart';
-import 'core/constants/app_roles.dart';
 import 'core/startup/startup_status.dart';
 import 'core/theme/app_theme.dart';
 import 'data/local/database.dart';
@@ -21,7 +20,6 @@ import 'presentation/screens/expenses_screen.dart';
 import 'presentation/screens/income/income_screen.dart';
 import 'presentation/screens/reports/reports_screen.dart';
 import 'presentation/screens/settings/settings_screen.dart';
-import 'presentation/screens/super_admin/super_admin_dashboard_screen.dart';
 import 'presentation/screens/villas_screen.dart';
 import 'presentation/providers/navigation_provider.dart';
 import 'presentation/widgets/premium_widgets.dart';
@@ -167,8 +165,7 @@ class StartupExperience extends ConsumerStatefulWidget {
   const StartupExperience({super.key});
 
   @override
-  ConsumerState<StartupExperience> createState() =>
-      _StartupExperienceState();
+  ConsumerState<StartupExperience> createState() => _StartupExperienceState();
 }
 
 class _StartupExperienceState extends ConsumerState<StartupExperience> {
@@ -227,10 +224,6 @@ class AuthGate extends ConsumerWidget {
 
     if (!authState.isLoggedIn) {
       return const LoginScreen();
-    }
-
-    if (authState.currentUser?.role == AppRoles.superAdmin) {
-      return const SuperAdminDashboardScreen();
     }
 
     return const MainScreen();

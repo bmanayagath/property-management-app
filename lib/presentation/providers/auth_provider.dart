@@ -122,6 +122,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
   final AuthService? _service;
   final StartupStatus _startupStatus;
   StreamSubscription<Object?>? _authSubscription;
+  String? _syncSessionKey;
 
   Future<bool> login(String email, String password) async {
     final normalizedEmail = email.trim().toLowerCase();
@@ -164,12 +165,14 @@ class AuthNotifier extends StateNotifier<AuthState> {
         return true;
       }
       final user = session.user;
-      final users = await _loadUsersForCurrentRole(service, user);
+      final users = [user];
       state = AuthState.ready(
         users: users,
         currentUser: user,
         activeMemberships: session.activeMemberships,
       );
+      unawaited(_refreshSessionUsers(user));
+      unawaited(_syncSession(user));
       return true;
     } on AuthServiceException catch (error) {
       state = AuthState.ready(
@@ -198,6 +201,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
   }
 
   Future<void> logout() async {
+    _syncSessionKey = null;
     debugPrint('[Auth] logout started.');
     try {
       await _cancelFirestoreProviderListeners();
@@ -503,12 +507,14 @@ class AuthNotifier extends StateNotifier<AuthState> {
         return;
       }
       final currentUser = session.user;
-      final users = await _loadUsersForCurrentRole(service, currentUser);
+      final users = [currentUser];
       state = AuthState.ready(
         users: users,
         currentUser: currentUser,
         activeMemberships: session.activeMemberships,
       );
+      unawaited(_refreshSessionUsers(currentUser));
+      unawaited(_syncSession(currentUser));
     } on AuthServiceException catch (error) {
       state = AuthState.ready(
         users: const [],
@@ -532,11 +538,49 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
 
+  Future<void> _syncSession(AppUser user) async {
+    if (!_startupStatus.firebaseInitialized) return;
+    final key = '${user.id}/${user.orgId}';
+    if (_syncSessionKey == key) return;
+    _syncSessionKey = key;
+    try {
+      await _ref.read(firebaseSyncServiceProvider).initialPullFromFirestore(
+            orgId: user.orgId,
+          );
+      if (mounted && _syncSessionKey == key) {
+        _ref.read(syncRefreshProvider.notifier).state++;
+      }
+    } catch (error) {
+      if (_syncSessionKey == key) _syncSessionKey = null;
+      debugPrint('[Auth] Background data sync failed: $error');
+    }
+  }
+
+  Future<void> _refreshSessionUsers(AppUser user) async {
+    final sessionState = state;
+    try {
+      final users = await _loadUsersForCurrentRole(_service!, user);
+      if (!mounted || !identical(state, sessionState)) return;
+      state = AuthState.ready(
+        users: users,
+        currentUser: user,
+        activeMemberships: state.activeMemberships,
+        errorMessage: state.errorMessage,
+        infoMessage: state.infoMessage,
+      );
+    } catch (error, stackTrace) {
+      debugPrint('[Auth] Background user list load failed: $error');
+      debugPrint(stackTrace.toString());
+    }
+  }
+
   Future<List<AppUser>> _loadUsersForCurrentRole(
     AuthService service,
     AppUser currentUser,
   ) async {
-    if (currentUser.role == AppRoles.superAdmin) return service.fetchUsers();
+    if (currentUser.role == AppRoles.superAdmin) {
+      return service.fetchUsersForOrg(currentUser.orgId ?? 'default_org');
+    }
     if (currentUser.role == AppRoles.admin) {
       return service.fetchUsersForOrg(currentUser.orgId ?? 'default_org');
     }
@@ -558,15 +602,13 @@ class AuthNotifier extends StateNotifier<AuthState> {
           ? pendingUser.displayName
           : membership.displayName,
     );
-    final users = await _loadUsersForCurrentRole(service, currentUser);
     state = AuthState.ready(
-      users: users,
+      users: [currentUser],
       currentUser: currentUser,
       activeMemberships: state.activeMemberships,
     );
-    await _ref
-        .read(firebaseSyncServiceProvider)
-        .initialPullFromFirestore(orgId: currentUser.orgId);
+    unawaited(_refreshSessionUsers(currentUser));
+    unawaited(_syncSession(currentUser));
   }
 
   @override

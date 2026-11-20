@@ -1,10 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../core/constants/app_roles.dart';
-import '../../../core/constants/default_organization.dart';
 import '../../providers/auth_provider.dart';
-import '../../providers/sync_provider.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({Key? key}) : super(key: key);
@@ -265,20 +262,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isSubmitting = true);
-    final didLogin = await ref.read(authProvider.notifier).login(
+    await ref.read(authProvider.notifier).login(
           _emailController.text,
           _passwordController.text,
         );
-    if (didLogin) {
-      final currentUser = ref.read(authProvider).currentUser;
-      if (currentUser?.role != AppRoles.superAdmin) {
-        await ref.read(firebaseSyncServiceProvider).initialPullFromFirestore(
-              orgId: currentUser?.orgId ?? DefaultOrganization.id,
-            );
-      }
-      ref.read(syncRefreshProvider.notifier).state++;
-    }
-
     if (mounted) {
       setState(() => _isSubmitting = false);
     }

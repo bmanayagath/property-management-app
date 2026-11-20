@@ -11,6 +11,10 @@ import '../../widgets/premium_widgets.dart';
 import '../common/access_denied_screen.dart';
 import 'add_edit_user_screen.dart';
 
+final _usersLoadProvider = FutureProvider.autoDispose<void>((ref) async {
+  await ref.read(authProvider.notifier).loadUsers();
+});
+
 class UsersScreen extends ConsumerWidget {
   const UsersScreen({Key? key}) : super(key: key);
 
@@ -20,6 +24,27 @@ class UsersScreen extends ConsumerWidget {
 
     if (!authState.hasPermission(AppPermissions.manageUsers)) {
       return const AccessDeniedScreen();
+    }
+
+    final usersLoad = ref.watch(_usersLoadProvider);
+    if (usersLoad.isLoading || usersLoad.hasError) {
+      return PremiumScaffold(
+        appBar: AppBar(title: const Text('Users')),
+        body: Center(
+          child: usersLoad.hasError
+              ? Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text('Unable to load users.'),
+                    TextButton(
+                      onPressed: () => ref.invalidate(_usersLoadProvider),
+                      child: const Text('Retry'),
+                    ),
+                  ],
+                )
+              : const CircularProgressIndicator(),
+        ),
+      );
     }
 
     final users = [...authState.users]
