@@ -321,19 +321,14 @@ class FirebaseSyncService {
         .where('orgId', isEqualTo: orgId)
         .snapshots()
         .asyncMap((snapshot) async {
-      await _applyDeletedDocsToLocal('villas', snapshot.docs);
+      await _cacheCloudSnapshot('villas', snapshot);
       final activeDocs = snapshot.docs
           .where((doc) => doc.data()['isDeleted'] != true)
           .toList();
       final activeVillas = activeDocs
           .map((doc) => _villaFromJson(_withDocumentId(doc)))
           .toList();
-      final localRepository = _localRepository;
-      if (localRepository != null) {
-        for (final villa in activeVillas) {
-          await localRepository.upsertVilla(villa);
-        }
-      }
+
       debugPrint(
         '[FirebaseSync] cloud villas snapshot raw=${snapshot.docs.length}, active=${activeDocs.length}',
       );
@@ -359,18 +354,13 @@ class FirebaseSyncService {
         .where('orgId', isEqualTo: orgId)
         .snapshots()
         .asyncMap((snapshot) async {
-      await _applyDeletedDocsToLocal('rooms', snapshot.docs);
+      await _cacheCloudSnapshot('rooms', snapshot);
       final activeDocs = snapshot.docs
           .where((doc) => doc.data()['isDeleted'] != true)
           .toList();
       final activeRooms =
           activeDocs.map((doc) => _roomFromJson(_withDocumentId(doc))).toList();
-      final localRepository = _localRepository;
-      if (localRepository != null) {
-        for (final room in activeRooms) {
-          await localRepository.upsertRoom(room);
-        }
-      }
+
       debugPrint(
         '[FirebaseSync] cloud rooms snapshot raw=${snapshot.docs.length}, active=${activeDocs.length}',
       );
@@ -444,19 +434,14 @@ class FirebaseSyncService {
         .where('orgId', isEqualTo: orgId)
         .snapshots()
         .asyncMap((snapshot) async {
-      await _applyDeletedDocsToLocal('incomes', snapshot.docs);
+      await _cacheCloudSnapshot('incomes', snapshot);
       final activeDocs = snapshot.docs
           .where((doc) => doc.data()['isDeleted'] != true)
           .toList();
       final activeIncomes = activeDocs
           .map((doc) => _incomeFromJson(_withDocumentId(doc)))
           .toList();
-      final localRepository = _localRepository;
-      if (localRepository != null) {
-        for (final income in activeIncomes) {
-          await localRepository.upsertIncome(income);
-        }
-      }
+
       debugPrint(
         '[FirebaseSync] cloud incomes snapshot raw=${snapshot.docs.length}, active=${activeDocs.length}',
       );
@@ -482,19 +467,14 @@ class FirebaseSyncService {
         .where('orgId', isEqualTo: orgId)
         .snapshots()
         .asyncMap((snapshot) async {
-      await _applyDeletedDocsToLocal('expenses', snapshot.docs);
+      await _cacheCloudSnapshot('expenses', snapshot);
       final activeDocs = snapshot.docs
           .where((doc) => doc.data()['isDeleted'] != true)
           .toList();
       final activeExpenses = activeDocs
           .map((doc) => _expenseFromJson(_withDocumentId(doc)))
           .toList();
-      final localRepository = _localRepository;
-      if (localRepository != null) {
-        for (final expense in activeExpenses) {
-          await localRepository.upsertExpense(expense);
-        }
-      }
+
       debugPrint(
         '[FirebaseSync] cloud expenses snapshot raw=${snapshot.docs.length}, active=${activeDocs.length}',
       );
@@ -544,62 +524,10 @@ class FirebaseSyncService {
     final notificationDocs = snapshots[4].docs;
     final userDocs = snapshots[5].docs;
 
-    for (final doc in villaDocs) {
-      final data = _withDocumentId(doc);
-      if (_isDeleted(data)) {
-        await localRepository.markRecordDeletedFromCloud(
-          collection: 'villas',
-          id: doc.id,
-          deletedAt: _readNullableDateTime(data['deletedAt']),
-          deletedBy: data['deletedBy'] as String?,
-        );
-        continue;
-      }
-      await localRepository.upsertVilla(_villaFromJson(data));
-    }
-
-    for (final doc in roomDocs) {
-      final data = _withDocumentId(doc);
-      if (_isDeleted(data)) {
-        await localRepository.markRecordDeletedFromCloud(
-          collection: 'rooms',
-          id: doc.id,
-          deletedAt: _readNullableDateTime(data['deletedAt']),
-          deletedBy: data['deletedBy'] as String?,
-        );
-        continue;
-      }
-      await localRepository.upsertRoom(_roomFromJson(data));
-    }
-
-    for (final doc in incomeDocs) {
-      final data = _withDocumentId(doc);
-      if (_isDeleted(data)) {
-        await localRepository.markRecordDeletedFromCloud(
-          collection: 'incomes',
-          id: doc.id,
-          deletedAt: _readNullableDateTime(data['deletedAt']),
-          deletedBy: data['deletedBy'] as String?,
-        );
-        continue;
-      }
-      await localRepository.upsertIncome(_incomeFromJson(data));
-    }
-
-    for (final doc in expenseDocs) {
-      final data = _withDocumentId(doc);
-      if (_isDeleted(data)) {
-        await localRepository.markRecordDeletedFromCloud(
-          collection: 'expenses',
-          id: doc.id,
-          deletedAt: _readNullableDateTime(data['deletedAt']),
-          deletedBy: data['deletedBy'] as String?,
-        );
-        continue;
-      }
-      await localRepository.upsertExpense(_expenseFromJson(data));
-    }
-
+    await _cacheCloudDocuments('villas', villaDocs);
+    await _cacheCloudDocuments('rooms', roomDocs);
+    await _cacheCloudDocuments('incomes', incomeDocs);
+    await _cacheCloudDocuments('expenses', expenseDocs);
     for (final doc in notificationDocs) {
       final data = _withDocumentId(doc);
       if (_isDeleted(data)) continue;
@@ -639,23 +567,50 @@ class FirebaseSyncService {
     return query.where('orgId', isEqualTo: orgId);
   }
 
-  Future<void> _applyDeletedDocsToLocal(
+  Future<void> _cacheCloudSnapshot(
+    String collection,
+    QuerySnapshot<Map<String, dynamic>> snapshot,
+  ) {
+    final changedIds =
+        snapshot.docChanges.map((change) => change.doc.id).toSet();
+    // Use docs still in the query; removals are not soft-delete instructions.
+    return _cacheCloudDocuments(
+      collection,
+      snapshot.docs.where((doc) => changedIds.contains(doc.id)).toList(),
+    );
+  }
+
+  Future<void> _cacheCloudDocuments(
     String collection,
     List<QueryDocumentSnapshot<Map<String, dynamic>>> docs,
   ) async {
     final localRepository = _localRepository;
-    if (localRepository == null) return;
+    if (localRepository == null || docs.isEmpty) return;
 
-    for (final doc in docs) {
-      final data = _withDocumentId(doc);
-      if (!_isDeleted(data)) continue;
-      await localRepository.markRecordDeletedFromCloud(
-        collection: collection,
-        id: doc.id,
-        deletedAt: _readNullableDateTime(data['deletedAt']),
-        deletedBy: data['deletedBy'] as String?,
-      );
-    }
+    await localRepository.applyCloudBatch(() async {
+      for (final doc in docs) {
+        final data = _withDocumentId(doc);
+        if (_isDeleted(data)) {
+          await localRepository.markRecordDeletedFromCloud(
+            collection: collection,
+            id: doc.id,
+            deletedAt: _readNullableDateTime(data['deletedAt']),
+            deletedBy: data['deletedBy'] as String?,
+          );
+          continue;
+        }
+        switch (collection) {
+          case 'villas':
+            await localRepository.upsertVilla(_villaFromJson(data));
+          case 'rooms':
+            await localRepository.upsertRoom(_roomFromJson(data));
+          case 'incomes':
+            await localRepository.upsertIncome(_incomeFromJson(data));
+          case 'expenses':
+            await localRepository.upsertExpense(_expenseFromJson(data));
+        }
+      }
+    });
   }
 
   Map<String, dynamic> _withDocumentId(

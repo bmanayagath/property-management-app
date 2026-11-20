@@ -230,11 +230,18 @@ class AuthGate extends ConsumerWidget {
   }
 }
 
-class MainScreen extends ConsumerWidget {
+class MainScreen extends ConsumerStatefulWidget {
   const MainScreen({Key? key}) : super(key: key);
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<MainScreen> createState() => _MainScreenState();
+}
+
+class _MainScreenState extends ConsumerState<MainScreen> {
+  final _visitedTabs = <String>{};
+
+  @override
+  Widget build(BuildContext context) {
     final selectedIndex = ref.watch(selectedTabProvider);
     final navItems = [
       const _NavItem(
@@ -276,6 +283,7 @@ class MainScreen extends ConsumerWidget {
       ),
     ];
     final safeIndex = selectedIndex >= navItems.length ? 0 : selectedIndex;
+    _visitedTabs.add(navItems[safeIndex].label);
 
     if (safeIndex != selectedIndex) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -287,7 +295,16 @@ class MainScreen extends ConsumerWidget {
       extendBody: true,
       body: IndexedStack(
         index: safeIndex,
-        children: navItems.map((item) => item.screen).toList(),
+        children: [
+          for (var index = 0; index < navItems.length; index++)
+            TickerMode(
+              key: ValueKey(navItems[index].label),
+              enabled: index == safeIndex,
+              child: _visitedTabs.contains(navItems[index].label)
+                  ? navItems[index].screen
+                  : const SizedBox.shrink(),
+            ),
+        ],
       ),
       bottomNavigationBar: _VillaBooksBottomNav(
         selectedIndex: safeIndex,

@@ -27,6 +27,10 @@ class _SlowUserService extends AuthService {
       : super(firebaseAuth: _UnusedAuth(), firestore: _UnusedFirestore());
 
   final users = Completer<List<AppUser>>();
+  final authEvents = StreamController<firebase_auth.User?>.broadcast();
+  Completer<AuthSession?>? sessionRestore;
+  Completer<AuthSession>? loginResult;
+  int sessionLoads = 0;
   String? requestedOrgId;
   final user = AppUser(
     id: 'admin',
@@ -37,16 +41,20 @@ class _SlowUserService extends AuthService {
   );
 
   @override
-  Stream<firebase_auth.User?> authStateChanges() => const Stream.empty();
+  Stream<firebase_auth.User?> authStateChanges() => authEvents.stream;
 
   @override
   Future<AuthSession> login(
-          {required String email, required String password}) async =>
-      AuthSession(user: user, activeMemberships: const []);
+          {required String email, required String password}) =>
+      loginResult?.future ??
+      Future.value(AuthSession(user: user, activeMemberships: const []));
 
   @override
-  Future<AuthSession?> getCurrentSession() async =>
-      AuthSession(user: user, activeMemberships: const []);
+  Future<AuthSession?> getCurrentSession() {
+    sessionLoads++;
+    return sessionRestore?.future ??
+        Future.value(AuthSession(user: user, activeMemberships: const []));
+  }
 
   @override
   Future<List<AppUser>> fetchUsersForOrg(String orgId) {
@@ -84,7 +92,64 @@ void main() {
       ),
     ]);
   });
-  tearDown(() => container.dispose());
+  tearDown(() async {
+    container.dispose();
+    await service.authEvents.close();
+  });
+
+  test('a stale restore failure cannot replace a successful login', () async {
+    service.sessionRestore = Completer<AuthSession?>();
+    final notifier = container.read(authProvider.notifier);
+    final restoring = notifier.loadSession();
+    expect(await notifier.login('admin@example.com', 'password'), isTrue);
+    service.sessionRestore!.completeError(StateError('Old restore failed'));
+    await restoring;
+    expect(container.read(authProvider).currentUser, service.user);
+    expect(container.read(authProvider).errorMessage, isNull);
+  });
+
+  test('a stale signed-out result cannot replace a successful login', () async {
+    service.sessionRestore = Completer<AuthSession?>();
+    final notifier = container.read(authProvider.notifier);
+    final restoring = notifier.loadSession();
+    expect(await notifier.login('admin@example.com', 'password'), isTrue);
+    service.sessionRestore!.complete(null);
+    await restoring;
+    expect(container.read(authProvider).isLoggedIn, isTrue);
+  });
+
+  test('auth events do not load a second session during explicit login',
+      () async {
+    service.loginResult = Completer<AuthSession>();
+    final loggingIn = container
+        .read(authProvider.notifier)
+        .login('admin@example.com', 'password');
+    service.authEvents.add(null);
+    await Future<void>.delayed(Duration.zero);
+    expect(service.sessionLoads, 0);
+    service.loginResult!
+        .complete(AuthSession(user: service.user, activeMemberships: const []));
+    expect(await loggingIn, isTrue);
+  });
+
+  test('restoring a session preserves the Firestore error code and details',
+      () async {
+    service.sessionRestore = Completer<AuthSession?>();
+    final restoring = container.read(authProvider.notifier).loadSession();
+    service.sessionRestore!.completeError(AuthService.firestoreAuthException(
+      FirebaseException(
+          plugin: 'cloud_firestore',
+          code: 'failed-precondition',
+          message: 'The query requires an index.'),
+      permissionDenied: 'Access denied.',
+    ));
+    await restoring;
+    final state = container.read(authProvider);
+    expect(state.isLoggedIn, isFalse);
+    expect(state.errorMessage, contains('failed-precondition'));
+    expect(state.errorMessage, contains('The query requires an index.'));
+    expect(state.errorMessage, contains('configuration update'));
+  });
 
   test('sign-in opens the app before the organization user list arrives',
       () async {

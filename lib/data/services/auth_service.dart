@@ -31,7 +31,7 @@ class AuthServiceException implements Exception {
       if (firebaseMessage != null && firebaseMessage!.isNotEmpty)
         'message: $firebaseMessage',
     ].join(', ');
-    return '$message\nFirebase Auth error: $details';
+    return '$message\nFirebase error: $details';
   }
 
   @override
@@ -76,6 +76,8 @@ class AuthService {
   final FirebaseFirestore _firestore;
   final FirebaseSyncService? _firebaseSyncService;
   final OrganizationRepository _organizationRepository;
+  Future<AuthSession>? _sessionLoad;
+  String? _sessionUid;
 
   Stream<firebase_auth.User?> authStateChanges() {
     return _auth.authStateChanges();
@@ -315,7 +317,23 @@ class AuthService {
     );
   }
 
-  Future<AuthSession> _loadSession(firebase_auth.User firebaseUser) async {
+  Future<AuthSession> _loadSession(firebase_auth.User firebaseUser) {
+    if (_sessionUid == firebaseUser.uid && _sessionLoad != null) {
+      return _sessionLoad!;
+    }
+    _sessionUid = firebaseUser.uid;
+    late final Future<AuthSession> pending;
+    pending = _readSession(firebaseUser).whenComplete(() {
+      if (identical(_sessionLoad, pending)) {
+        _sessionLoad = null;
+        _sessionUid = null;
+      }
+    });
+    _sessionLoad = pending;
+    return pending;
+  }
+
+  Future<AuthSession> _readSession(firebase_auth.User firebaseUser) async {
     final userPath = 'users/${firebaseUser.uid}';
     await _logLoginDebug(
       message: 'Loading authentication state',
@@ -470,10 +488,9 @@ class AuthService {
         stackTrace: stackTrace,
       );
       await _auth.signOut();
-      throw AuthServiceException(_firestoreAuthMessage(
-        error,
-        permissionDenied: 'User profile not found. Contact admin.',
-      ));
+      throw firestoreAuthException(error,
+          permissionDenied:
+              'Unable to read your VillaBooks user profile. Contact admin.');
     }
   }
 
@@ -572,10 +589,8 @@ class AuthService {
         stackTrace: stackTrace,
       );
       await _auth.signOut();
-      throw AuthServiceException(_firestoreAuthMessage(
-        error,
-        permissionDenied: 'You do not have active organization access.',
-      ));
+      throw firestoreAuthException(error,
+          permissionDenied: 'You do not have active organization access.');
     }
   }
 
@@ -621,10 +636,8 @@ class AuthService {
         },
         stackTrace: stackTrace,
       );
-      throw AuthServiceException(_firestoreAuthMessage(
-        error,
-        permissionDenied: 'You do not have active organization access.',
-      ));
+      throw firestoreAuthException(error,
+          permissionDenied: 'You do not have active organization access.');
     }
   }
 
@@ -718,10 +731,8 @@ class AuthService {
         stackTrace: stackTrace,
       );
       await _auth.signOut();
-      throw AuthServiceException(_firestoreAuthMessage(
-        error,
-        permissionDenied: 'Organization access not assigned.',
-      ));
+      throw firestoreAuthException(error,
+          permissionDenied: 'Organization access not assigned.');
     }
   }
 
@@ -1124,20 +1135,22 @@ class AuthService {
     );
   }
 
-  static String _firestoreAuthMessage(
+  static AuthServiceException firestoreAuthException(
     FirebaseException error, {
     required String permissionDenied,
   }) {
-    switch (error.code) {
-      case 'permission-denied':
-        return permissionDenied;
-      case 'unavailable':
-        return 'Unable to load authentication state. Please try again.';
-      case 'not-found':
-        return 'User profile not found. Contact admin.';
-      default:
-        return 'Unable to load authentication state. Please try again.';
-    }
+    final message = switch (error.code) {
+      'permission-denied' => permissionDenied,
+      'unavailable' ||
+      'deadline-exceeded' =>
+        'Cannot reach Firestore. Check your internet connection and try again.',
+      'failed-precondition' =>
+        'Your sign-in data needs a Firestore configuration update. Contact admin.',
+      'not-found' => 'User profile not found. Contact admin.',
+      _ => 'Unable to load your VillaBooks sign-in data. Please try again.',
+    };
+    return AuthServiceException(message,
+        code: error.code, firebaseMessage: error.message);
   }
 
   static String _formatDebugDetails(Map<String, Object?> details) {
