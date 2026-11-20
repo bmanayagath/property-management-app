@@ -19,6 +19,10 @@ class LocalDatabaseRepository {
 
   const LocalDatabaseRepository(this.database);
 
+  /// Publish a cloud update to local watchers once, after every row is saved.
+  Future<void> applyCloudBatch(Future<void> Function() applyChanges) =>
+      database.transaction(applyChanges);
+
   Future<List<PendingDeleteRecord>> getPendingDeleteRecords() async {
     final records = <PendingDeleteRecord>[];
     for (final collection in ['villas', 'rooms', 'incomes', 'expenses']) {

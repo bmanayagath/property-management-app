@@ -176,6 +176,8 @@ class AppLogs extends Table {
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
+  AppDatabase.forTesting(QueryExecutor executor) : super(executor);
+
   @override
   int get schemaVersion => 9;
 
@@ -1134,7 +1136,7 @@ LazyDatabase _openConnection() {
       final dbFolder = await getApplicationDocumentsDirectory();
       final file = File(p.join(dbFolder.path, 'villabooks.db'));
       debugPrint('[Database] Opening local database at ${file.path}');
-      return NativeDatabase(file);
+      return NativeDatabase.createInBackground(file);
     } catch (error, stackTrace) {
       debugPrint('[Database] Failed to open documents database: $error');
       debugPrintStack(stackTrace: stackTrace);
@@ -1143,7 +1145,7 @@ LazyDatabase _openConnection() {
         final fallbackFolder = await getTemporaryDirectory();
         final file = File(p.join(fallbackFolder.path, 'villabooks.db'));
         debugPrint('[Database] Opening fallback database at ${file.path}');
-        return NativeDatabase(file);
+        return NativeDatabase.createInBackground(file);
       } catch (fallbackError, fallbackStackTrace) {
         debugPrint(
             '[Database] Failed to open fallback database: $fallbackError');

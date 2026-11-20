@@ -4,9 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/constants/app_permissions.dart';
 import '../../../core/constants/app_roles.dart';
 import '../../providers/auth_provider.dart';
-import '../../providers/super_admin_provider.dart';
 import '../../providers/sync_provider.dart';
-import '../../widgets/destructive_action_dialog.dart';
 import '../../widgets/premium_widgets.dart';
 import 'developer_logs_screen.dart';
 import 'legal_screen.dart';
@@ -96,21 +94,12 @@ class SettingsScreen extends ConsumerWidget {
             subtitle: 'Soft delete rooms without an active villa',
             onTap: () => _cleanupOrphanRecords(context, ref),
           ),
-          if (user?.role == AppRoles.superAdmin) ...[
-            const SizedBox(height: 10),
-            _SettingsActionTile(
-              icon: Icons.delete_forever_rounded,
-              title: 'Hard Delete Deleted Records',
-              subtitle: 'Permanently remove soft-deleted data',
-              onTap: () => _hardDeleteDeletedRecords(context, ref),
-            ),
-          ],
           if (authState.hasPermission(AppPermissions.manageUsers)) ...[
             const SizedBox(height: 10),
             _SettingsActionTile(
               icon: Icons.group_rounded,
               title: 'Manage Users',
-              subtitle: 'Manage Firebase role profiles',
+              subtitle: 'Add users and manage their access',
               onTap: () {
                 Navigator.push(
                   context,
@@ -188,39 +177,6 @@ class SettingsScreen extends ConsumerWidget {
       if (!context.mounted) return;
       messenger.showSnackBar(
         SnackBar(content: Text('Cleanup failed: $error')),
-      );
-    }
-  }
-
-  Future<void> _hardDeleteDeletedRecords(
-    BuildContext context,
-    WidgetRef ref,
-  ) async {
-    final confirmed = await showDestructiveActionDialog(
-      context: context,
-      title: 'Permanently Delete Records?',
-      message:
-          'This will permanently delete all records marked as deleted. This action cannot be undone.',
-      confirmLabel: 'Delete Permanently',
-    );
-    if (!confirmed) return;
-
-    final messenger = ScaffoldMessenger.of(context);
-    try {
-      final result =
-          await ref.read(superAdminToolsProvider).hardDeleteDeletedRecords();
-      if (!context.mounted) return;
-      messenger.showSnackBar(
-        SnackBar(
-          content: Text(
-            'Deleted ${result.totalDeleted} record(s). ${result.summary}',
-          ),
-        ),
-      );
-    } catch (error) {
-      if (!context.mounted) return;
-      messenger.showSnackBar(
-        SnackBar(content: Text('Hard delete failed: $error')),
       );
     }
   }

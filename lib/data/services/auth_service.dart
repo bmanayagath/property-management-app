@@ -31,7 +31,7 @@ class AuthServiceException implements Exception {
       if (firebaseMessage != null && firebaseMessage!.isNotEmpty)
         'message: $firebaseMessage',
     ].join(', ');
-    return '$message\nFirebase Auth error: $details';
+    return '$message\nFirebase error: $details';
   }
 
   @override
@@ -76,7 +76,8 @@ class AuthService {
   final FirebaseFirestore _firestore;
   final FirebaseSyncService? _firebaseSyncService;
   final OrganizationRepository _organizationRepository;
-  bool _legacyDataMappingAttempted = false;
+  Future<AuthSession>? _sessionLoad;
+  String? _sessionUid;
 
   Stream<firebase_auth.User?> authStateChanges() {
     return _auth.authStateChanges();
@@ -316,7 +317,23 @@ class AuthService {
     );
   }
 
-  Future<AuthSession> _loadSession(firebase_auth.User firebaseUser) async {
+  Future<AuthSession> _loadSession(firebase_auth.User firebaseUser) {
+    if (_sessionUid == firebaseUser.uid && _sessionLoad != null) {
+      return _sessionLoad!;
+    }
+    _sessionUid = firebaseUser.uid;
+    late final Future<AuthSession> pending;
+    pending = _readSession(firebaseUser).whenComplete(() {
+      if (identical(_sessionLoad, pending)) {
+        _sessionLoad = null;
+        _sessionUid = null;
+      }
+    });
+    _sessionLoad = pending;
+    return pending;
+  }
+
+  Future<AuthSession> _readSession(firebase_auth.User firebaseUser) async {
     final userPath = 'users/${firebaseUser.uid}';
     await _logLoginDebug(
       message: 'Loading authentication state',
@@ -373,11 +390,32 @@ class AuthService {
       throw const AuthServiceException('Organization access not assigned.');
     }
     if (user.role == AppRoles.superAdmin) {
-      await _mapLegacyDataToAdornVillas(user.id);
-      await _migrateLegacyUsersToMemberships();
+      // Select existing data without running organization setup or migrations
+      // during sign-in. These memberships are session-only access choices.
+      final organizations = await _organizationRepository.fetchOrganizations();
+      final memberships = organizations
+          .where((organization) => organization.isActive)
+          .map((organization) => OrganizationMembership(
+                orgId: organization.id,
+                uid: user.id,
+                email: user.username,
+                displayName: user.displayName,
+                role: AppRoles.superAdmin,
+                status: MembershipStatus.active,
+                createdAt: user.createdAt,
+              ))
+          .toList();
+      if (organizations.isNotEmpty && memberships.isEmpty) {
+        throw const AuthServiceException(
+            'No active organization is available.');
+      }
       return AuthSession(
-        user: user.copyWith(clearOrgId: true),
-        activeMemberships: const [],
+        user: user.copyWith(
+          orgId: memberships.isEmpty
+              ? DefaultOrganization.id
+              : memberships.first.orgId,
+        ),
+        activeMemberships: memberships,
       );
     }
 
@@ -450,10 +488,9 @@ class AuthService {
         stackTrace: stackTrace,
       );
       await _auth.signOut();
-      throw AuthServiceException(_firestoreAuthMessage(
-        error,
-        permissionDenied: 'User profile not found. Contact admin.',
-      ));
+      throw firestoreAuthException(error,
+          permissionDenied:
+              'Unable to read your VillaBooks user profile. Contact admin.');
     }
   }
 
@@ -552,10 +589,8 @@ class AuthService {
         stackTrace: stackTrace,
       );
       await _auth.signOut();
-      throw AuthServiceException(_firestoreAuthMessage(
-        error,
-        permissionDenied: 'You do not have active organization access.',
-      ));
+      throw firestoreAuthException(error,
+          permissionDenied: 'You do not have active organization access.');
     }
   }
 
@@ -601,10 +636,8 @@ class AuthService {
         },
         stackTrace: stackTrace,
       );
-      throw AuthServiceException(_firestoreAuthMessage(
-        error,
-        permissionDenied: 'You do not have active organization access.',
-      ));
+      throw firestoreAuthException(error,
+          permissionDenied: 'You do not have active organization access.');
     }
   }
 
@@ -698,10 +731,8 @@ class AuthService {
         stackTrace: stackTrace,
       );
       await _auth.signOut();
-      throw AuthServiceException(_firestoreAuthMessage(
-        error,
-        permissionDenied: 'Organization access not assigned.',
-      ));
+      throw firestoreAuthException(error,
+          permissionDenied: 'Organization access not assigned.');
     }
   }
 
@@ -837,29 +868,6 @@ class AuthService {
       invitedBy: user.createdBy,
       approvedBy: user.createdBy,
     );
-  }
-
-  Future<void> _migrateLegacyUsersToMemberships() async {
-    final snapshot = await _firestore.collection('users').get();
-    for (final doc in snapshot.docs) {
-      final user = _appUserFromCloud(doc.id, doc.data());
-      if (user.role == AppRoles.superAdmin) continue;
-      if (!user.isActive) continue;
-      final orgId = user.orgId;
-      if (orgId == null || orgId.trim().isEmpty) continue;
-      final memberDoc = await _membershipDoc(orgId, user.id).get();
-      if (memberDoc.exists) continue;
-      await _setMembership(
-        orgId: orgId,
-        uid: user.id,
-        email: user.username,
-        displayName: user.displayName,
-        role: user.role,
-        status: MembershipStatus.active,
-        invitedBy: user.createdBy,
-        approvedBy: user.createdBy,
-      );
-    }
   }
 
   Future<bool> _createPendingMembershipForExistingEmail({
@@ -1018,39 +1026,6 @@ class AuthService {
     };
   }
 
-  Future<void> _mapLegacyDataToAdornVillas(String updatedBy) async {
-    if (_legacyDataMappingAttempted) return;
-    _legacyDataMappingAttempted = true;
-    try {
-      final result = await _organizationRepository.mapLegacyDataToAdornVillas(
-        updatedBy: updatedBy,
-      );
-      if (result.organizationMissing) {
-        await LoggerService.logWarning(
-          screenName: 'AuthService',
-          operation: 'MapLegacyDataToOrganization',
-          message: 'Adorn Villas organization was not found.',
-        );
-        return;
-      }
-      await LoggerService.logAuth(
-        screenName: 'AuthService',
-        operation: 'MapLegacyDataToOrganization',
-        message: 'Legacy data mapping completed.',
-        details:
-            'organizationId: ${result.organizationId}\nupdated: ${result.updatedCounts}',
-      );
-    } catch (error, stackTrace) {
-      await LoggerService.logError(
-        screenName: 'AuthService',
-        operation: 'MapLegacyDataToOrganization',
-        message: 'Legacy data mapping failed.',
-        details: error.toString(),
-        stackTrace: stackTrace.toString(),
-      );
-    }
-  }
-
   AppUser _appUserFromCloud(String id, Map<String, dynamic> data) {
     final email = data['email'] as String? ?? data['username'] as String? ?? '';
     return AppUser(
@@ -1160,20 +1135,22 @@ class AuthService {
     );
   }
 
-  static String _firestoreAuthMessage(
+  static AuthServiceException firestoreAuthException(
     FirebaseException error, {
     required String permissionDenied,
   }) {
-    switch (error.code) {
-      case 'permission-denied':
-        return permissionDenied;
-      case 'unavailable':
-        return 'Unable to load authentication state. Please try again.';
-      case 'not-found':
-        return 'User profile not found. Contact admin.';
-      default:
-        return 'Unable to load authentication state. Please try again.';
-    }
+    final message = switch (error.code) {
+      'permission-denied' => permissionDenied,
+      'unavailable' ||
+      'deadline-exceeded' =>
+        'Cannot reach Firestore. Check your internet connection and try again.',
+      'failed-precondition' =>
+        'Your sign-in data needs a Firestore configuration update. Contact admin.',
+      'not-found' => 'User profile not found. Contact admin.',
+      _ => 'Unable to load your VillaBooks sign-in data. Please try again.',
+    };
+    return AuthServiceException(message,
+        code: error.code, firebaseMessage: error.message);
   }
 
   static String _formatDebugDetails(Map<String, Object?> details) {

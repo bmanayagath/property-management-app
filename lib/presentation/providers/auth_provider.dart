@@ -122,6 +122,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
   final AuthService? _service;
   final StartupStatus _startupStatus;
   StreamSubscription<Object?>? _authSubscription;
+  String? _syncSessionKey;
+  int _sessionRequest = 0;
+  bool _loginInProgress = false;
 
   Future<bool> login(String email, String password) async {
     final normalizedEmail = email.trim().toLowerCase();
@@ -145,6 +148,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
       return false;
     }
 
+    final request = ++_sessionRequest;
+    _loginInProgress = true;
     state = AuthState.loading(
       users: state.users,
       currentUser: state.currentUser,
@@ -155,6 +160,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
         email: normalizedEmail,
         password: password,
       );
+      if (!mounted || request != _sessionRequest) return false;
       if (session.activeMemberships.length > 1) {
         state = AuthState.ready(
           users: const [],
@@ -164,20 +170,24 @@ class AuthNotifier extends StateNotifier<AuthState> {
         return true;
       }
       final user = session.user;
-      final users = await _loadUsersForCurrentRole(service, user);
+      final users = [user];
       state = AuthState.ready(
         users: users,
         currentUser: user,
         activeMemberships: session.activeMemberships,
       );
+      unawaited(_refreshSessionUsers(user));
+      unawaited(_syncSession(user));
       return true;
     } on AuthServiceException catch (error) {
+      if (!mounted || request != _sessionRequest) return false;
       state = AuthState.ready(
         users: state.users,
         errorMessage: error.displayMessage,
       );
       return false;
     } on FirebaseException catch (error, stackTrace) {
+      if (!mounted || request != _sessionRequest) return false;
       debugPrint('[Auth] Login Firestore load failed: ${error.code}');
       debugPrint('message: ${error.message}');
       debugPrintStack(stackTrace: stackTrace);
@@ -187,6 +197,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
       );
       return false;
     } catch (error, stackTrace) {
+      if (!mounted || request != _sessionRequest) return false;
       debugPrint('[Auth] Login failed: $error');
       debugPrintStack(stackTrace: stackTrace);
       state = AuthState.ready(
@@ -194,10 +205,15 @@ class AuthNotifier extends StateNotifier<AuthState> {
         errorMessage: 'Unable to log in. Please try again.',
       );
       return false;
+    } finally {
+      if (request == _sessionRequest) _loginInProgress = false;
     }
   }
 
   Future<void> logout() async {
+    ++_sessionRequest;
+    _loginInProgress = false;
+    _syncSessionKey = null;
     debugPrint('[Auth] logout started.');
     try {
       await _cancelFirestoreProviderListeners();
@@ -267,6 +283,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
     if (service == null || currentUser == null) return const [];
 
     final users = await _loadUsersForCurrentRole(service, currentUser);
+    if (!mounted || !identical(state.currentUser, currentUser)) return const [];
     state = AuthState.ready(
       users: users,
       currentUser: currentUser,
@@ -486,10 +503,12 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
   Future<void> _refreshFromFirebaseUser() async {
     final service = _service;
-    if (service == null) return;
+    if (service == null || _loginInProgress) return;
+    final request = ++_sessionRequest;
 
     try {
       final session = await service.getCurrentSession();
+      if (!mounted || request != _sessionRequest) return;
       if (session == null) {
         state = const AuthState.ready(users: []);
         return;
@@ -503,18 +522,22 @@ class AuthNotifier extends StateNotifier<AuthState> {
         return;
       }
       final currentUser = session.user;
-      final users = await _loadUsersForCurrentRole(service, currentUser);
+      final users = [currentUser];
       state = AuthState.ready(
         users: users,
         currentUser: currentUser,
         activeMemberships: session.activeMemberships,
       );
+      unawaited(_refreshSessionUsers(currentUser));
+      unawaited(_syncSession(currentUser));
     } on AuthServiceException catch (error) {
+      if (!mounted || request != _sessionRequest) return;
       state = AuthState.ready(
         users: const [],
-        errorMessage: error.message,
+        errorMessage: error.displayMessage,
       );
     } on FirebaseException catch (error, stackTrace) {
+      if (!mounted || request != _sessionRequest) return;
       debugPrint('[Auth] Failed to load Firebase session: ${error.code}');
       debugPrint('message: ${error.message}');
       debugPrintStack(stackTrace: stackTrace);
@@ -523,6 +546,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
         errorMessage: _authStateFirestoreMessage(error),
       );
     } catch (error, stackTrace) {
+      if (!mounted || request != _sessionRequest) return;
       debugPrint('[Auth] Failed to load Firebase session: $error');
       debugPrintStack(stackTrace: stackTrace);
       state = AuthState.ready(
@@ -532,11 +556,49 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
 
+  Future<void> _syncSession(AppUser user) async {
+    if (!_startupStatus.firebaseInitialized) return;
+    final key = '${user.id}/${user.orgId}';
+    if (_syncSessionKey == key) return;
+    _syncSessionKey = key;
+    try {
+      await _ref.read(firebaseSyncServiceProvider).initialPullFromFirestore(
+            orgId: user.orgId,
+          );
+      if (mounted && _syncSessionKey == key) {
+        _ref.read(syncRefreshProvider.notifier).state++;
+      }
+    } catch (error) {
+      if (_syncSessionKey == key) _syncSessionKey = null;
+      debugPrint('[Auth] Background data sync failed: $error');
+    }
+  }
+
+  Future<void> _refreshSessionUsers(AppUser user) async {
+    final sessionState = state;
+    try {
+      final users = await _loadUsersForCurrentRole(_service!, user);
+      if (!mounted || !identical(state, sessionState)) return;
+      state = AuthState.ready(
+        users: users,
+        currentUser: user,
+        activeMemberships: state.activeMemberships,
+        errorMessage: state.errorMessage,
+        infoMessage: state.infoMessage,
+      );
+    } catch (error, stackTrace) {
+      debugPrint('[Auth] Background user list load failed: $error');
+      debugPrint(stackTrace.toString());
+    }
+  }
+
   Future<List<AppUser>> _loadUsersForCurrentRole(
     AuthService service,
     AppUser currentUser,
   ) async {
-    if (currentUser.role == AppRoles.superAdmin) return service.fetchUsers();
+    if (currentUser.role == AppRoles.superAdmin) {
+      return service.fetchUsersForOrg(currentUser.orgId ?? 'default_org');
+    }
     if (currentUser.role == AppRoles.admin) {
       return service.fetchUsersForOrg(currentUser.orgId ?? 'default_org');
     }
@@ -558,15 +620,13 @@ class AuthNotifier extends StateNotifier<AuthState> {
           ? pendingUser.displayName
           : membership.displayName,
     );
-    final users = await _loadUsersForCurrentRole(service, currentUser);
     state = AuthState.ready(
-      users: users,
+      users: [currentUser],
       currentUser: currentUser,
       activeMemberships: state.activeMemberships,
     );
-    await _ref
-        .read(firebaseSyncServiceProvider)
-        .initialPullFromFirestore(orgId: currentUser.orgId);
+    unawaited(_refreshSessionUsers(currentUser));
+    unawaited(_syncSession(currentUser));
   }
 
   @override
@@ -585,14 +645,7 @@ extension _FirstOrNull<T> on Iterable<T> {
 }
 
 String _authStateFirestoreMessage(FirebaseException error) {
-  switch (error.code) {
-    case 'permission-denied':
-      return 'You do not have active organization access.';
-    case 'unavailable':
-      return 'Unable to load authentication state. Please try again.';
-    case 'not-found':
-      return 'User profile not found. Contact admin.';
-    default:
-      return 'Unable to load authentication state. Please try again.';
-  }
+  return AuthService.firestoreAuthException(error,
+          permissionDenied: 'You do not have active organization access.')
+      .displayMessage;
 }
